@@ -101,7 +101,7 @@ struct child_index
     boost::uint8_t packed_;
 };
 
-inline std::ostream& operator<< (std::ostream& os, child_index idx)
+inline std::ostream& operator<<(std::ostream& os, child_index idx)
 {
     os << "(" << idx.x() << ", " << idx.y() << ", " << idx.z() << ")";
     return os;

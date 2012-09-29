@@ -37,6 +37,15 @@ link_directories(${HPX_LIBRARY_DIR})
 include_directories(${octopus_SOURCE_DIR})
 
 ################################################################################
+hpx_option(OCTOPUS_VERIFY BOOL "Enable verification of Octopus (default: ON)" ON ADVANCED)
+
+if(OCTOPUS_VERIFY)
+  add_definitions(-DOCTOPUS_VERIFY=1)
+else()
+  add_definitions(-DOCTOPUS_VERIFY=0)
+endif()
+
+################################################################################
 add_subdirectory(src)
 
 ################################################################################

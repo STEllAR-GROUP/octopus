@@ -10,6 +10,9 @@
 #define OCTOPUS_4765E5BC_E984_4DF3_B1EE_84B1B8D3C4A7
 
 #include <boost/array.hpp>
+#include <boost/serialization/array.hpp>
+
+#include <cmath>
 
 namespace octopus
 {
@@ -47,18 +50,17 @@ struct array1d : boost::array<T, Size>
         return *this;
     }
 
-    T dot(array1d const& v) const {
+    T dot(array1d const& v) const
+    {
         T d = 0;
-        for (std::size_t i = 0; i < Size; ++i) {
+        for (std::size_t i = 0; i < Size; ++i) 
             d += (*this)[i] * v[i];
-        }
         return d;
     }
 
     T mag() const
     {
-        using namespace std;
-        return sqrt(this->dot(*this));
+        return std::sqrt(this->dot(*this));
     }
 
     array1d& operator/=(T const& t)
