@@ -9,6 +9,8 @@
 #if !defined(OCTOPUS_58B04A8F_72F9_4B01_A8B3_941867802BA0)
 #define OCTOPUS_58B04A8F_72F9_4B01_A8B3_941867802BA0
 
+#include <hpx/runtime/components/server/managed_component_base.hpp>
+
 #include <octopus/octree/octree_client.hpp>
 #include <octopus/array1d.hpp>
 
@@ -16,6 +18,7 @@ namespace octopus
 {
 
 struct OCTOPUS_EXPORT octree_server
+  : hpx::components::managed_component_base<octree_server>
 {
   private:
     boost::array<octree_client, 8> children_;
@@ -50,6 +53,10 @@ struct OCTOPUS_EXPORT octree_server
 };
 
 }
+
+HPX_REGISTER_ACTION_DECLARATION(
+    octopus::octree_server::create_child_action,
+    octopus_octree_server_create_child_action);
 
 #endif // OCTOPUS_58B04A8F_72F9_4B01_A8B3_941867802BA0
 

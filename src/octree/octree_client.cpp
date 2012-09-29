@@ -8,6 +8,7 @@
 
 #include <hpx/lcos/future.hpp>
 #include <hpx/async.hpp>
+#include <hpx/runtime/components/runtime_support.hpp>
 
 #include <octopus/octree/octree_server.hpp>
 

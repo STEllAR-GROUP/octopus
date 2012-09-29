@@ -43,7 +43,7 @@ struct OCTOPUS_EXPORT octree_client
 
     octree_client(BOOST_RV_REF(octree_client) other) : gid_(other.gid_)
     {
-        other.gid_.reset();
+        other.gid_ = hpx::naming::invalid_id;
     }
 
     octree_client& operator=(BOOST_COPY_ASSIGN_REF(octree_client) other)
@@ -58,7 +58,7 @@ struct OCTOPUS_EXPORT octree_client
         if (gid_ != other.gid_)
         {
             gid_ = other.gid_;
-            other.gid_.reset();
+            other.gid_ = hpx::naming::invalid_id;
         }
         return *this;
     }
