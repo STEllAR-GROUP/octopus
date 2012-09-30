@@ -13,6 +13,7 @@
 #include <hpx/lcos/future.hpp>
 
 #include <octopus/child_index.hpp>
+#include <octopus/face.hpp>
 
 #include <boost/serialization/access.hpp>
 
@@ -26,7 +27,14 @@ struct OCTOPUS_EXPORT octree_client
 
     friend struct octree_server;
 
-    void create(hpx::id_type const& locality);
+    void create(
+        hpx::id_type const& locality
+        );
+
+    // NOTE: Does not set the GID of this client.
+    hpx::future<hpx::id_type, hpx::naming::gid_type> create_async(
+        hpx::id_type const& locality
+        ) const;
 
     friend class boost::serialization::access;
 
@@ -40,6 +48,8 @@ struct OCTOPUS_EXPORT octree_client
     octree_client() : gid_(hpx::naming::invalid_id) {}
 
     octree_client(octree_client const& other) : gid_(other.gid_) {}
+
+    octree_client(hpx::id_type const& gid) : gid_(gid) {}
 
     octree_client(BOOST_RV_REF(octree_client) other) : gid_(other.gid_)
     {
@@ -82,10 +92,173 @@ struct OCTOPUS_EXPORT octree_client
         return gid_;
     }
 
-    ///////////////////////////////////////////////////////////////////////////
-    void create_child(child_index idx);
+    operator hpx::util::safe_bool<octree_client>::result_type() const
+    {
+        return hpx::util::safe_bool<octree_client>()(gid_);
+    }
 
-    hpx::future<void> create_child_async(child_index idx);
+    friend bool operator==(octree_client const& lhs, octree_client const& rhs) 
+    {
+        return lhs.gid_ == rhs.gid_;
+    }
+
+    friend bool operator==(octree_client const& lhs, hpx::id_type const& rhs) 
+    {
+        return lhs.gid_ == rhs;
+    }
+
+    friend bool operator==(hpx::id_type const& lhs, octree_client const& rhs) 
+    {
+        return lhs == rhs.gid_;
+    }
+
+    friend bool operator!=(octree_client const& lhs, octree_client const& rhs) 
+    {
+        return lhs.gid_ != rhs.gid_;
+    }
+
+    friend bool operator!=(octree_client const& lhs, hpx::id_type const& rhs) 
+    {
+        return lhs.gid_ != rhs;
+    }
+
+    friend bool operator!=(hpx::id_type const& lhs, octree_client const& rhs) 
+    {
+        return lhs != rhs.gid_;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    void create_child(
+        child_index kid
+        );
+
+    hpx::future<void> create_child_async(
+        child_index kid
+        );
+
+    ///////////////////////////////////////////////////////////////////////////
+  private:
+    void set_sibling(
+        boost::uint8_t f
+      , octree_client const& sib 
+        );
+
+    void set_sibling_push(
+        boost::uint8_t f
+      , octree_client const& sib 
+        );
+
+  public:
+    void set_sibling(
+        face f
+      , octree_client const& sib 
+        )
+    {
+        set_sibling(boost::uint8_t(f), sib);
+    }
+
+    void set_sibling_push(
+        face f
+      , octree_client const& sib 
+        )
+    {
+        return set_sibling_push(boost::uint8_t(f), sib);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+  private:
+    void tie_sibling(
+        boost::uint8_t f
+      , octree_client const& sib 
+        );
+
+    void tie_sibling_push(
+        boost::uint8_t f
+      , octree_client const& sib 
+        );
+
+  public:
+    void tie_sibling(
+        face f
+      , octree_client const& sib 
+        )
+    {
+        set_sibling(boost::uint8_t(f), sib);
+    }
+
+    void tie_sibling_push(
+        face f
+      , octree_client const& sib 
+        )
+    {
+        set_sibling_push(boost::uint8_t(f), sib);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+  private:
+    void set_child_sibling(
+        child_index kid
+      , boost::uint8_t f
+      , octree_client const& sib 
+        );
+
+    void set_child_sibling_push(
+        child_index kid
+      , boost::uint8_t f
+      , octree_client const& sib 
+        );
+
+  public:
+    void set_child_sibling(
+        child_index kid
+      , face f
+      , octree_client const& sib 
+        )
+    {
+        set_child_sibling(kid, boost::uint8_t(f), sib);
+    }
+
+    void set_child_sibling_push(
+        child_index kid
+      , face f
+      , octree_client const& sib 
+        )
+    {
+        set_child_sibling_push(kid, boost::uint8_t(f), sib);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+  private:
+    void tie_child_sibling(
+        child_index kid
+      , boost::uint8_t f
+      , octree_client const& sib 
+        );
+
+    void tie_child_sibling_push(
+        child_index kid
+      , boost::uint8_t f
+      , octree_client const& sib 
+        );
+
+  public:
+    void tie_child_sibling(
+        child_index kid
+      , face f
+      , octree_client const& sib 
+        )
+    {
+        tie_child_sibling(kid, boost::uint8_t(f), sib);
+    }
+
+    void tie_child_sibling_push(
+        child_index kid
+      , face f
+      , octree_client const& sib 
+        )
+    {
+        tie_child_sibling_push(kid, boost::uint8_t(f), sib);
+    }
 };
 
 }

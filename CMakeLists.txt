@@ -37,12 +37,23 @@ link_directories(${HPX_LIBRARY_DIR})
 include_directories(${octopus_SOURCE_DIR})
 
 ################################################################################
-hpx_option(OCTOPUS_VERIFY BOOL "Enable verification of Octopus (default: ON)" ON ADVANCED)
+hpx_option(OCTOPUS_VERIFY BOOL
+           "Enable verification of Octopus (default: ON)" ON ADVANCED)
 
 if(OCTOPUS_VERIFY)
-  add_definitions(-DOCTOPUS_VERIFY=1)
+  add_definitions(-DOCTOPUS_ENABLE_VERIFICATION=1)
 else()
-  add_definitions(-DOCTOPUS_VERIFY=0)
+  add_definitions(-DOCTOPUS_ENABLE_VERIFICATION=0)
+endif()
+
+################################################################################
+hpx_option(OCTOPUS_TEST_IN_PLACE BOOL
+           "Enable in-code testing of Octopus (default: ON)" ON ADVANCED)
+
+if(OCTOPUS_TEST_IN_PLACE)
+  add_definitions(-DOCTOPUS_ENABLE_TEST_IN_PLACE=1)
+else()
+  add_definitions(-DOCTOPUS_ENABLE_TEST_IN_PLACE=0)
 endif()
 
 ################################################################################

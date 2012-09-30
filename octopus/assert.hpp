@@ -12,9 +12,10 @@
 
 #include <octopus/config.hpp>
 
-#include <boost/current_function.hpp>
+#if OCTOPUS_ENABLE_VERIFICATION
+    #include <boost/current_function.hpp>
+    #include <boost/format.hpp>
 
-#if OCTOPUS_VERIFY
     #define OCTOPUS_ASSERT(expr) ((expr)                                \
       ? ((void)0)                                                       \
       : ::boost::assertion_failed                                       \
@@ -24,9 +25,27 @@
       ? ((void)0)                                                       \
       : ::boost::assertion_failed_msg                                   \
             (#expr, msg, BOOST_CURRENT_FUNCTION, __FILE__, __LINE__))
+
+    #define OCTOPUS_ASSERT_FMT_MSG(expr, fmt, args) ((expr)             \
+      ? ((void)0)                                                       \
+      : ::boost::assertion_failed_msg                                   \
+            (#expr, boost::str(boost::format(fmt) % args).c_str(),      \
+                BOOST_CURRENT_FUNCTION, __FILE__, __LINE__))
 #else
     #define OCTOPUS_ASSERT(expr)
     #define OCTOPUS_ASSERT_MSG(expr)
+    #define OCTOPUS_ASSERT_FMT_MSG(expr, fmt, args)
+#endif
+
+#if OCTOPUS_ENABLE_TEST_IN_PLACE
+    #include <boost/current_function.hpp>
+
+    #define OCTOPUS_TEST_IN_PLACE(expr) ((expr)                         \
+      ? ((void)0)                                                       \
+      : ::boost::assertion_failed                                       \
+            (#expr, BOOST_CURRENT_FUNCTION, __FILE__, __LINE__))
+#else
+    #define OCTOPUS_TIP(expr)
 #endif
 
 #endif // OCTOPUS_C509AE65_1FE4_4FAD_96B5_BB75605EB37C

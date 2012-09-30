@@ -25,3 +25,19 @@ HPX_REGISTER_ACTION(
     octopus::octree_server::create_child_action,
     octopus_octree_server_create_child_action);
 
+HPX_REGISTER_ACTION(
+    octopus::octree_server::set_sibling_action,
+    octopus_octree_server_set_sibling_action);
+
+HPX_REGISTER_ACTION(
+    octopus::octree_server::tie_sibling_action,
+    octopus_octree_server_tie_sibling_action);
+
+HPX_REGISTER_ACTION(
+    octopus::octree_server::set_child_sibling_action,
+    octopus_octree_server_set_child_sibling_action);
+
+HPX_REGISTER_ACTION(
+    octopus::octree_server::tie_child_sibling_action,
+    octopus_octree_server_tie_child_sibling_action);
+
