@@ -42,11 +42,14 @@ void octree_server::create_child(
     face exterior_z_face = out_of_bounds; // f1 from original code.
     face interior_z_face = out_of_bounds; // f2 from original code.
 
+    array1d<boost::uint64_t, 3> kid_location;
+    kid_location = location_ * 2 + kid.array(); 
+
     octree_client kid_client;
 
     // FIXME: Insert load balancing here.
     hpx::future<hpx::id_type, hpx::naming::gid_type> kid_gid
-        = kid_client.create_async(hpx::find_here());
+        = kid_client.create_async(hpx::find_here(), level_ + 1, kid_location);
 
     ///////////////////////////////////////////////////////////////////////////
     // X-axis. 
@@ -206,6 +209,7 @@ void octree_server::set_sibling(
             boost::uint16_t(f) % sib);
 
         siblings_[f] = sib;  
+        initialize_if_ready_locked(l);
     }
 } // }}}
 
@@ -407,11 +411,10 @@ void octree_server::tie_child_sibling(
     }
 
     // We established by assertion earlier that siblings_[source_f] is not NULL.
-    // NOTE: We assume here that we do not need to set the source kid if the
-    // target child is NULL.
-    if (source_sib != hpx::naming::invalid_id)
-        siblings_[source_f].set_child_sibling_push
-            (source_kid, source_f, children_[target_kid]);
+    // FIXME: If source_sib is NULL and that fact is implicitly known by the
+    // caller, then this is non-optimal.
+    siblings_[source_f].set_child_sibling_push
+        (source_kid, source_f, children_[target_kid]);
 } // }}}
 
 }

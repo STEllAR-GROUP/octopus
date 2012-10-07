@@ -10,6 +10,7 @@
 #define OCTOPUS_0CBAD952_ED85_4D22_84DF_6AB16A34E518
 
 #include <octopus/assert.hpp>
+#include <octopus/array1d.hpp>
 
 #include <boost/serialization/access.hpp>
 #include <boost/cstdint.hpp>
@@ -88,6 +89,15 @@ struct child_index
         else
             packed_ |= 4;
     }
+
+    array1d<boost::uint64_t, 3> array()
+    {
+        array1d<boost::uint64_t, 3> a;  
+        a[0] = x();
+        a[1] = y();
+        a[2] = z();
+        return a; 
+    }  
 
   private:
     friend class boost::serialization::access;

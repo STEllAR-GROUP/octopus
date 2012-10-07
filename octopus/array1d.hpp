@@ -182,6 +182,15 @@ struct array1d : boost::array<T, Size>
             (*this)[i] >>= v;
         return *this;
     }
+
+  private:
+    friend class boost::serialization::access;
+
+    template <typename Archive>
+    void serialize(Archive& ar, const unsigned int)
+    {
+        ar & boost::serialization::make_array(this->data(), this->size()); 
+    }     
 };
 
 }

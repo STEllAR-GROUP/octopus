@@ -17,14 +17,14 @@ set(OCTOPUS_SOVERSION     ${OCTOPUS_MAJOR_VERSION})
 set(OCTOPUS_VERSION
     "${OCTOPUS_MAJOR_VERSION}.${OCTOPUS_MINOR_VERSION}.${OCTOPUS_PATCH_LEVEL}")
 
-set(CMAKE_MODULE_PATH
+set(CMAKE_MODULE_PATH ${octopus_SOURCE_DIR}/cmake
     ${HPX_ROOT}/share/cmake-${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}/Modules)
 
 if(MSVC)
   set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 endif()
 
-find_package(HPX)
+find_package(HPX REQUIRED)
 
 if(NOT MSVC)
   set(HPX_RPATH
@@ -35,6 +35,12 @@ include_directories(${HPX_INCLUDE_DIR})
 link_directories(${HPX_LIBRARY_DIR})
 
 include_directories(${octopus_SOURCE_DIR})
+
+################################################################################
+find_package(HPX_Silo REQUIRED)
+
+include_directories(${SILO_INCLUDE_DIR})
+link_directories(${SILO_LIBRARY_DIR})
 
 ################################################################################
 hpx_option(OCTOPUS_VERIFY BOOL

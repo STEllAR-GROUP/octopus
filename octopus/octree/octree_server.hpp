@@ -11,10 +11,9 @@
 
 #include <hpx/runtime/components/server/managed_component_base.hpp>
 #include <hpx/lcos/local/mutex.hpp>
-#include <hpx/lcos/local/event_semaphore.hpp>
+#include <hpx/lcos/local/event.hpp>
 
 #include <octopus/octree/octree_client.hpp>
-#include <octopus/array1d.hpp>
 
 namespace octopus
 {
@@ -25,9 +24,9 @@ struct OCTOPUS_EXPORT octree_server
   private:
     typedef hpx::lcos::local::mutex mutex_type;
 
-    hpx::lcos::local::event_semaphore initialized_;
-
+    hpx::lcos::local::event initialized_;
     mutable mutex_type mtx_; 
+    boost::uint8_t siblings_set_;
 
     boost::array<octree_client, 8> children_;
     boost::array<octree_client, 6> siblings_;
@@ -46,27 +45,56 @@ struct OCTOPUS_EXPORT octree_server
         ar & location_;
     }
 
-    child_index get_child_index_locked() const
+    // Precondition: mtx_ must be locked.
+    child_index get_child_index_locked(mutex_type::scoped_lock& l) const
     {
+        OCTOPUS_ASSERT_MSG(l.owns_lock(), "node mutex is not locked");
         OCTOPUS_ASSERT_MSG(0 != level_, "root node has no parent");
         child_index idx(location_[0] % 2, location_[1] % 2, location_[2] % 2);
         return idx; 
     }
 
+    // Precondition: mtx_ must be locked.
+    void initialize_if_ready_locked(mutex_type::scoped_lock& l)
+    {
+        OCTOPUS_ASSERT_MSG(l.owns_lock(), "node mutex is not locked");
+        OCTOPUS_ASSERT_MSG(siblings_set_ < 6, "node is already initialized");
+        if (++siblings_set_ == 6)
+            initialized_.set(); 
+    }  
+
   public:
+    /// \brief Construct a root node.
     octree_server()
       : initialized_()
       , mtx_()
+      , siblings_set_(0)
       , children_()
       , siblings_()
       , level_()
       , location_()
-    {} 
+    {
+        initialized_.set();
+    } 
+
+    /// \brief Construct a child node.
+    octree_server(
+        boost::uint64_t level
+      , array1d<boost::uint64_t, 3> const& location
+        )
+      : initialized_()
+      , mtx_()
+      , siblings_set_(0)
+      , children_()
+      , siblings_()
+      , level_(level)
+      , location_(location)
+    {}
 
     child_index get_child_index() const
     {
         mutex_type::scoped_lock l(mtx_);
-        return get_child_index_locked(); 
+        return get_child_index_locked(l); 
     }
 
     ///////////////////////////////////////////////////////////////////////////

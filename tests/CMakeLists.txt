@@ -6,7 +6,10 @@
 set(tests
     array1d
     child_index
+    octree_create_child
    )
+
+set(octree_create_child_FLAGS DEPENDENCIES octopus_component)
 
 foreach(test ${tests})
   set(sources ${test}.cpp)

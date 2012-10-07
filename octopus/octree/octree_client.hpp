@@ -1,5 +1,4 @@
 ////////////////////////////////////////////////////////////////////////////////
-//  Copyright (c) 2012 Dominic Marcello
 //  Copyright (c) 2012 Bryce Adelstein-Lelbach
 //
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying
@@ -12,6 +11,7 @@
 #include <hpx/runtime/naming/name.hpp>
 #include <hpx/lcos/future.hpp>
 
+#include <octopus/array1d.hpp>
 #include <octopus/child_index.hpp>
 #include <octopus/face.hpp>
 
@@ -29,11 +29,15 @@ struct OCTOPUS_EXPORT octree_client
 
     void create(
         hpx::id_type const& locality
+      , boost::uint64_t level
+      , array1d<boost::uint64_t, 3> const& location
         );
 
     // NOTE: Does not set the GID of this client.
     hpx::future<hpx::id_type, hpx::naming::gid_type> create_async(
         hpx::id_type const& locality
+      , boost::uint64_t level
+      , array1d<boost::uint64_t, 3> const& location
         ) const;
 
     friend class boost::serialization::access;
@@ -127,10 +131,17 @@ struct OCTOPUS_EXPORT octree_client
         return lhs != rhs.gid_;
     }
 
+    void create_root(
+        hpx::id_type const& gid
+        );
+
     ///////////////////////////////////////////////////////////////////////////
     void create_child(
         child_index kid
-        );
+        )
+    {
+        create_child_async(kid).get(); 
+    }
 
     hpx::future<void> create_child_async(
         child_index kid

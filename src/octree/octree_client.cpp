@@ -1,5 +1,4 @@
 ////////////////////////////////////////////////////////////////////////////////
-//  Copyright (c) 2012 Dominic Marcello
 //  Copyright (c) 2012 Bryce Adelstein-Lelbach
 //
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying
@@ -18,39 +17,42 @@ namespace octopus
 
 void octree_client::create(
     hpx::id_type const& locality
+  , boost::uint64_t level
+  , array1d<boost::uint64_t, 3> const& location
     )
 {
-    OCTOPUS_ASSERT_FMT_MSG(locality.get_msb() & 0xFF,
+    OCTOPUS_ASSERT_FMT_MSG(!(locality.get_msb() & 0xFF),
                            "target is not a locality, gid(%1%)",
                            locality);
 
-    const hpx::components::component_type t
-        = hpx::components::get_component_type<octopus::octree_server>();
-
     hpx::components::runtime_support rts(locality);
-    gid_ = rts.create_component(t, 1);
+    gid_ = rts.create_component<octopus::octree_server>(level, location);
 }
 
 hpx::future<hpx::id_type, hpx::naming::gid_type> octree_client::create_async(
     hpx::id_type const& locality
+  , boost::uint64_t level
+  , array1d<boost::uint64_t, 3> const& location
     ) const
 {
-    OCTOPUS_ASSERT_FMT_MSG(locality.get_msb() & 0xFF,
+    OCTOPUS_ASSERT_FMT_MSG(!(locality.get_msb() & 0xFF),
                            "target is not a locality, gid(%1%)",
                            locality);
 
-    const hpx::components::component_type t
-        = hpx::components::get_component_type<octopus::octree_server>();
-
     hpx::components::runtime_support rts(locality);
-    return rts.create_component_async(t, 1);
+    return rts.create_component_async<octopus::octree_server>(level, location);
 }
 
-void octree_client::create_child(
-    child_index kid
-    )
+void octree_client::create_root(
+    hpx::id_type const& locality
+    ) 
 {
-    create_child_async(kid).get(); 
+    OCTOPUS_ASSERT_FMT_MSG(!(locality.get_msb() & 0xFF),
+                           "target is not a locality, gid(%1%)",
+                           locality);
+
+    hpx::components::runtime_support rts(locality);
+    gid_ = rts.create_component_async<octopus::octree_server>().get();
 }
 
 hpx::future<void> octree_client::create_child_async(
