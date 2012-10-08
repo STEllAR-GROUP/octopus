@@ -5,13 +5,14 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <hpx/util/lightweight_test.hpp>
+#if !defined(OCTOPUS_17914F5A_C09A_42A4_9819_0641B54EBF15)
+#define OCTOPUS_17914F5A_C09A_42A4_9819_0641B54EBF15
 
-#include <octopus/driver.hpp>
-#include <octopus/array1d.hpp>
+#include <octopus/config.hpp>
 
-int octopus_main(boost::program_options::variables_map& vm)
-{
-    return hpx::util::report_errors();
-}
+#include <boost/program_options.hpp>
+
+OCTOPUS_EXPORT int octopus_main(boost::program_options::variables_map& vm);
+
+#endif // OCTOPUS_17914F5A_C09A_42A4_9819_0641B54EBF15
 

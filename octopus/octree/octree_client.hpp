@@ -32,7 +32,7 @@ struct OCTOPUS_EXPORT octree_client
       , boost::uint64_t level
       , array1d<boost::uint64_t, 3> const& location
         );
-
+ 
     // NOTE: Does not set the GID of this client.
     hpx::future<hpx::id_type, hpx::naming::gid_type> create_async(
         hpx::id_type const& locality
@@ -270,6 +270,14 @@ struct OCTOPUS_EXPORT octree_client
     {
         tie_child_sibling_push(kid, boost::uint8_t(f), sib);
     }
+
+    ///////////////////////////////////////////////////////////////////////////
+    boost::uint64_t get_node_count()
+    {
+        return get_node_count_async().get();
+    }
+
+    hpx::future<boost::uint64_t> get_node_count_async();
 };
 
 }

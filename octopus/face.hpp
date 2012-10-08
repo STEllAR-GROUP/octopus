@@ -54,7 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, face f)
         case YU: os << "YU"; break; 
         case ZL: os << "ZL"; break;  
         case ZU: os << "ZU"; break; 
-        case out_of_bounds:  break; 
+        case out_of_bounds: os << "out_of_bounds"; break; 
     }
     return os;
 }

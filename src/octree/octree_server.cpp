@@ -6,6 +6,9 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <hpx/lcos/future.hpp>
+#include <hpx/lcos/future_wait.hpp>
+
 #include <octopus/octree/octree_server.hpp>
 
 namespace octopus
@@ -416,6 +419,27 @@ void octree_server::tie_child_sibling(
     siblings_[source_f].set_child_sibling_push
         (source_kid, source_f, children_[target_kid]);
 } // }}}
+
+boost::uint64_t octree_server::get_node_count()
+{
+    boost::uint64_t cnt = 0;
+
+    std::vector<hpx::future<boost::uint64_t> > futures;
+    futures.reserve(8);
+
+    for (boost::uint64_t i = 0; i < 8; ++i)
+    {
+        if (children_[i] != hpx::naming::invalid_id)
+            futures.push_back(children_[i].get_node_count_async());
+    }
+
+    hpx::wait(futures);
+
+    for (boost::uint64_t i = 0; i < futures.size(); ++i)
+        cnt += futures[i].get();
+
+    return cnt + 1; 
+}
 
 }
 

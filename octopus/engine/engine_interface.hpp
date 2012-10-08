@@ -5,13 +5,13 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <hpx/util/lightweight_test.hpp>
+#if !defined(OCTOPUS_E40BC60F_0909_4486_8387_6435DB403689)
+#define OCTOPUS_E40BC60F_0909_4486_8387_6435DB403689
 
-#include <octopus/driver.hpp>
-#include <octopus/array1d.hpp>
-
-int octopus_main(boost::program_options::variables_map& vm)
+namespace octopus
 {
-    return hpx::util::report_errors();
+
 }
+
+#endif // OCTOPUS_E40BC60F_0909_4486_8387_6435DB403689
 

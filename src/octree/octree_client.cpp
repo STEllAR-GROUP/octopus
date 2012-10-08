@@ -159,5 +159,10 @@ void octree_client::tie_child_sibling_push(
         (gid_, target_kid, target_f, target_sib);
 }
 
+hpx::future<boost::uint64_t> octree_client::get_node_count_async()
+{
+    return hpx::apply<octree_server::get_node_count_action>(gid_);
+}
+
 }
 

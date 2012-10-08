@@ -177,6 +177,18 @@ struct OCTOPUS_EXPORT octree_server
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                 tie_child_sibling,
                                 tie_child_sibling_action);
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// \brief Count the number of nodes under this node. 
+    /// 
+    /// Communication:       Local and possibly remote.
+    /// Concurrency Control: Waits on initialization_, locks mtx_.
+    /// Synchrony Gurantees: Synchronous.
+    boost::uint64_t get_node_count();
+
+    HPX_DEFINE_COMPONENT_DIRECT_ACTION(octree_server,
+                                       get_node_count,
+                                       get_node_count_action);
 };
 
 }
@@ -200,6 +212,11 @@ HPX_REGISTER_ACTION_DECLARATION(
 HPX_REGISTER_ACTION_DECLARATION(
     octopus::octree_server::tie_child_sibling_action,
     octopus_octree_server_tie_child_sibling_action);
+
+HPX_REGISTER_ACTION_DECLARATION(
+    octopus::octree_server::get_node_count_action,
+    octopus_octree_server_get_node_count_action);
+
 
 #endif // OCTOPUS_58B04A8F_72F9_4B01_A8B3_941867802BA0
 

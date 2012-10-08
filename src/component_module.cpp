@@ -14,9 +14,11 @@
 #include <boost/serialization/export.hpp>
 
 #include <octopus/octree/octree_server.hpp>
+#include <octopus/engine/engine_server.hpp>
 
 HPX_REGISTER_COMPONENT_MODULE();
 
+///////////////////////////////////////////////////////////////////////////////
 HPX_REGISTER_MINIMAL_COMPONENT_FACTORY(
     hpx::components::managed_component<octopus::octree_server>,
     octopus_octree_server);
@@ -40,4 +42,17 @@ HPX_REGISTER_ACTION(
 HPX_REGISTER_ACTION(
     octopus::octree_server::tie_child_sibling_action,
     octopus_octree_server_tie_child_sibling_action);
+
+HPX_REGISTER_ACTION(
+    octopus::octree_server::get_node_count_action,
+    octopus_octree_server_get_node_count_action);
+
+///////////////////////////////////////////////////////////////////////////////
+HPX_REGISTER_MINIMAL_COMPONENT_FACTORY(
+    hpx::components::simple_component<octopus::engine_server>,
+    octopus_engine_server);
+
+HPX_REGISTER_ACTION(
+    octopus::engine_server::prepare_modules_action,
+    octopus_engine_server_prepare_modules_action);
 
