@@ -43,16 +43,8 @@ HPX_REGISTER_ACTION(
     octopus::octree_server::tie_child_sibling_action,
     octopus_octree_server_tie_child_sibling_action);
 
-HPX_REGISTER_ACTION(
-    octopus::octree_server::get_node_count_action,
-    octopus_octree_server_get_node_count_action);
-
 ///////////////////////////////////////////////////////////////////////////////
 HPX_REGISTER_MINIMAL_COMPONENT_FACTORY(
     hpx::components::simple_component<octopus::engine_server>,
     octopus_engine_server);
-
-HPX_REGISTER_ACTION(
-    octopus::engine_server::prepare_modules_action,
-    octopus_engine_server_prepare_modules_action);
 

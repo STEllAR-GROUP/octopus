@@ -40,6 +40,8 @@ struct OCTOPUS_EXPORT octree_client
       , array1d<boost::uint64_t, 3> const& location
         ) const;
 
+    BOOST_COPYABLE_AND_MOVABLE(octree_client);
+
     friend class boost::serialization::access;
 
     template <typename Archive>
@@ -55,39 +57,29 @@ struct OCTOPUS_EXPORT octree_client
 
     octree_client(hpx::id_type const& gid) : gid_(gid) {}
 
-    octree_client(BOOST_RV_REF(octree_client) other) : gid_(other.gid_)
-    {
-        other.gid_ = hpx::naming::invalid_id;
-    }
+    octree_client(BOOST_RV_REF(octree_client) other) : gid_(other.gid_) {}
 
     octree_client& operator=(BOOST_COPY_ASSIGN_REF(octree_client) other)
     {
-        if (gid_ != other.gid_)
-            gid_ = other.gid_;
+        gid_ = other.gid_;
         return *this;
     }
 
     octree_client& operator=(BOOST_RV_REF(octree_client) other)
     {
-        if (gid_ != other.gid_)
-        {
-            gid_ = other.gid_;
-            other.gid_ = hpx::naming::invalid_id;
-        }
+        gid_ = other.gid_;
         return *this;
     }
 
     octree_client& operator=(hpx::id_type const& gid)
     {
-        if (gid_ != gid)
-            gid_ = gid;
+        gid_ = gid;
         return *this;
     }
 
     octree_client& operator=(BOOST_RV_REF(hpx::id_type) gid)
     {
-        if (gid_ != gid)
-            gid_ = gid;
+        gid_ = gid;
         return *this;
     }
 
@@ -270,14 +262,6 @@ struct OCTOPUS_EXPORT octree_client
     {
         tie_child_sibling_push(kid, boost::uint8_t(f), sib);
     }
-
-    ///////////////////////////////////////////////////////////////////////////
-    boost::uint64_t get_node_count()
-    {
-        return get_node_count_async().get();
-    }
-
-    hpx::future<boost::uint64_t> get_node_count_async();
 };
 
 }

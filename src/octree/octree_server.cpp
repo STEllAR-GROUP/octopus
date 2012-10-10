@@ -10,6 +10,7 @@
 #include <hpx/lcos/future_wait.hpp>
 
 #include <octopus/octree/octree_server.hpp>
+#include <octopus/engine/engine_interface.hpp>
 
 namespace octopus
 {
@@ -48,11 +49,8 @@ void octree_server::create_child(
     array1d<boost::uint64_t, 3> kid_location;
     kid_location = location_ * 2 + kid.array(); 
 
-    octree_client kid_client;
-
-    // FIXME: Insert load balancing here.
     hpx::future<hpx::id_type, hpx::naming::gid_type> kid_gid
-        = kid_client.create_async(hpx::find_here(), level_ + 1, kid_location);
+        = create_octree_async(level_ + 1, kid_location);
 
     ///////////////////////////////////////////////////////////////////////////
     // X-axis. 
@@ -155,7 +153,7 @@ void octree_server::create_child(
     OCTOPUS_TEST_IN_PLACE(interior_z_face != out_of_bounds);
 
     // Now, we must wait for the child to be created.
-    kid_client = kid_gid.get();
+    octree_client kid_client(kid_gid.get());
 
     OCTOPUS_ASSERT(kid_client != hpx::naming::invalid_id);
 
@@ -419,27 +417,6 @@ void octree_server::tie_child_sibling(
     siblings_[source_f].set_child_sibling_push
         (source_kid, source_f, children_[target_kid]);
 } // }}}
-
-boost::uint64_t octree_server::get_node_count()
-{
-    boost::uint64_t cnt = 0;
-
-    std::vector<hpx::future<boost::uint64_t> > futures;
-    futures.reserve(8);
-
-    for (boost::uint64_t i = 0; i < 8; ++i)
-    {
-        if (children_[i] != hpx::naming::invalid_id)
-            futures.push_back(children_[i].get_node_count_async());
-    }
-
-    hpx::wait(futures);
-
-    for (boost::uint64_t i = 0; i < futures.size(); ++i)
-        cnt += futures[i].get();
-
-    return cnt + 1; 
-}
 
 }
 

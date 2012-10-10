@@ -100,9 +100,9 @@ struct OCTOPUS_EXPORT octree_server
     ///////////////////////////////////////////////////////////////////////////
     /// \brief Create the \a kid child for this node.
     /// 
-    /// Communication:       Local and possibly remote
+    /// Remote Operations:   Possibly.
     /// Concurrency Control: Waits on initialization_, locks mtx_
-    /// Synchrony Gurantees: Fire-and-Forget 
+    /// Synchrony Gurantee:  Fire-and-Forget 
     void create_child(
         child_index kid
         );
@@ -114,9 +114,9 @@ struct OCTOPUS_EXPORT octree_server
     ///////////////////////////////////////////////////////////////////////////
     /// \brief Set \a target_sib as the \a target_f sibling of this node.
     /// 
-    /// Communication:       Local and possibly remote
+    /// Remote Operations:   Possibly.
     /// Concurrency Control: Locks mtx_
-    /// Synchrony Gurantees: Fire-and-Forget 
+    /// Synchrony Gurantee:  Fire-and-Forget 
     void set_sibling(
         boost::uint8_t f
       , octree_client const& sib
@@ -131,9 +131,9 @@ struct OCTOPUS_EXPORT octree_server
     ///        Additionally, set this node as the invert(target_f) sibling of
     ///        \a target_sib.
     /// 
-    /// Communication:       Local and possibly remote.
+    /// Remote Operations:   Possibly.
     /// Concurrency Control: Locks mtx_.
-    /// Synchrony Gurantees: Fire-and-Forget. 
+    /// Synchrony Gurantee:  Fire-and-Forget. 
     void tie_sibling(
         boost::uint8_t target_f
       , octree_client target_sib
@@ -147,9 +147,9 @@ struct OCTOPUS_EXPORT octree_server
     /// \brief Set \a target_sib as the \a target_f sibling of this node's
     ///        \a target_kid child.
     /// 
-    /// Communication:       Local and possibly remote.
+    /// Remote Operations:   Possibly.
     /// Concurrency Control: Waits on initialization_, locks mtx_.
-    /// Synchrony Gurantees: Fire-and-Forget. 
+    /// Synchrony Gurantee:  Fire-and-Forget. 
     void set_child_sibling(
         child_index kid
       , boost::uint8_t f
@@ -165,9 +165,9 @@ struct OCTOPUS_EXPORT octree_server
     ///        \a target_kid child. Additionally, set this node's \a target_kid
     ///        child as the invert(target_f) sibling of \a target_sib.
     /// 
-    /// Communication:       Local and possibly remote.
+    /// Remote Operations:   Possibly.
     /// Concurrency Control: Waits on initialization_, locks mtx_.
-    /// Synchrony Gurantees: Fire-and-Forget.
+    /// Synchrony Gurantee:  Fire-and-Forget.
     void tie_child_sibling(
         child_index target_kid
       , boost::uint8_t target_f
@@ -177,18 +177,6 @@ struct OCTOPUS_EXPORT octree_server
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                 tie_child_sibling,
                                 tie_child_sibling_action);
-
-    ///////////////////////////////////////////////////////////////////////////
-    /// \brief Count the number of nodes under this node. 
-    /// 
-    /// Communication:       Local and possibly remote.
-    /// Concurrency Control: Waits on initialization_, locks mtx_.
-    /// Synchrony Gurantees: Synchronous.
-    boost::uint64_t get_node_count();
-
-    HPX_DEFINE_COMPONENT_DIRECT_ACTION(octree_server,
-                                       get_node_count,
-                                       get_node_count_action);
 };
 
 }
@@ -212,11 +200,6 @@ HPX_REGISTER_ACTION_DECLARATION(
 HPX_REGISTER_ACTION_DECLARATION(
     octopus::octree_server::tie_child_sibling_action,
     octopus_octree_server_tie_child_sibling_action);
-
-HPX_REGISTER_ACTION_DECLARATION(
-    octopus::octree_server::get_node_count_action,
-    octopus_octree_server_get_node_count_action);
-
 
 #endif // OCTOPUS_58B04A8F_72F9_4B01_A8B3_941867802BA0
 
