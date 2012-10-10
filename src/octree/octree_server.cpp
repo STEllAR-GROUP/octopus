@@ -46,11 +46,14 @@ void octree_server::create_child(
     face exterior_z_face = out_of_bounds; // f1 from original code.
     face interior_z_face = out_of_bounds; // f2 from original code.
 
-    array1d<boost::uint64_t, 3> kid_location;
-    kid_location = location_ * 2 + kid.array(); 
+    octree_init_data kid_init_data;
+
+    kid_init_data.location = location_ * 2 + kid.array(); 
+    kid_init_data.level = level_ + 1; 
+    // IMPLEMENT: Rest of the parameters, prepare injection.
 
     hpx::future<hpx::id_type, hpx::naming::gid_type> kid_gid
-        = create_octree_async(level_ + 1, kid_location);
+        = create_octree_async(kid_init_data);
 
     ///////////////////////////////////////////////////////////////////////////
     // X-axis. 
@@ -210,7 +213,7 @@ void octree_server::set_sibling(
             boost::uint16_t(f) % sib);
 
         siblings_[f] = sib;  
-        initialize_if_ready_locked(l);
+        sibling_set_locked(l);
     }
 } // }}}
 

@@ -74,8 +74,8 @@ std::ostream& operator<<(
     os
         << (boost::format(fmt) % "octopus.dimensional_size"
                                % cfg.dimensional_size) << "\n"
-        << (boost::format(fmt) % "octopus.temporal_prediction_limit"
-                               % cfg.temporal_prediction_limit)
+        << (boost::format(fmt) % "octopus.temporal_prediction_gap"
+                               % cfg.temporal_prediction_gap)
     ;
 
     return os;
@@ -89,7 +89,7 @@ config_data config_from_ini()
 
     reader
         ("octopus.dimensional_size", cfg.dimensional_size, 12) 
-        ("octopus.temporal_prediction_limit", cfg.temporal_prediction_limit, 10) 
+        ("octopus.temporal_prediction_gap", cfg.temporal_prediction_gap, 10) 
     ;
 
     return cfg;

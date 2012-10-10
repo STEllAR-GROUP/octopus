@@ -20,25 +20,13 @@
 namespace octopus
 {
 
+// TODO: Implement type punning for the three octree types.
 struct OCTOPUS_EXPORT octree_client
 {
   private:
     hpx::id_type gid_;
 
     friend struct octree_server;
-
-    void create(
-        hpx::id_type const& locality
-      , boost::uint64_t level
-      , array1d<boost::uint64_t, 3> const& location
-        );
- 
-    // NOTE: Does not set the GID of this client.
-    hpx::future<hpx::id_type, hpx::naming::gid_type> create_async(
-        hpx::id_type const& locality
-      , boost::uint64_t level
-      , array1d<boost::uint64_t, 3> const& location
-        ) const;
 
     BOOST_COPYABLE_AND_MOVABLE(octree_client);
 
@@ -124,7 +112,13 @@ struct OCTOPUS_EXPORT octree_client
     }
 
     void create_root(
-        hpx::id_type const& gid
+        hpx::id_type const& locality
+      , octree_init_data const& init   
+        );
+
+    void create_root(
+        hpx::id_type const& locality
+      , BOOST_RV_REF(octree_init_data) init   
         );
 
     ///////////////////////////////////////////////////////////////////////////

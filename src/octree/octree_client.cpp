@@ -15,36 +15,9 @@
 namespace octopus
 {
 
-void octree_client::create(
-    hpx::id_type const& locality
-  , boost::uint64_t level
-  , array1d<boost::uint64_t, 3> const& location
-    )
-{
-    OCTOPUS_ASSERT_FMT_MSG(!(locality.get_msb() & 0xFF),
-                           "target is not a locality, gid(%1%)",
-                           locality);
-
-    hpx::components::runtime_support rts(locality);
-    gid_ = rts.create_component<octopus::octree_server>(level, location);
-}
-
-hpx::future<hpx::id_type, hpx::naming::gid_type> octree_client::create_async(
-    hpx::id_type const& locality
-  , boost::uint64_t level
-  , array1d<boost::uint64_t, 3> const& location
-    ) const
-{
-    OCTOPUS_ASSERT_FMT_MSG(!(locality.get_msb() & 0xFF),
-                           "target is not a locality, gid(%1%)",
-                           locality);
-
-    hpx::components::runtime_support rts(locality);
-    return rts.create_component_async<octopus::octree_server>(level, location);
-}
-
 void octree_client::create_root(
     hpx::id_type const& locality
+  , octree_init_data const& init
     ) 
 {
     OCTOPUS_ASSERT_FMT_MSG(!(locality.get_msb() & 0xFF),
@@ -52,7 +25,20 @@ void octree_client::create_root(
                            locality);
 
     hpx::components::runtime_support rts(locality);
-    gid_ = rts.create_component_async<octopus::octree_server>().get();
+    gid_ = rts.create_component_async<octopus::octree_server>(init, true).get();
+}
+
+void octree_client::create_root(
+    hpx::id_type const& locality
+  , BOOST_RV_REF(octree_init_data) init
+    ) 
+{
+    OCTOPUS_ASSERT_FMT_MSG(!(locality.get_msb() & 0xFF),
+                           "target is not a locality, gid(%1%)",
+                           locality);
+
+    hpx::components::runtime_support rts(locality);
+    gid_ = rts.create_component_async<octopus::octree_server>(init, true).get();
 }
 
 hpx::future<void> octree_client::create_child_async(

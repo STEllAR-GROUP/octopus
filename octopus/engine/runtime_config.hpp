@@ -23,9 +23,9 @@ namespace octopus
 {
 
 // NOTE (to self): When you add configuration parameters, don't forget to add
-// them to configuration_from_init().
+// them to config_from_init().
 // NOTE: This is kept an aggregate for simplicity. Default values are set by
-// configuration_from_init().
+// config_from_init().
 struct config_data
 {
     ///////////////////////////////////////////////////////////////////////////
@@ -43,15 +43,18 @@ struct config_data
     ///////////////////////////////////////////////////////////////////////////
     // "My" parameters (stuff not in Dominic's code).
 
-    ///< This is the number of timesteps in the future that the code should try
-    ///  to predict. This is also the number of timesteps alive at any given
-    ///  time after ramp up of the code. 
-    boost::uint64_t temporal_prediction_limit; 
+    ///< This is the gap, in timesteps, between a timestep, and the timestep
+    ///  that computed its timestep size. For example, if this is 10, then,
+    ///  timestep 1 computes the timestep size for timestep 11, and timestep
+    ///  2 computes the the timestep size for timestep 12, etc. This is also the
+    ///  number of timesteps alive at any given time after ramp up of the code. 
+    boost::uint64_t temporal_prediction_gap; 
 
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int version)
     {
         ar & dimensional_size;
+        ar & temporal_prediction_gap;
     }
 };
 

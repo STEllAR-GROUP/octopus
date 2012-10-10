@@ -33,12 +33,19 @@ inline config_data const& config()
 ///                      round_robin_.
 /// Synchrony Gurantee:  Asynchronous.
 inline hpx::future<hpx::id_type, hpx::naming::gid_type> create_octree_async(
-    boost::uint64_t level
-  , array1d<boost::uint64_t, 3> const& location
+    octree_init_data const& init
     )
 {
     OCTOPUS_ASSERT_MSG(engine_ptr == 0, "engine_ptr is NULL");
-    return engine_ptr->create_octree_async(level, location);
+    return engine_ptr->create_octree_async(init);
+}
+
+inline hpx::future<hpx::id_type, hpx::naming::gid_type> create_octree_async(
+    BOOST_RV_REF(octree_init_data) init
+    )
+{
+    OCTOPUS_ASSERT_MSG(engine_ptr == 0, "engine_ptr is NULL");
+    return engine_ptr->create_octree_async(init);
 }
 
 /// \brief Asynchronously create a new octree node using the distributed
@@ -49,11 +56,17 @@ inline hpx::future<hpx::id_type, hpx::naming::gid_type> create_octree_async(
 ///                      round_robin_.
 /// Synchrony Gurantee:  Synchronous.
 inline hpx::id_type create_octree(
-    boost::uint64_t level
-  , array1d<boost::uint64_t, 3> const& location
+    octree_init_data const& init
     )
 {
-    return create_octree_async(level, location).get();
+    return create_octree_async(init).get();
+} 
+
+inline hpx::id_type create_octree(
+    BOOST_RV_REF(octree_init_data) init
+    )
+{
+    return create_octree_async(init).get();
 } 
 
 }

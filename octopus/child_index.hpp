@@ -90,9 +90,9 @@ struct child_index
             packed_ |= 4;
     }
 
-    array1d<boost::uint64_t, 3> array()
+    array1d<boost::int64_t, 3> array()
     {
-        array1d<boost::uint64_t, 3> a;  
+        array1d<boost::int64_t, 3> a;  
         a[0] = x();
         a[1] = y();
         a[2] = z();
