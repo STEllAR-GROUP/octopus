@@ -14,7 +14,6 @@
 #include <octopus/octree/octree_init_data.hpp>
 #include <octopus/engine/runtime_config.hpp>
 #include <octopus/engine/science_table.hpp>
-#include <octopus/array1d.hpp>
 #include <octopus/assert.hpp>
 
 #include <boost/atomic.hpp>

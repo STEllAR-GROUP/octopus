@@ -8,10 +8,10 @@
 #if !defined(OCTOPUS_E73B96D9_CF42_4331_A4D5_2BE254FD289C)
 #define OCTOPUS_E73B96D9_CF42_4331_A4D5_2BE254FD289C
 
-#include <octopus/array1d.hpp>
 #include <octopus/vector3d.hpp>
 
 #include <boost/cstdint.hpp>
+#include <boost/serialization/array.hpp>
 
 namespace octopus
 {
@@ -21,21 +21,21 @@ namespace octopus
 struct octree_init_data
 {
     boost::uint64_t                 level;
-    array1d<boost::int64_t, 3>      location;
+    boost::array<boost::int64_t, 3> location;
     double                          dx;
     double                          time; 
-    array1d<boost::int64_t, 3>      offset; 
-    array1d<double, 3>              origin;
+    boost::array<boost::int64_t, 3> offset; 
+    boost::array<double, 3>         origin;
 
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int version)
     {
         ar & level;
-        ar & location;
+        ar & boost::serialization::make_array(location.data(), location.size());     
         ar & dx;
         ar & time;
-        ar & offset;
-        ar & origin;
+        ar & boost::serialization::make_array(offset.data(), offset.size());     
+        ar & boost::serialization::make_array(origin.data(), origin.size());     
     }
 };
 

@@ -11,9 +11,45 @@
 
 #include <octopus/octree/octree_server.hpp>
 #include <octopus/engine/engine_interface.hpp>
+#include <octopus/operators/boost_array_arithmetic.hpp>
+#include <octopus/operators/std_vector_arithmetic.hpp>
 
 namespace octopus
 {
+
+#if 0
+prepare_injection(
+    child_index kid
+    )
+{
+	const GridNode* p = static_cast<const GridNode*> (get_parent());
+	const Indexer2d_by2 indexer(bw, GNX - bw - 1, bw, GNX - bw - 1);
+	Vector<Real, STATE_NF> s1, s2, s3;
+	State u;
+	int k, j, k0, j0, i, i0;
+	for (int index = 0; index <= indexer.max_index(); index++) {
+		k = indexer.y(index);
+		j = indexer.x(index);
+		k0 = (bw + k) / 2 + c.get_z() * (GNX / 2 - bw);
+		j0 = (bw + j) / 2 + c.get_y() * (GNX / 2 - bw);
+		for (i = bw, i0 = bw + c.get_x() * (GNX / 2 - bw); i < GNX - bw; i += 2, i0++) {
+			u = (*p)(i0, j0, k0);
+
+			s1 = minmod((*p)(i0 + 1, j0, k0) - u, u - (*p)(i0 - 1, j0, k0));
+			s2 = minmod((*p)(i0, j0 + 1, k0) - u, u - (*p)(i0, j0 - 1, k0));
+			s3 = minmod((*p)(i0, j0, k0 + 1) - u, u - (*p)(i0, j0, k0 - 1));
+			(*this)(i + 0, j + 0, k + 0) = u - (s1 + s2 + s3) * 0.25;
+			(*this)(i + 1, j + 0, k + 0) = u + (s1 - s2 - s3) * 0.25;
+			(*this)(i + 0, j + 1, k + 0) = u - (s1 - s2 + s3) * 0.25;
+			(*this)(i + 1, j + 1, k + 0) = u + (s1 + s2 - s3) * 0.25;
+			(*this)(i + 0, j + 0, k + 1) = u - (s1 + s2 - s3) * 0.25;
+			(*this)(i + 1, j + 0, k + 1) = u + (s1 - s2 + s3) * 0.25;
+			(*this)(i + 0, j + 1, k + 1) = u - (s1 - s2 - s3) * 0.25;
+			(*this)(i + 1, j + 1, k + 1) = u + (s1 + s2 + s3) * 0.25;
+		}
+	}
+}
+#endif
 
 void octree_server::create_child(
     child_index kid
@@ -51,6 +87,8 @@ void octree_server::create_child(
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().spatial_size;
 
+    using namespace octopus::operators;
+
     kid_init.level     = level_ + 1; 
     kid_init.location  = location_ * 2 + kid.array(); 
     kid_init.dx        = dx_ * 0.5;
@@ -59,6 +97,7 @@ void octree_server::create_child(
     kid_init.origin    = origin_;
 
     // IMPLEMENT: Prepare injection.
+    vector3d<std::vector<double> > kid_U;
 
     hpx::future<hpx::id_type, hpx::naming::gid_type> kid_gid
         = create_octree_async(kid_init);

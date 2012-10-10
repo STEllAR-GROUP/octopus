@@ -35,8 +35,8 @@ struct OCTOPUS_EXPORT octree_server
     boost::array<octree_client, 8> children_;
     boost::array<octree_client, 6> siblings_; 
     boost::uint64_t level_;
-    array1d<boost::int64_t, 3> location_; ///< NOTE: Not sure if this needs to
-                                          ///  be signed.
+    boost::array<boost::int64_t, 3> location_; ///< NOTE: Not sure if this needs
+                                               /// to be signed.
 
     ///////////////////////////////////////////////////////////////////////////
     // From Grid/GridNode
@@ -45,11 +45,12 @@ struct OCTOPUS_EXPORT octree_server
     double time_; ///< The current (physics?) time.
                   ///  NOTE: Confirmation needed from Dominic.
 
-    array1d<boost::int64_t, 3> offset_; ///< NOTE: Not sure if this needs to be
-                                        ///  signed. 
+    boost::array<boost::int64_t, 3> offset_; ///< NOTE: Not sure if this needs
+                                             ///  be signed. 
 
-    array1d<double, 3> origin_; /// The origin of the cartesian grid. NOTE:
-                                /// Confirmation needed from Dominic.
+    boost::array<double, 3> origin_; ///< The origin of the cartesian grid.
+                                     ///  NOTE: Confirmation needed from
+                                     ///  from Dominic.
 
     vector3d<std::vector<double> > U_; ///< 3d array of state vectors, includes
                                        ///  ghost zones. Size of the state
@@ -65,10 +66,7 @@ struct OCTOPUS_EXPORT octree_server
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int version)
     {
-        ar & children_;
-        ar & siblings_;
-        ar & level_;
-        ar & location_;
+        // IMPLEMENT
     }
 #endif
 
