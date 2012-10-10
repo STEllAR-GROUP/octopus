@@ -27,12 +27,6 @@
     #define OCTOPUS_EXPORT OCTOPUS_SYMBOL_IMPORT
 #endif
 
-#if defined(OCTOPUS_EXPORTS)
-    #define OCTOPUS_EXPORT OCTOPUS_SYMBOL_EXPORT
-#else
-    #define OCTOPUS_EXPORT OCTOPUS_SYMBOL_IMPORT
-#endif
-
 #if defined(_DEBUG) && !defined(DEBUG)
     #define DEBUG
 #endif

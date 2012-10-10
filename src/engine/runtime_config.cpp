@@ -72,8 +72,8 @@ std::ostream& operator<<(
 
     // NOTE: Last item should not have a newline after it.
     os
-        << (boost::format(fmt) % "octopus.dimensional_size"
-                               % cfg.dimensional_size) << "\n"
+        << (boost::format(fmt) % "octopus.spatial_size"
+                               % cfg.spatial_size) << "\n"
         << (boost::format(fmt) % "octopus.temporal_prediction_gap"
                                % cfg.temporal_prediction_gap)
     ;
@@ -88,7 +88,7 @@ config_data config_from_ini()
     config_reader reader;
 
     reader
-        ("octopus.dimensional_size", cfg.dimensional_size, 12) 
+        ("octopus.spatial_size", cfg.spatial_size, 12) 
         ("octopus.temporal_prediction_gap", cfg.temporal_prediction_gap, 10) 
     ;
 

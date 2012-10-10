@@ -15,7 +15,7 @@ int octopus_main(boost::program_options::variables_map& vm)
 {
     octopus::octree_client root;
 
-    root.create_root(hpx::find_here());
+    root.create_root(hpx::find_here(), octopus::octree_init_data());
 
     return hpx::util::report_errors();
 }

@@ -46,14 +46,22 @@ void octree_server::create_child(
     face exterior_z_face = out_of_bounds; // f1 from original code.
     face interior_z_face = out_of_bounds; // f2 from original code.
 
-    octree_init_data kid_init_data;
+    octree_init_data kid_init;
 
-    kid_init_data.location = location_ * 2 + kid.array(); 
-    kid_init_data.level = level_ + 1; 
-    // IMPLEMENT: Rest of the parameters, prepare injection.
+    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const gnx = config().spatial_size;
+
+    kid_init.level     = level_ + 1; 
+    kid_init.location  = location_ * 2 + kid.array(); 
+    kid_init.dx        = dx_ * 0.5;
+    kid_init.time      = time_;
+    kid_init.offset    = offset_ * 2 + bw + (kid.array() * (gnx - 2 * bw));
+    kid_init.origin    = origin_;
+
+    // IMPLEMENT: Prepare injection.
 
     hpx::future<hpx::id_type, hpx::naming::gid_type> kid_gid
-        = create_octree_async(kid_init_data);
+        = create_octree_async(kid_init);
 
     ///////////////////////////////////////////////////////////////////////////
     // X-axis. 

@@ -25,6 +25,17 @@ inline config_data const& config()
     return engine_ptr->config();    
 }
 
+/// \brief Retrieve the science vtable. 
+///
+/// Remote Operations:   No.
+/// Concurrency Control: None (read by multiple threads; data is read-only). 
+/// Synchrony Gurantee:  Synchronous.
+inline science_table const& /* Lets do some */ science() /* ! */
+{
+    OCTOPUS_ASSERT_MSG(engine_ptr == 0, "engine_ptr is NULL");
+    return engine_ptr->science(); 
+}
+
 /// \brief Asynchronously create a new octree node using the distributed
 ///        load-balancer.
 ///

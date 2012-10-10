@@ -35,10 +35,8 @@ struct config_data
     //     ///< description
     //     type name; // original name, original value, notes
 
-    ///< The dimensional size of the grid including ghost zones. I need
-    ///  clarification on whether this is the size of the entire grid, or the
-    ///  number of points that each grid node represents. 
-    boost::uint64_t dimensional_size; // GNX, 8+2*bw, TODO: validate min/max 
+    ///< The spatial size of each grid including ghost zones.
+    boost::uint64_t spatial_size; // GNX, 8+2*bw, TODO: validate min/max 
 
     ///////////////////////////////////////////////////////////////////////////
     // "My" parameters (stuff not in Dominic's code).
@@ -53,7 +51,7 @@ struct config_data
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int version)
     {
-        ar & dimensional_size;
+        ar & spatial_size;
         ar & temporal_prediction_gap;
     }
 };

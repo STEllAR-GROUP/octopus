@@ -53,11 +53,14 @@ int hpx_main(variables_map& vm)
         std::vector<hpx::future<hpx::id_type, hpx::naming::gid_type> > engines;    
         engines.reserve(localities.size());
 
+        // TODO: Temporary filler.
+        octopus::science_table sci = octopus::science_table(); 
+
         for (std::size_t i = 0; i < localities.size(); ++i)
         {
             engines.push_back(
                 runtime_support::create_component_async<octopus::engine_server>
-                    (localities[i], cfg, localities));
+                    (localities[i], cfg, sci, localities));
         }
     
         hpx::wait(engines);   

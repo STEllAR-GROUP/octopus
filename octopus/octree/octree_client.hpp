@@ -11,6 +11,7 @@
 #include <hpx/runtime/naming/name.hpp>
 #include <hpx/lcos/future.hpp>
 
+#include <octopus/octree/octree_init_data.hpp>
 #include <octopus/array1d.hpp>
 #include <octopus/child_index.hpp>
 #include <octopus/face.hpp>

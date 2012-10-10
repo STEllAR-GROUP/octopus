@@ -23,16 +23,16 @@ namespace octopus
 // NOTE: Aggregate for laziness.
 struct science_table
 {
-    boost::uint64_t boundary_width; /// The width of ghost zones on all sides,
-                                    /// measured in number of grid points. 
-    boost::uint64_t state_size;     /// Number of doubles needed for state for
-                                    /// each discrete value on the grid.
+    boost::uint64_t ghost_zone_width; /// The width of ghost zones on all sides,
+                                      /// measured in number of grid points. 
+    boost::uint64_t state_size;  /// Number of doubles needed for state for
+                                 /// each discrete value on the grid.
  
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int version)
     {
-        ar & boundary_width;
-        at & state_size;
+        ar & ghost_zone_width;
+        ar & state_size;
     }
 };
 
