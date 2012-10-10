@@ -8,11 +8,11 @@
 #include <hpx/util/lightweight_test.hpp>
 
 #include <octopus/driver.hpp>
-#include <octopus/array1d.hpp>
+#include <octopus/vector3d.hpp>
 
 int octopus_main(boost::program_options::variables_map& vm)
 {
-    octopus::array1d<boost::uint64_t, 3> a;
+    octopus::vector3d<boost::uint64_t> v;
 
     return hpx::util::report_errors();
 }

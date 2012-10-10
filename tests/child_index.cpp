@@ -12,6 +12,8 @@
 
 int octopus_main(boost::program_options::variables_map& vm)
 {
+    octopus::child_index idx;
+
     return hpx::util::report_errors();
 }
 

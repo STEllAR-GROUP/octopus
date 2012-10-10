@@ -9,6 +9,8 @@
 #if !defined(OCTOPUS_974D87CF_23F9_41CC_9705_2A4CDB3339DC)
 #define OCTOPUS_974D87CF_23F9_41CC_9705_2A4CDB3339DC
 
+#include <hpx/config.hpp>
+
 #include <boost/config.hpp>
 
 #if defined(BOOST_MSVC) 
