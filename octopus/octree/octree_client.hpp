@@ -5,9 +5,6 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#if !defined(OCTOPUS_58B04A8F_72F9_4B01_A8B3_941867802BA0)
-#define OCTOPUS_58B04A8F_72F9_4B01_A8B3_941867802BA0
-
 #if !defined(OCTOPUS_17096997_37B3_4F9E_80F3_4C964006BFAA)
 #define OCTOPUS_17096997_37B3_4F9E_80F3_4C964006BFAA
 
