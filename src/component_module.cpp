@@ -23,25 +23,36 @@ HPX_REGISTER_MINIMAL_COMPONENT_FACTORY(
     hpx::components::managed_component<octopus::octree_server>,
     octopus_octree_server);
 
-HPX_REGISTER_ACTION(
-    octopus::octree_server::create_child_action,
-    octopus_octree_server_create_child_action);
+#define OCTOPUS_REGISTER_ACTION(name)                                       \
+    HPX_REGISTER_ACTION(                                                    \
+        octopus::octree_server::BOOST_PP_CAT(name, _action),                \
+        BOOST_PP_CAT(octopus_octree_server_, BOOST_PP_CAT(name, _action)))  \
+    /**/
 
-HPX_REGISTER_ACTION(
-    octopus::octree_server::set_sibling_action,
-    octopus_octree_server_set_sibling_action);
+OCTOPUS_REGISTER_ACTION(create_child);
+OCTOPUS_REGISTER_ACTION(set_sibling);
+OCTOPUS_REGISTER_ACTION(tie_sibling);
+OCTOPUS_REGISTER_ACTION(set_child_sibling);
+OCTOPUS_REGISTER_ACTION(tie_child_sibling);
+OCTOPUS_REGISTER_ACTION(inject_state_from_children);
+OCTOPUS_REGISTER_ACTION(enforce_boundaries);
+OCTOPUS_REGISTER_ACTION(apply);
+OCTOPUS_REGISTER_ACTION(save_state);
+OCTOPUS_REGISTER_ACTION(add_differentials);
+OCTOPUS_REGISTER_ACTION(clear_differentials);
+OCTOPUS_REGISTER_ACTION(step);
+OCTOPUS_REGISTER_ACTION(refine);
+OCTOPUS_REGISTER_ACTION(compute_x_flux);
+OCTOPUS_REGISTER_ACTION(compute_y_flux);
+OCTOPUS_REGISTER_ACTION(compute_z_flux);
+OCTOPUS_REGISTER_ACTION(adjust_x_flux);
+OCTOPUS_REGISTER_ACTION(adjust_y_flux);
+OCTOPUS_REGISTER_ACTION(adjust_z_flux);
+OCTOPUS_REGISTER_ACTION(sum_x_differentials);
+OCTOPUS_REGISTER_ACTION(sum_y_differentials);
+OCTOPUS_REGISTER_ACTION(sum_z_differentials);
 
-HPX_REGISTER_ACTION(
-    octopus::octree_server::tie_sibling_action,
-    octopus_octree_server_tie_sibling_action);
-
-HPX_REGISTER_ACTION(
-    octopus::octree_server::set_child_sibling_action,
-    octopus_octree_server_set_child_sibling_action);
-
-HPX_REGISTER_ACTION(
-    octopus::octree_server::tie_child_sibling_action,
-    octopus_octree_server_tie_child_sibling_action);
+#undef OCTOPUS_REGISTER_ACTION
 
 ///////////////////////////////////////////////////////////////////////////////
 HPX_REGISTER_MINIMAL_COMPONENT_FACTORY(

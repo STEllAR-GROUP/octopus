@@ -38,6 +38,9 @@ struct config_data
     ///< The spatial size of each grid including ghost zones.
     boost::uint64_t spatial_size; // GNX, 8+2*bw, TODO: validate min/max 
 
+    ///< Order of Runge Kutta used to solve the PDE.
+    boost::uint16_t runge_kutta_order;
+ 
     ///////////////////////////////////////////////////////////////////////////
     // "My" parameters (stuff not in Dominic's code).
 
@@ -52,6 +55,7 @@ struct config_data
     void serialize(Archive& ar, const unsigned int version)
     {
         ar & spatial_size;
+        ar & runge_kutta_order;
         ar & temporal_prediction_gap;
     }
 };

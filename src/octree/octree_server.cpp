@@ -1,5 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //  Copyright (c) 2012 Dominic Marcello
+//  Copyright (c) 2012 Zach Byerly
 //  Copyright (c) 2012 Bryce Adelstein-Lelbach
 //
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying
@@ -494,6 +495,169 @@ void octree_server::tie_child_sibling(
     // caller, then this is non-optimal.
     siblings_[source_f].set_child_sibling_push
         (source_kid, source_f, children_[target_kid]);
+} // }}}
+
+void octree_server::inject_state_from_children()
+{ // {{{ IMPLEMENT
+
+} // }}}
+
+void octree_server::enforce_boundaries()
+{ // {{{ IMPLEMENT
+
+} // }}}
+
+void octree_server::apply(
+    hpx::util::function<void(octree_server&)> const&
+    )
+{ // {{{ IMPLEMENT
+
+} // }}}
+
+void octree_server::save_state()
+{ // {{{ IMPLEMENT
+
+} // }}}
+
+void octree_server::add_differentials(double dt, double beta)
+{ // {{{ IMPLEMENT
+
+} // }}}
+
+void octree_server::clear_differentials()
+{ // {{{ IMPLEMENT
+
+} // }}}
+
+void octree_server::step(double dt)
+{ // {{{
+    OCTOPUS_ASSERT_MSG(0 != level_,
+        "sub_step may only be called on the root octree_server");
+
+    OCTOPUS_ASSERT_MSG(0 < dt, "invalid timestep size");
+
+    // U -> U0, recursively.
+    save_state();
+
+    switch (config().runge_kutta_order)
+    {
+        case 1:
+        {
+            sub_step(dt, 1.0);
+            inject_state_from_children();
+            break;
+        }
+
+        case 2:
+        {
+            sub_step(dt, 1.0);
+            inject_state_from_children();
+            sub_step(dt, 0.5);
+            inject_state_from_children();
+            break; 
+        }
+
+        case 3:
+        {
+            sub_step(dt, 1.0);
+            inject_state_from_children();
+            sub_step(dt, 0.25);
+            inject_state_from_children();
+            sub_step(dt, 2.0 / 3.0);
+            inject_state_from_children();
+            break; 
+        }
+
+        default:
+        {
+            OCTOPUS_ASSERT_FMT_MSG(false,
+                "runge-kutta order (%1%) is unsupported or invalid",
+                config().runge_kutta_order);
+        }
+    };
+
+    enforce_boundaries();
+    refine();
+
+    ++step_;
+    time_ += dt;
+} // }}}
+
+void octree_server::sub_step(double dt, double beta)
+{ // {{{
+    OCTOPUS_ASSERT_MSG(0 != level_,
+        "sub_step may only be called on the root octree_server");
+
+    enforce_boundaries();
+
+    clear_differentials();
+
+    // FIXME: I think these could be computed in parallel, if they each had
+    // their own F.
+
+    compute_x_flux();
+    adjust_x_flux();
+    sum_x_differentials();
+
+    compute_y_flux();
+    adjust_y_flux();
+    sum_y_differentials();
+
+    compute_z_flux();
+    adjust_z_flux();
+    sum_z_differentials();
+
+    add_differentials(dt, beta);
+} // }}}
+
+void octree_server::refine()
+{ // {{{ IMPLEMENT
+
+} // }}}
+
+void octree_server::compute_x_flux()
+{ // {{{ IMPLEMENT
+ 
+} // }}}
+
+void octree_server::compute_y_flux()
+{ // {{{ IMPLEMENT
+
+} // }}}
+
+void octree_server::compute_z_flux()
+{ // {{{ IMPLEMENT
+
+} // }}}
+
+void octree_server::adjust_x_flux()
+{ // {{{ IMPLEMENT
+ 
+} // }}}
+
+void octree_server::adjust_y_flux()
+{ // {{{ IMPLEMENT
+
+} // }}}
+
+void octree_server::adjust_z_flux()
+{ // {{{ IMPLEMENT
+
+} // }}}
+
+void octree_server::sum_x_differentials()
+{ // {{{ IMPLEMENT
+ 
+} // }}}
+
+void octree_server::sum_y_differentials()
+{ // {{{ IMPLEMENT
+
+} // }}}
+
+void octree_server::sum_z_differentials()
+{ // {{{ IMPLEMENT
+
 } // }}}
 
 }

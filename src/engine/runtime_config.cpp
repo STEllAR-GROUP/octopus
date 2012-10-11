@@ -74,6 +74,8 @@ std::ostream& operator<<(
     os
         << (boost::format(fmt) % "octopus.spatial_size"
                                % cfg.spatial_size) << "\n"
+        << (boost::format(fmt) % "octopus.runge_kutta_order"
+                               % cfg.runge_kutta_order) << "\n"
         << (boost::format(fmt) % "octopus.temporal_prediction_gap"
                                % cfg.temporal_prediction_gap)
     ;
@@ -89,6 +91,7 @@ config_data config_from_ini()
 
     reader
         ("octopus.spatial_size", cfg.spatial_size, 12) 
+        ("octopus.runge_kutta_order", cfg.runge_kutta_order, 1) 
         ("octopus.temporal_prediction_gap", cfg.temporal_prediction_gap, 10) 
     ;
 
