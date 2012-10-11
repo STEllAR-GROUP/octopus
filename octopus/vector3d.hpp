@@ -76,6 +76,17 @@ struct vector3d
         return *this;
     }
 
+    std::size_t size() const
+    {
+        return data_.size();
+    } 
+
+    void resize(std::size_t dimension, T dflt = T())
+    {
+        dimension_ = dimension;
+        data_.resize(dimension_ * dimension_ * dimension_, dflt);    
+    }
+
     T& operator()(std::size_t x, std::size_t y, std::size_t z)
     {
         OCTOPUS_ASSERT_FMT_MSG(x < dimension_,
@@ -159,7 +170,8 @@ OCTOPUS_DEFINE_ARITHMETIC_ASSIGNMENT_OPERATOR(/=)
       , T1 b                                                \
         )                                                   \
     {                                                       \
-        return (vector3d<T0>(a) BOOST_PP_CAT(OP, =) b);     \
+        vector3d<T0> tmp(a);                                \
+        return (tmp BOOST_PP_CAT(OP, =) b);                 \
     }                                                       \
                                                             \
     template <typename T>                                   \
@@ -168,7 +180,8 @@ OCTOPUS_DEFINE_ARITHMETIC_ASSIGNMENT_OPERATOR(/=)
       , vector3d<T> const& b                                \
         )                                                   \
     {                                                       \
-        return (vector3d<T>(a) BOOST_PP_CAT(OP, =) b);      \
+        vector3d<T> tmp(a);                                 \
+        return (tmp BOOST_PP_CAT(OP, =) b);                 \
     }                                                       \
     /**/
 

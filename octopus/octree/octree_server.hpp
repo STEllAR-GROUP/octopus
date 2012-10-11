@@ -92,7 +92,7 @@ struct OCTOPUS_EXPORT octree_server
     void state_received_locked(mutex_type::scoped_lock& l)
     {
         OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
-        OCTOPUS_ASSERT_MSG(siblings_set_ < 6, "double initialization");
+        OCTOPUS_ASSERT_MSG(received_state_ == true, "double initialization");
         received_state_ = true;
         if (siblings_set_ == 6)
             initialized_.set(); 
@@ -104,20 +104,30 @@ struct OCTOPUS_EXPORT octree_server
         return get_child_index_locked(l); 
     }
 
+    ///////////////////////////////////////////////////////////////////////////
+    /// \brief Set the state of this node based on the state of its parent. 
+    /// 
+    /// Remote Operations:   No.
+    /// Concurrency Control: Locks mtx_.
+    /// Synchrony Gurantee:  Synchronous. 
+    void inject_state_from_parent(
+        vector3d<std::vector<double> > const& pU
+        );
+
   public:
     octree_server()
     {
         OCTOPUS_ASSERT_MSG(false, "octree_server can't be default constructed");
     } 
 
-    /// \brief Construct a child node.
+    // FIXME: Create physical bounds?
+    /// \brief Construct a root node 
     octree_server(
         octree_init_data const& init
-      , bool root
         )
       : initialized_()
       , mtx_()
-      , siblings_set_(root ? 6 : 0)
+      , siblings_set_(6)
       , children_()
       , siblings_()
       , level_(init.level)
@@ -128,14 +138,18 @@ struct OCTOPUS_EXPORT octree_server
       , origin_(init.origin)
     {}
 
+    // FIXME: Non-optimal, inject_state_from_parent should be called with
+    // fire-and-forget semantics. However, the lifetime of parent_U then
+    // becomes an issue. Because of this, U_ may need to be made into a
+    // shared_ptr.
     /// \brief Construct a child node.
     octree_server(
-        BOOST_RV_REF(octree_init_data) init
-      , bool root
+        octree_init_data const& init
+      , vector3d<std::vector<double> > const& parent_U
         )
       : initialized_()
       , mtx_()
-      , siblings_set_(root ? 6 : 0)
+      , siblings_set_(0)
       , children_()
       , siblings_()
       , level_(init.level)
@@ -144,13 +158,15 @@ struct OCTOPUS_EXPORT octree_server
       , time_(init.time)
       , offset_(init.offset)
       , origin_(init.origin)
-    {}
+    {
+        inject_state_from_parent(parent_U);
+    }
 
     ///////////////////////////////////////////////////////////////////////////
     /// \brief Create the \a kid child for this node.
     /// 
     /// Remote Operations:   Possibly.
-    /// Concurrency Control: Waits on initialization_, locks mtx_
+    /// Concurrency Control: Waits on initialization_, locks mtx_.
     /// Synchrony Gurantee:  Fire-and-Forget 
     void create_child(
         child_index kid
@@ -164,7 +180,7 @@ struct OCTOPUS_EXPORT octree_server
     /// \brief Set \a target_sib as the \a target_f sibling of this node.
     /// 
     /// Remote Operations:   Possibly.
-    /// Concurrency Control: Locks mtx_
+    /// Concurrency Control: Locks mtx_.
     /// Synchrony Gurantee:  Fire-and-Forget 
     void set_sibling(
         boost::uint8_t f

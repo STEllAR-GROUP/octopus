@@ -25,7 +25,7 @@ void octree_client::create_root(
                            locality);
 
     hpx::components::runtime_support rts(locality);
-    gid_ = rts.create_component_async<octopus::octree_server>(init, true).get();
+    gid_ = rts.create_component_async<octopus::octree_server>(init).get();
 }
 
 void octree_client::create_root(
@@ -38,7 +38,7 @@ void octree_client::create_root(
                            locality);
 
     hpx::components::runtime_support rts(locality);
-    gid_ = rts.create_component_async<octopus::octree_server>(init, true).get();
+    gid_ = rts.create_component_async<octopus::octree_server>(init).get();
 }
 
 hpx::future<void> octree_client::create_child_async(

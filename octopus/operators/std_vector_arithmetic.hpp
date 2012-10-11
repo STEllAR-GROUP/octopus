@@ -58,7 +58,8 @@ OCTOPUS_DEFINE_ARITHMETIC_ASSIGNMENT_OPERATOR(/=)
       , T1 b                                                \
         )                                                   \
     {                                                       \
-        return (std::vector<T0>(a) BOOST_PP_CAT(OP, =) b);  \
+        std::vector<T0> tmp(a);                             \
+        return (tmp BOOST_PP_CAT(OP, =) b);                 \
     }                                                       \
                                                             \
     template <typename T>                                   \
@@ -67,7 +68,8 @@ OCTOPUS_DEFINE_ARITHMETIC_ASSIGNMENT_OPERATOR(/=)
       , std::vector<T> const& b                             \
         )                                                   \
     {                                                       \
-        return (std::vector<T>(a) BOOST_PP_CAT(OP, =) b);   \
+        std::vector<T> tmp(a);                              \
+        return (tmp BOOST_PP_CAT(OP, =) b);                 \
     }                                                       \
     /**/
 

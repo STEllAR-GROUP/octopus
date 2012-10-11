@@ -5,7 +5,7 @@
 
 set(tests
     child_index
-    octree_create_child
+    octree_create_root
     vector3d
    )
 

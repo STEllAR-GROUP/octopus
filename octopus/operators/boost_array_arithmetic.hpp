@@ -82,7 +82,10 @@ boost::array<T, Size> operator-(
     boost::array<T, Size> const& a
     ) 
 {
-    return (boost::array<T, Size>(T(0)) -= a);
+    boost::array<T, Size> tmp; 
+    for (std::size_t i = 0; i < Size; ++i)
+        tmp[i] = T(0) - a;
+    return tmp; 
 }
 
 template <typename T, std::size_t Size>

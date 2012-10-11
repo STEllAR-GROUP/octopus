@@ -6,50 +6,80 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <hpx/config.hpp>
+#include <hpx/async.hpp>
 #include <hpx/lcos/future.hpp>
 #include <hpx/lcos/future_wait.hpp>
 
+#include <octopus/math.hpp>
+#include <octopus/indexer2d.hpp>
 #include <octopus/octree/octree_server.hpp>
 #include <octopus/engine/engine_interface.hpp>
 #include <octopus/operators/boost_array_arithmetic.hpp>
 #include <octopus/operators/std_vector_arithmetic.hpp>
 
+// TODO: Add invariant checker for functions which should only be called during
+// initialization.
+
 namespace octopus
 {
 
-#if 0
-prepare_injection(
-    child_index kid
+// TODO: Verify the size of parent_U and it's elements.
+void octree_server::inject_state_from_parent(
+    vector3d<std::vector<double> > const& parent_U 
     )
-{
-	const GridNode* p = static_cast<const GridNode*> (get_parent());
-	const Indexer2d_by2 indexer(bw, GNX - bw - 1, bw, GNX - bw - 1);
-	Vector<Real, STATE_NF> s1, s2, s3;
-	State u;
-	int k, j, k0, j0, i, i0;
-	for (int index = 0; index <= indexer.max_index(); index++) {
-		k = indexer.y(index);
-		j = indexer.x(index);
-		k0 = (bw + k) / 2 + c.get_z() * (GNX / 2 - bw);
-		j0 = (bw + j) / 2 + c.get_y() * (GNX / 2 - bw);
-		for (i = bw, i0 = bw + c.get_x() * (GNX / 2 - bw); i < GNX - bw; i += 2, i0++) {
-			u = (*p)(i0, j0, k0);
+{ // {{{
+    boost::uint64_t const ss = science().state_size;
+    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const gnx = config().spatial_size;
+    
+    const indexer2d<2> indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
 
-			s1 = minmod((*p)(i0 + 1, j0, k0) - u, u - (*p)(i0 - 1, j0, k0));
-			s2 = minmod((*p)(i0, j0 + 1, k0) - u, u - (*p)(i0, j0 - 1, k0));
-			s3 = minmod((*p)(i0, j0, k0 + 1) - u, u - (*p)(i0, j0, k0 - 1));
-			(*this)(i + 0, j + 0, k + 0) = u - (s1 + s2 + s3) * 0.25;
-			(*this)(i + 1, j + 0, k + 0) = u + (s1 - s2 - s3) * 0.25;
-			(*this)(i + 0, j + 1, k + 0) = u - (s1 - s2 + s3) * 0.25;
-			(*this)(i + 1, j + 1, k + 0) = u + (s1 + s2 - s3) * 0.25;
-			(*this)(i + 0, j + 0, k + 1) = u - (s1 + s2 - s3) * 0.25;
-			(*this)(i + 1, j + 0, k + 1) = u + (s1 - s2 + s3) * 0.25;
-			(*this)(i + 0, j + 1, k + 1) = u - (s1 - s2 - s3) * 0.25;
-			(*this)(i + 1, j + 1, k + 1) = u + (s1 + s2 + s3) * 0.25;
-		}
-	}
-}
-#endif
+    mutex_type::scoped_lock l(mtx_);
+  
+    child_index c = get_child_index_locked(l);
+ 
+    U_.resize(gnx, std::vector<double>(ss));
+
+    std::vector<double> s1(ss), s2(ss), s3(ss);
+
+    for (std::size_t index = 0; index <= indexer.maximum; ++index)
+    {
+        std::size_t k = indexer.y(index);
+        std::size_t j = indexer.x(index);
+        std::size_t k0 = (bw + k) / 2 + c.z() * (gnx / 2 - bw);
+        std::size_t j0 = (bw + j) / 2 + c.y() * (gnx / 2 - bw);
+
+        for ( std::size_t i = bw, i0 = bw + c.x() * (gnx / 2 - bw)
+            ; i < gnx - bw
+            ; i += 2, ++i0)
+        {
+            std::vector<double> const& u = parent_U(i0, j0, k0);
+
+            using namespace octopus::operators;
+
+            s1 = minmod(parent_U(i0 + 1, j0, k0) - u
+                      , u - parent_U(i0 - 1, j0, k0));
+
+            s2 = minmod(parent_U(i0, j0 + 1, k0) - u
+                      , u - parent_U(i0, j0 - 1, k0));
+
+            s3 = minmod(parent_U(i0, j0, k0 + 1) - u
+                      , u - parent_U(i0, j0, k0 - 1));
+
+            U_(i + 0, j + 0, k + 0) = u - (s1 + s2 + s3) * 0.25;
+            U_(i + 1, j + 0, k + 0) = u + (s1 - s2 - s3) * 0.25;
+            U_(i + 0, j + 1, k + 0) = u - (s1 - s2 + s3) * 0.25;
+            U_(i + 1, j + 1, k + 0) = u + (s1 + s2 - s3) * 0.25;
+            U_(i + 0, j + 0, k + 1) = u - (s1 + s2 - s3) * 0.25;
+            U_(i + 1, j + 0, k + 1) = u + (s1 - s2 + s3) * 0.25;
+            U_(i + 0, j + 1, k + 1) = u - (s1 - s2 - s3) * 0.25;
+            U_(i + 1, j + 1, k + 1) = u + (s1 + s2 + s3) * 0.25;
+        }
+    }
+
+    state_received_locked(l);
+} // }}}
 
 void octree_server::create_child(
     child_index kid
@@ -96,11 +126,9 @@ void octree_server::create_child(
     kid_init.offset    = offset_ * 2 + bw + (kid.array() * (gnx - 2 * bw));
     kid_init.origin    = origin_;
 
-    // IMPLEMENT: Prepare injection.
-    vector3d<std::vector<double> > kid_U;
-
+    // Start creating the child. 
     hpx::future<hpx::id_type, hpx::naming::gid_type> kid_gid
-        = create_octree_async(kid_init);
+        = create_octree_async(kid_init, U_);
 
     ///////////////////////////////////////////////////////////////////////////
     // X-axis. 
