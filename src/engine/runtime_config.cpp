@@ -32,8 +32,11 @@ struct config_reader
     typedef config_reader const& result_type;
 
     template <typename A, typename B>
-    result_type operator()(std::string const& key, A& data, B dflt) const
+    result_type operator()(std::string const& param, A& data, B dflt) const
     {
+        std::string key("octopus.");
+        key += param;
+
         try
         {
             if (has_config_entry(key))
@@ -72,10 +75,18 @@ std::ostream& operator<<(
 
     // NOTE: Last item should not have a newline after it.
     os
+        << (boost::format(fmt) % "octopus.max_refinement_level"
+                               % cfg.max_refinement_level) << "\n"
         << (boost::format(fmt) % "octopus.spatial_size"
                                % cfg.spatial_size) << "\n"
         << (boost::format(fmt) % "octopus.runge_kutta_order"
                                % cfg.runge_kutta_order) << "\n"
+        << (boost::format(fmt) % "octopus.x_reflect"
+                               % cfg.x_reflect) << "\n"
+        << (boost::format(fmt) % "octopus.y_reflect"
+                               % cfg.y_reflect) << "\n"
+        << (boost::format(fmt) % "octopus.z_reflect"
+                               % cfg.z_reflect) << "\n"
         << (boost::format(fmt) % "octopus.temporal_prediction_gap"
                                % cfg.temporal_prediction_gap)
     ;
@@ -90,9 +101,13 @@ config_data config_from_ini()
     config_reader reader;
 
     reader
-        ("octopus.spatial_size", cfg.spatial_size, 12) 
-        ("octopus.runge_kutta_order", cfg.runge_kutta_order, 1) 
-        ("octopus.temporal_prediction_gap", cfg.temporal_prediction_gap, 10) 
+        ("max_refinement_level", cfg.max_refinement_level, 1) 
+        ("spatial_size", cfg.spatial_size, 12) 
+        ("runge_kutta_order", cfg.runge_kutta_order, 1) 
+        ("x_reflect", cfg.x_reflect, false) 
+        ("y_reflect", cfg.y_reflect, false) 
+        ("z_reflect", cfg.z_reflect, true) 
+        ("temporal_prediction_gap", cfg.temporal_prediction_gap, 10) 
     ;
 
     return cfg;

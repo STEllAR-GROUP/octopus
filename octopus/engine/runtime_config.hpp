@@ -35,11 +35,18 @@ struct config_data
     //     ///< description
     //     type name; // original name, original value, notes
 
+    boost::uint64_t max_refinement_level; 
+
     ///< The spatial size of each grid including ghost zones.
     boost::uint64_t spatial_size; // GNX, 8+2*bw, TODO: validate min/max 
 
     ///< Order of Runge Kutta used to solve the PDE.
     boost::uint16_t runge_kutta_order;
+
+    ///< Reflection control for each axis.
+    bool x_reflect;
+    bool y_reflect;
+    bool z_reflect;
  
     ///////////////////////////////////////////////////////////////////////////
     // "My" parameters (stuff not in Dominic's code).
@@ -54,8 +61,12 @@ struct config_data
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int version)
     {
+        ar & max_refinement_level;
         ar & spatial_size;
         ar & runge_kutta_order;
+        ar & x_reflect;
+        ar & y_reflect;
+        ar & z_reflect;
         ar & temporal_prediction_gap;
     }
 };
