@@ -18,8 +18,6 @@
 
 #include <vector>
 
-// TODO: I have limited this to a cube currently because that's all we need. 
-
 namespace octopus
 {
 
@@ -27,7 +25,9 @@ template <typename T>
 struct vector3d
 {
   private:
-    std::size_t dimension_;
+    std::size_t x_length_;
+    std::size_t y_length_;
+    std::size_t z_length_;
     std::vector<T> data_;
 
     BOOST_COPYABLE_AND_MOVABLE(vector3d);
@@ -37,22 +37,46 @@ struct vector3d
     template <typename Archive>
     void serialize(Archive &ar, const unsigned int version)
     {
-        ar & dimension_ & data_;
+        ar & x_length_ & y_length_ & z_length_ & data_;
     }
 
   public:
     vector3d() {}
 
-    vector3d(std::size_t dimension, T dflt = T())
-      : dimension_(dimension), data_(dimension_ * dimension_ * dimension_, dflt)
+    vector3d(
+        std::size_t length
+      , T dflt = T()
+        )
+      : x_length_(length)
+      , y_length_(length)
+      , z_length_(length) 
+      , data_(x_length_ * y_length_ * z_length_, dflt)
+    {}
+
+    vector3d(
+        std::size_t x_length
+      , std::size_t y_length
+      , std::size_t z_length
+      , T dflt = T()
+        )
+      : x_length_(x_length)
+      , y_length_(y_length)
+      , z_length_(z_length) 
+      , data_(x_length_ * y_length_ * z_length_, dflt)
     {}
 
     vector3d(vector3d const& other)
-      : dimension_(other.dimension_), data_(other.data_)
+      : x_length_(other.x_length_)
+      , y_length_(other.y_length_)
+      , z_length_(other.z_length_) 
+      , data_(other.data_)
     {}
 
     vector3d(BOOST_RV_REF(vector3d) other)
-      : dimension_(other.dimension_), data_(other.data_)
+      : x_length_(other.x_length_)
+      , y_length_(other.y_length_)
+      , z_length_(other.z_length_) 
+      , data_(other.data_)
     {}
 
     vector3d& operator=(BOOST_COPY_ASSIGN_REF(vector3d) other)
@@ -64,7 +88,9 @@ struct vector3d
 
     vector3d& operator=(BOOST_RV_REF(vector3d) other)
     {
-        dimension_ = other.dimension_;
+        x_length_ = other.x_length_;
+        y_length_ = other.y_length_;
+        z_length_ = other.z_length_;
         data_ = other.data_;
         return *this;
     }
@@ -81,38 +107,71 @@ struct vector3d
         return data_.size();
     } 
 
-    void resize(std::size_t dimension, T dflt = T())
+    std::size_t x_length() const
     {
-        dimension_ = dimension;
-        data_.resize(dimension_ * dimension_ * dimension_, dflt);    
+        return x_length_; 
+    } 
+
+    std::size_t y_length() const
+    {
+        return y_length_; 
+    } 
+
+    std::size_t z_length() const
+    {
+        return z_length_; 
+    } 
+
+    void resize(
+        std::size_t length
+      , T dflt = T()
+        )
+    {
+        x_length_ = length;
+        y_length_ = length;
+        z_length_ = length;
+        data_.resize(x_length_ * y_length_ * z_length_, dflt);    
+    }
+
+    void resize(
+        std::size_t x_length
+      , std::size_t y_length
+      , std::size_t z_length
+      , T dflt = T()
+        )
+    {
+        x_length_ = length;
+        y_length_ = length;
+        z_length_ = length;
+        data_.resize(length * length * length, dflt);    
     }
 
     T& operator()(std::size_t x, std::size_t y, std::size_t z)
     {
-        OCTOPUS_ASSERT_FMT_MSG(x < dimension_,
-            "x coordinate (%1%) is larger than the x dimension (%2%)",
-            x % dimension_);  
-        OCTOPUS_ASSERT_FMT_MSG(y < dimension_,
-            "y coordinate (%1%) is larger than the y dimension (%2%)",
-            y % dimension_);  
-        OCTOPUS_ASSERT_FMT_MSG(z < dimension_,
-            "z coordinate (%1%) is larger than the z dimension (%2%)",
-            z % dimension_);  
-        return data_[x + y * dimension_ + z * dimension_ * dimension_];
+        OCTOPUS_ASSERT_FMT_MSG(x < x_length_,
+            "x coordinate (%1%) is larger than the x length (%2%)",
+            x % x_length_);  
+        OCTOPUS_ASSERT_FMT_MSG(y < y_length_,
+            "y coordinate (%1%) is larger than the y length (%2%)",
+            y % y_length_);  
+        OCTOPUS_ASSERT_FMT_MSG(z < z_length_,
+            "z coordinate (%1%) is larger than the z length (%2%)",
+            z % z_length_);  
+        return data_[x + y * x_length_ + z * x_length_ * y_length_];
     }
 
     T const& operator()(std::size_t x, std::size_t y, std::size_t z) const
     {
-        OCTOPUS_ASSERT_FMT_MSG(x < dimension_,
-            "x coordinate (%1%) is larger than the x dimension (%2%)",
-            x % dimension_);  
-        OCTOPUS_ASSERT_FMT_MSG(y < dimension_,
-            "y coordinate (%1%) is larger than the y dimension (%2%)",
-            y % dimension_);  
-        OCTOPUS_ASSERT_FMT_MSG(z < dimension_,
-            "z coordinate (%1%) is larger than the z dimension (%2%)",
-            z % dimension_);  
-        return data_[x + y * dimension_ + z * dimension_ * dimension_];
+        OCTOPUS_ASSERT_FMT_MSG(x < x_length_,
+            "x coordinate (%1%) is larger than the x length (%2%)",
+            x % x_length_);  
+        OCTOPUS_ASSERT_FMT_MSG(y < y_length_,
+            "y coordinate (%1%) is larger than the y length (%2%)",
+            y % y_length_);  
+        OCTOPUS_ASSERT_FMT_MSG(z < z_length_,
+            "z coordinate (%1%) is larger than the z length (%2%)",
+            z % z_length_);  
+        return data_[x + y * x_length_ + z * x_length_ * y_length_];
     }
 
     T& operator[](std::size_t idx)
@@ -131,6 +190,19 @@ struct vector3d
         return data_[idx];
     }
 };
+
+template <typename T0, typename T1>
+bool same_dimensions(
+    vector3d<T0> const& a
+  , vector3d<T1> const& b
+    )
+{
+    return (a.size() == b.size()) // Necessary but not sufficient.
+        && (a.x_length() == b.x_length())
+        && (a.y_length() == b.y_length())
+        && (a.z_length() == b.z_length())
+        ;
+}
 
 #define OCTOPUS_DEFINE_ARITHMETIC_ASSIGNMENT_OPERATOR(OP)                     \
     template <typename T0, typename T1>                                       \
@@ -151,6 +223,7 @@ struct vector3d
         )                                                                     \
     {                                                                         \
         using namespace octopus::operators;                                   \
+        OCTOPUS_ASSERT(same_dimensions(a, b));                                \
         a.data_ OP b;                                                         \
         return a;                                                             \
     }                                                                         \
