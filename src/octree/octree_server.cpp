@@ -273,7 +273,7 @@ void octree_server::create_child(
 } // }}}
 
 void octree_server::set_sibling(
-    boost::uint8_t f
+    face f
   , octree_client const& sib
     )
 { // {{{
@@ -296,7 +296,7 @@ void octree_server::set_sibling(
 } // }}}
 
 void octree_server::tie_sibling(
-    boost::uint8_t target_f
+    face target_f
   , octree_client target_sib
     )
 { // {{{
@@ -312,7 +312,7 @@ void octree_server::tie_sibling(
     child_index source_kid = target_kid;
 
     // Invert 
-    switch (face(target_f))
+    switch (target_f)
     {
         ///////////////////////////////////////////////////////////////////////
         // X-axis.
@@ -365,7 +365,7 @@ void octree_server::tie_sibling(
         }
     }; 
 
-    face source_f = invert(face(target_f));
+    face source_f = invert(target_f);
 
     // Locks.
     set_sibling(target_f, target_sib);
@@ -377,7 +377,7 @@ void octree_server::tie_sibling(
 
 void octree_server::set_child_sibling(
     child_index kid
-  , boost::uint8_t f
+  , face f
   , octree_client const& sib
     )
 { // {{{
@@ -403,7 +403,7 @@ void octree_server::set_child_sibling(
 
 void octree_server::tie_child_sibling(
     child_index target_kid
-  , boost::uint8_t target_f
+  , face target_f
   , octree_client target_sib
     )
 { // {{{
@@ -419,7 +419,7 @@ void octree_server::tie_child_sibling(
     child_index source_kid = target_kid;
 
     // Invert 
-    switch (face(target_f))
+    switch (target_f)
     {
         ///////////////////////////////////////////////////////////////////////
         // X-axis.
@@ -472,7 +472,7 @@ void octree_server::tie_child_sibling(
         }
     }; 
 
-    face source_f = invert(face(target_f));
+    face source_f = invert(target_f);
 
     octree_client source_sib;
 
@@ -545,7 +545,7 @@ void octree_server::inject_state_from_children()
 
 // Who ya gonna call? Ghostbusters!
 vector3d<std::vector<double> > octree_server::send_ghost_zone(
-    boost::uint8_t f
+    face f
     )
 { // {{{
     boost::uint64_t const bw = science().ghost_zone_width;
@@ -553,7 +553,7 @@ vector3d<std::vector<double> > octree_server::send_ghost_zone(
 
     mutex_type::scoped_lock l(mtx_);
 
-    switch (face(f))
+    switch (f)
     {
         ///////////////////////////////////////////////////////////////////////
         // X-axis.
@@ -754,7 +754,7 @@ void octree_server::integrate_ghost_zone(
     mutex_type::scoped_lock l(mtx_);
 
     // The index of the futures in the vector is the face.
-    switch (face(f))
+    switch (f)
     {
         ///////////////////////////////////////////////////////////////////////
         // X-axis.

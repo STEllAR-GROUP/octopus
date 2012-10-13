@@ -52,7 +52,7 @@ hpx::future<void> octree_client::create_child_async(
 
 ///////////////////////////////////////////////////////////////////////////////
 void octree_client::set_sibling(
-    boost::uint8_t f
+    face f
   , octree_client const& sib
     )
 {
@@ -63,7 +63,7 @@ void octree_client::set_sibling(
 }
 
 void octree_client::set_sibling_push(
-    boost::uint8_t f
+    face f
   , octree_client const& sib
     )
 {
@@ -75,7 +75,7 @@ void octree_client::set_sibling_push(
 
 ///////////////////////////////////////////////////////////////////////////////
 void octree_client::tie_sibling(
-    boost::uint8_t target_f
+    face target_f
   , octree_client const& target_sib
     )
 {
@@ -87,7 +87,7 @@ void octree_client::tie_sibling(
 }
 
 void octree_client::tie_sibling_push(
-    boost::uint8_t target_f
+    face target_f
   , octree_client const& target_sib
     )
 {
@@ -101,7 +101,7 @@ void octree_client::tie_sibling_push(
 ///////////////////////////////////////////////////////////////////////////////
 void octree_client::set_child_sibling(
     child_index kid
-  , boost::uint8_t f
+  , face f
   , octree_client const& sib
     )
 {
@@ -114,7 +114,7 @@ void octree_client::set_child_sibling(
 
 void octree_client::set_child_sibling_push(
     child_index kid
-  , boost::uint8_t f
+  , face f
   , octree_client const& sib
     )
 {
@@ -127,7 +127,7 @@ void octree_client::set_child_sibling_push(
 ///////////////////////////////////////////////////////////////////////////////
 void octree_client::tie_child_sibling(
     child_index target_kid
-  , boost::uint8_t target_f
+  , face target_f
   , octree_client const& target_sib
     )
 {
@@ -140,7 +140,7 @@ void octree_client::tie_child_sibling(
 
 void octree_client::tie_child_sibling_push(
     child_index target_kid
-  , boost::uint8_t target_f
+  , face target_f
   , octree_client const& target_sib
     )
 {
@@ -160,7 +160,7 @@ hpx::future<void> octree_client::receive_ghost_zones_async()
 // IMPLEMENT: Special handling for AMR and physical boundaries.
 hpx::future<vector3d<std::vector<double> > > 
 octree_client::send_ghost_zone_async(
-    boost::uint8_t f
+    face f
     )
 {
     return hpx::async<octree_server::send_ghost_zone_action>(gid_, f);

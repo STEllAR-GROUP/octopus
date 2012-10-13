@@ -11,6 +11,8 @@
 
 #include <ostream>
 
+#include <boost/serialization/split_free.hpp>
+
 namespace octopus
 {
 
@@ -37,7 +39,7 @@ inline face invert(face f)
         case YU: return YL;
         case ZL: return ZU;
         case ZU: return ZL; 
-        case out_of_bounds: break;
+        default: break;
     }
 
     OCTOPUS_ASSERT_MSG(false, "attempt to invert out-of-bounds face"); 
@@ -54,12 +56,33 @@ inline std::ostream& operator<<(std::ostream& os, face f)
         case YU: os << "YU"; break; 
         case ZL: os << "ZL"; break;  
         case ZU: os << "ZU"; break; 
-        case out_of_bounds: os << "out_of_bounds"; break; 
+        default: os << "out_of_bounds"; break; 
     }
     return os;
 }
 
 }
+
+///////////////////////////////////////////////////////////////////////////////
+namespace boost { namespace serialization
+{
+    template <typename Archive>
+    void save(Archive& ar, octopus::face const& k, const unsigned int)
+    {
+        boost::uint8_t tmp(k);
+        ar & tmp; 
+    }
+
+    template <typename Archive>
+    void load(Archive& ar, octopus::face& k, const unsigned int)
+    {
+        boost::uint8_t tmp;
+        ar & tmp; 
+        k = tmp; 
+    }
+}}
+
+BOOST_SERIALIZATION_SPLIT_FREE(octopus::face);
 
 #endif // OCTOPUS_DE82DE29_3AEC_4D0E_A2FD_AF7C424F9080
 

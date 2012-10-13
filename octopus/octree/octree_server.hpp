@@ -190,7 +190,7 @@ struct OCTOPUS_EXPORT octree_server
     /// Concurrency Control: Locks mtx_.
     /// Synchrony Gurantee:  Fire-and-Forget 
     void set_sibling(
-        boost::uint8_t f
+        face f
       , octree_client const& sib
         );
 
@@ -207,7 +207,7 @@ struct OCTOPUS_EXPORT octree_server
     /// Concurrency Control: Locks mtx_.
     /// Synchrony Gurantee:  Fire-and-Forget. 
     void tie_sibling(
-        boost::uint8_t target_f
+        face target_f
       , octree_client target_sib
         );
 
@@ -224,7 +224,7 @@ struct OCTOPUS_EXPORT octree_server
     /// Synchrony Gurantee:  Fire-and-Forget. 
     void set_child_sibling(
         child_index kid
-      , boost::uint8_t f
+      , face f
       , octree_client const& sib
         );
 
@@ -242,7 +242,7 @@ struct OCTOPUS_EXPORT octree_server
     /// Synchrony Gurantee:  Fire-and-Forget.
     void tie_child_sibling(
         child_index target_kid
-      , boost::uint8_t target_f
+      , face target_f
       , octree_client target_sib
         );
 
@@ -272,7 +272,7 @@ struct OCTOPUS_EXPORT octree_server
     // FIXME: Push don't pull.
     /// \brief Produces ghost zone data for a sibling.
     vector3d<std::vector<double> > send_ghost_zone(
-        boost::uint8_t f ///< Our direction, relative to the caller.
+        face f ///< Our direction, relative to the caller.
         );
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
