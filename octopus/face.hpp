@@ -9,6 +9,8 @@
 #if !defined(OCTOPUS_DE82DE29_3AEC_4D0E_A2FD_AF7C424F9080)
 #define OCTOPUS_DE82DE29_3AEC_4D0E_A2FD_AF7C424F9080
 
+#include <octopus/assert.hpp>
+
 #include <ostream>
 
 #include <boost/serialization/split_free.hpp>

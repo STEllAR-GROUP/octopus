@@ -325,7 +325,7 @@ struct OCTOPUS_EXPORT octree_server
 
     ///////////////////////////////////////////////////////////////////////////
     /// \brief Evolve the system for a temporal period of \a dt.
-    // NOTE: The implementation of this should really be in the science table.
+    // NOTE: The implementation of this should be in the science table.
     void step(double dt);
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,

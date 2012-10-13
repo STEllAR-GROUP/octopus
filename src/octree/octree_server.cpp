@@ -363,7 +363,7 @@ void octree_server::tie_sibling(
         {
             OCTOPUS_ASSERT_MSG(false, "source face shouldn't be out-of-bounds");
         }
-    }; 
+    } 
 
     face source_f = invert(target_f);
 

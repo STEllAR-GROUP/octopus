@@ -23,6 +23,8 @@ using hpx::components::stubs::runtime_support;
 
 int hpx_main(variables_map& vm)
 {
+    int result = 0;
+
     {
         std::cout << "Launching Octopus AMR driver...\n"
                      "\n";
@@ -53,8 +55,33 @@ int hpx_main(variables_map& vm)
         std::vector<hpx::future<hpx::id_type, hpx::naming::gid_type> > engines;    
         engines.reserve(localities.size());
 
-        // TODO: Temporary filler.
-        octopus::science_table sci = octopus::science_table(); 
+        ///////////////////////////////////////////////////////////////////////
+        // Define the problem. 
+        typedef void (*define_function)(octopus::science_table&);
+        typedef int (*main_function)(variables_map&);
+
+        typedef boost::function<void(define_function)> define_deleter;
+        typedef boost::function<void(main_function)> main_deleter;
+
+        // Figure out where we are.
+        boost::plugin::dll this_exe(hpx::util::get_executable_filename());
+
+        std::pair<define_function, define_deleter> define_p = 
+            this_exe.get<define_function, define_deleter>
+                ("octopus_define_problem");
+
+        std::pair<main_function, main_deleter> main_p = 
+            this_exe.get<main_function, main_deleter>
+                ("octopus_main");
+
+        OCTOPUS_ASSERT_MSG(define_p.first || main_p.first,
+            "either octopus_define_problem or octopus_main must be defined");
+
+        // Initialize the science table.
+        octopus::science_table sci = octopus::default_science_table(); 
+
+        if (define_p.first)
+            (*define_p.first)(sci);
 
         for (std::size_t i = 0; i < localities.size(); ++i)
         {
@@ -64,9 +91,13 @@ int hpx_main(variables_map& vm)
         }
     
         hpx::wait(engines);   
+
+        ///////////////////////////////////////////////////////////////////////
+        // Invoke user entry point. 
+        if (main_p.first)
+            result = (*main_p.first)(vm);
     }
 
-    int result = octopus_main(vm);
     hpx::finalize();
     return result;
 }

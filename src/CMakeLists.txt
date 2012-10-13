@@ -6,12 +6,15 @@
 add_definitions(-DOCTOPUS_INTERNAL)
 
 add_hpx_component(octopus
-  SOURCES component_module.cpp
-          driver.cpp
-          octree/octree_client.cpp
-          octree/octree_server.cpp  
+  SOURCES
           engine/engine_server.cpp
           engine/runtime_config.cpp
+          octree/octree_client.cpp
+          octree/octree_server.cpp
+          component_module.cpp
+          science/reconstruction.cpp
+          science/science_table.cpp
+          driver.cpp
   FOLDER "Core"
   ESSENTIAL)
 

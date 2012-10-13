@@ -249,6 +249,7 @@ struct OCTOPUS_EXPORT octree_client
 
     ///////////////////////////////////////////////////////////////////////////
     // {{{ set_sibling
+    // IMPLEMENT: Special handling for AMR and physical boundaries.
     void set_sibling(
         face f
       , octree_client const& sib 
@@ -290,6 +291,7 @@ struct OCTOPUS_EXPORT octree_client
 
     ///////////////////////////////////////////////////////////////////////////
     // {{{ tie_child_sibling
+    // IMPLEMENT: Special handling for AMR and physical boundaries.
     void tie_child_sibling(
         child_index kid
       , face f
