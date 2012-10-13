@@ -289,10 +289,10 @@ struct OCTOPUS_EXPORT octree_server
   public:
 
     ///////////////////////////////////////////////////////////////////////////
-    // IMPLEMENT
     // NOTE: exec_function in the original code.
     void apply(
-        hpx::util::function<void(octree_server&)> const&
+        hpx::util::function<void(octree_server&)> const& f
+      , boost::uint64_t minimum_level
         );
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,

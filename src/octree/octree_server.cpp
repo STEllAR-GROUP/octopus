@@ -964,7 +964,8 @@ void octree_server::receive_ghost_zones()
         // Unlock the lock ... 
         hpx::util::unlock_the_lock<mutex_type::scoped_lock> ul(l);
 
-        // ... asynchronously wait for our ghost zones to come in ...
+        // ... start polling for our ghost zones ...
+        // FIXME: Hartmut wants this reimplemented with hpx::wait_any.
         hpx::wait(ghostzones,
             boost::bind(&octree_server::integrate_ghost_zone, this, _1, _2));
 
@@ -974,10 +975,31 @@ void octree_server::receive_ghost_zones()
 } // }}}
 
 void octree_server::apply(
-    hpx::util::function<void(octree_server&)> const&
+    hpx::util::function<void(octree_server&)> const& f
+  , boost::uint64_t minimum_level
     )
-{ // {{{ IMPLEMENT
+{ // {{{
+    mutex_type::scoped_lock l(mtx_);
 
+    std::vector<hpx::future<void> > recursion_is_parallelism;
+    recursion_is_parallelism.reserve(8);
+
+    for (boost::uint64_t i = 0; i < 8; ++i)
+        if (hpx::naming::invalid_id != children_[i])
+            recursion_is_parallelism.push_back(
+                children_[i].apply_async(f, minimum_level)); 
+
+    // Invoke the function on ourselves.
+    if (level_ >= minimum_level)
+        f(*this);
+
+    {
+        // Unlock the lock ... 
+        hpx::util::unlock_the_lock<mutex_type::scoped_lock> ul(l);
+
+        // ... and block while our children to receive their ghost zones.
+        hpx::wait(recursion_is_parallelism); 
+    }
 } // }}}
 
 void octree_server::save_state()

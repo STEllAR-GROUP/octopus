@@ -15,6 +15,7 @@
 namespace octopus
 {
 
+///////////////////////////////////////////////////////////////////////////////
 void octree_client::create_root(
     hpx::id_type const& locality
   , octree_init_data const& init
@@ -41,6 +42,7 @@ void octree_client::create_root(
     gid_ = rts.create_component_async<octopus::octree_server>(init).get();
 }
 
+///////////////////////////////////////////////////////////////////////////////
 hpx::future<void> octree_client::create_child_async(
     child_index kid
     )
@@ -48,6 +50,7 @@ hpx::future<void> octree_client::create_child_async(
     return hpx::async<octree_server::create_child_action>(gid_, kid);
 }
 
+///////////////////////////////////////////////////////////////////////////////
 void octree_client::set_sibling(
     boost::uint8_t f
   , octree_client const& sib
@@ -59,6 +62,18 @@ void octree_client::set_sibling(
     hpx::async<octree_server::set_sibling_action>(gid_, f, sib).get();
 }
 
+void octree_client::set_sibling_push(
+    boost::uint8_t f
+  , octree_client const& sib
+    )
+{
+    OCTOPUS_ASSERT_FMT_MSG(out_of_bounds > f,
+                           "invalid face, face(%1%)",
+                           boost::uint16_t(f));
+    hpx::apply<octree_server::set_sibling_action>(gid_, f, sib);
+}
+
+///////////////////////////////////////////////////////////////////////////////
 void octree_client::tie_sibling(
     boost::uint8_t target_f
   , octree_client const& target_sib
@@ -83,17 +98,7 @@ void octree_client::tie_sibling_push(
         (gid_, target_f, target_sib);
 }
 
-void octree_client::set_sibling_push(
-    boost::uint8_t f
-  , octree_client const& sib
-    )
-{
-    OCTOPUS_ASSERT_FMT_MSG(out_of_bounds > f,
-                           "invalid face, face(%1%)",
-                           boost::uint16_t(f));
-    hpx::apply<octree_server::set_sibling_action>(gid_, f, sib);
-}
-
+///////////////////////////////////////////////////////////////////////////////
 void octree_client::set_child_sibling(
     child_index kid
   , boost::uint8_t f
@@ -119,6 +124,7 @@ void octree_client::set_child_sibling_push(
     hpx::apply<octree_server::set_child_sibling_action>(gid_, kid, f, sib);
 }
 
+///////////////////////////////////////////////////////////////////////////////
 void octree_client::tie_child_sibling(
     child_index target_kid
   , boost::uint8_t target_f
@@ -145,6 +151,7 @@ void octree_client::tie_child_sibling_push(
         (gid_, target_kid, target_f, target_sib);
 }
 
+///////////////////////////////////////////////////////////////////////////////
 hpx::future<void> octree_client::receive_ghost_zones_async()
 {
     return hpx::async<octree_server::receive_ghost_zones_action>(gid_);
@@ -157,6 +164,23 @@ octree_client::send_ghost_zone_async(
     )
 {
     return hpx::async<octree_server::send_ghost_zone_action>(gid_, f);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+hpx::future<void> octree_client::apply_async(
+    hpx::util::function<void(octree_server&)> const& f
+  , boost::uint64_t minimum_level
+    )
+{
+    return hpx::async<octree_server::apply_action>(gid_, f, minimum_level);
+}
+
+void octree_client::apply_push(
+    hpx::util::function<void(octree_server&)> const& f
+  , boost::uint64_t minimum_level
+    )
+{
+    hpx::apply<octree_server::apply_action>(gid_, f, minimum_level);
 }
 
 }

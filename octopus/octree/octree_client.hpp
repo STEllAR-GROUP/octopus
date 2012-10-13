@@ -20,6 +20,8 @@
 namespace octopus
 {
 
+struct OCTOPUS_EXPORT octree_server;
+
 // TODO: Implement type punning for the three octree types.
 struct OCTOPUS_EXPORT octree_client
 {
@@ -286,6 +288,25 @@ struct OCTOPUS_EXPORT octree_client
     {
         return send_ghost_zone_async(f);
     }
+
+    ///////////////////////////////////////////////////////////////////////////
+    void apply(
+        hpx::util::function<void(octree_server&)> const& f
+      , boost::uint64_t minimum_level
+        )
+    {
+        return apply_async(f, minimum_level).get();
+    }
+
+    hpx::future<void> apply_async(
+        hpx::util::function<void(octree_server&)> const& f
+      , boost::uint64_t minimum_level
+        );
+
+    void apply_push(
+        hpx::util::function<void(octree_server&)> const& f
+      , boost::uint64_t minimum_level
+        );
 
     // NOTE: (to self) Keep the order the same as octree_server please.
 };
