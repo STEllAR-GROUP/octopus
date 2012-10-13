@@ -55,14 +55,18 @@ struct OCTOPUS_EXPORT octree_server
 
     boost::uint64_t step_;
 
+    // REVIEW: Consider compile-time maximum sizes for the state vector, to
+    // optimize allocations.
+    // REVIEW: Are the "corners" of our cube are needed? I think there may be
+    // eight chunks of unused space that we don't ever use.
     vector3d<std::vector<double> > U_; ///< 3d array of state vectors, includes
                                        ///  ghost zones. Size of the state
                                        ///  vectors comes from the science
                                        ///  table.
 
-    vector3d<std::vector<double> > U0_; ///< 3d array of state vectors.
-
-    
+    vector3d<std::vector<double> > U0_; ///< 3d array of state vectors, includes
+                                        ///  ghost zones. Used for summing the
+                                        ///  differential. 
 
     ///////////////////////////////////////////////////////////////////////////
     // TODO: Migration.
@@ -256,12 +260,33 @@ struct OCTOPUS_EXPORT octree_server
 
 
     ///////////////////////////////////////////////////////////////////////////
-    // IMPLEMENT
-    void enforce_boundaries();
+    // FIXME: Push don't pull.
+    // NOTE: enforce_boundaries in the original code.
+    /// \brief Requests ghost zone data from all siblings. 
+    void receive_ghost_zones();
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                enforce_boundaries,
-                                enforce_boundaries_action);
+                                receive_ghost_zones,
+                                receive_ghost_zones_action);
+
+    // FIXME: Push don't pull.
+    /// \brief Produces ghost zone data for a sibling.
+    vector3d<std::vector<double> > send_ghost_zone(
+        boost::uint8_t f ///< Our direction, relative to the caller.
+        );
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                send_ghost_zone,
+                                send_ghost_zone_action);
+
+  private:
+    // FIXME: Rvalue reference kung-fo must be applied here
+    void integrate_ghost_zone(
+        std::size_t i
+      , vector3d<std::vector<double> > const& zone
+        );
+
+  public:
 
     ///////////////////////////////////////////////////////////////////////////
     // IMPLEMENT
@@ -402,7 +427,8 @@ OCTOPUS_REGISTER_ACTION(tie_sibling);
 OCTOPUS_REGISTER_ACTION(set_child_sibling);
 OCTOPUS_REGISTER_ACTION(tie_child_sibling);
 OCTOPUS_REGISTER_ACTION(inject_state_from_children);
-OCTOPUS_REGISTER_ACTION(enforce_boundaries);
+OCTOPUS_REGISTER_ACTION(send_ghost_zone);
+OCTOPUS_REGISTER_ACTION(receive_ghost_zones);
 OCTOPUS_REGISTER_ACTION(apply);
 OCTOPUS_REGISTER_ACTION(save_state);
 OCTOPUS_REGISTER_ACTION(add_differentials);

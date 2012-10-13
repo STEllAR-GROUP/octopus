@@ -81,7 +81,9 @@ struct vector3d
 
     vector3d& operator=(BOOST_COPY_ASSIGN_REF(vector3d) other)
     {
-        dimension_ = other.dimension_;
+        x_length_ = other.x_length_;
+        y_length_ = other.y_length_;
+        z_length_ = other.z_length_;
         data_ = other.data_;
         return *this;
     }
@@ -140,10 +142,10 @@ struct vector3d
       , T dflt = T()
         )
     {
-        x_length_ = length;
-        y_length_ = length;
-        z_length_ = length;
-        data_.resize(length * length * length, dflt);    
+        x_length_ = x_length;
+        y_length_ = y_length;
+        z_length_ = z_length;
+        data_.resize(x_length * y_length * z_length, dflt);    
     }
 
     T& operator()(std::size_t x, std::size_t y, std::size_t z)

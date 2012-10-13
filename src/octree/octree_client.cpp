@@ -145,5 +145,19 @@ void octree_client::tie_child_sibling_push(
         (gid_, target_kid, target_f, target_sib);
 }
 
+hpx::future<void> octree_client::receive_ghost_zones_async()
+{
+    return hpx::async<octree_server::receive_ghost_zones_action>(gid_);
+}
+
+// IMPLEMENT: Special handling for AMR and physical boundaries.
+hpx::future<vector3d<std::vector<double> > > 
+octree_client::send_ghost_zone_async(
+    boost::uint8_t f
+    )
+{
+    return hpx::async<octree_server::send_ghost_zone_action>(gid_, f);
+}
+
 }
 

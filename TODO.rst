@@ -5,13 +5,15 @@ These are the things necessary to refine the initial timestep (e.g. produce the
 equivalent of X.initial.silo.gz). This basically gives us everything else,
 though.
 
-* Implement AMR/physical bounds client-side via type-punning.
-* Set up AMR/physical bounds in (set|tie).*sibling functions.
-* Set up physical boundaries for root.
-* Implement enforce_boundaries(). 
+* *TODAY:* Implement AMR/physical bounds client-side via type-punning.
+    * *TODAY:* Special handling for send_ghost_zone_async() (aka operator(), aka interpolation)
+    * *TODAY:* Special handling for get_sibling()
+* *TODAY:* Set up AMR/physical bounds in (set|tie).*sibling functions.
+* *DONE:* Set up physical boundaries for root.
+* *DONE:* Implement enforce_boundaries(). 
 * Implement exec_function().
 * Add state injection from children.
-* Implement step():
+* *DONE:* Implement step():
     * Implement check_for_refine()
 * Implement sub_step():
     * Implement calculate_flux()
@@ -22,3 +24,4 @@ though.
 * Add interface for defining the problem (e.g. defining the science_table).
     * Add defaults to science_table before passing it to the user.
 * Add I/O for verification.
+

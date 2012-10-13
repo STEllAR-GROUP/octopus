@@ -256,6 +256,38 @@ struct OCTOPUS_EXPORT octree_client
     {
         tie_child_sibling_push(kid, boost::uint8_t(f), sib);
     }
+
+    ///////////////////////////////////////////////////////////////////////////
+    void receive_ghost_zones()
+    {
+        receive_ghost_zones_async().get();
+    }
+
+    hpx::future<void> receive_ghost_zones_async();
+
+    ///////////////////////////////////////////////////////////////////////////
+    vector3d<std::vector<double> > send_ghost_zone(
+        face f
+        )
+    {
+        return send_ghost_zone_async(f).get();
+    }
+
+  private:
+    // IMPLEMENT: Special handling for AMR and physical boundaries.
+    hpx::future<vector3d<std::vector<double> > > send_ghost_zone_async(
+        boost::uint8_t f
+        );  
+
+  public:
+    hpx::future<vector3d<std::vector<double> > > send_ghost_zone_async(
+        face f
+        )
+    {
+        return send_ghost_zone_async(f);
+    }
+
+    // NOTE: (to self) Keep the order the same as octree_server please.
 };
 
 }
