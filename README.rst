@@ -16,10 +16,3 @@ Computation and Technology <cct.lsu.edu>`_ and `the Department of Physics
 Byerly. This work is supported by the National Science Foundation through award
 1240655 (STAR).
 
-|stellar_logo| |nsf_logo|
-
-.. |stellar_logo| image:: docs/images/stellar_logo.png
-                  :align: left
-.. |nsf_logo|     image:: docs/images/nsf_logo.png
-                  :align: right
-
