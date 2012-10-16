@@ -122,6 +122,7 @@ void octree_server::create_child(
 
     using namespace octopus::operators;
 
+    kid_init.parent    = safe_reference(); 
     kid_init.level     = level_ + 1; 
     kid_init.location  = location_ * 2 + kid.array(); 
     kid_init.dx        = dx_ * 0.5;
@@ -1020,13 +1021,15 @@ void octree_server::clear_differentials()
 void octree_server::step(double dt)
 { // {{{
     OCTOPUS_ASSERT_MSG(0 != level_,
-        "sub_step may only be called on the root octree_server");
+        "step may only be called on the root octree_server");
 
     OCTOPUS_ASSERT_MSG(0 < dt, "invalid timestep size");
 
     // U -> U0, recursively.
     save_state();
 
+    // NOTE: I have no good place to put this, so I'm putting it here: we do
+    // TVD RK3 (google is your friend).
     switch (config().runge_kutta_order)
     {
         case 1:

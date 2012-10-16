@@ -33,6 +33,7 @@ struct OCTOPUS_EXPORT octree_server
 
     ///////////////////////////////////////////////////////////////////////////
     // From OctNode
+    octree_client parent_; 
     boost::array<octree_client, 8> children_;
     boost::array<octree_client, 6> siblings_; 
     boost::uint64_t level_;
@@ -125,6 +126,24 @@ struct OCTOPUS_EXPORT octree_server
         vector3d<std::vector<double> > const& pU
         );
 
+    ///////////////////////////////////////////////////////////////////////////
+    /// \brief Get a reference to this node that is safe to pass to our
+    ///        children. Said reference must be uncounted to prevent reference
+    ///        cycles.
+    /// 
+    /// Remote Operations:   No.
+    /// Concurrency Control: No.
+    /// Synchrony Gurantee:  Synchronous. 
+    hpx::id_type safe_reference()
+    {
+        // We shouldn't need to lock here, I believe.
+        hpx::id_type gid = get_gid();
+        OCTOPUS_ASSERT_MSG(
+            gid.get_management_type() == hpx::id_type::unmanaged,
+            "get_gid() should return an unmanaged GID");
+        return gid;
+    }
+
   public:
     octree_server()
     {
@@ -138,6 +157,7 @@ struct OCTOPUS_EXPORT octree_server
         )
       : siblings_set_(6)
       , received_state_(false)
+      , parent_(init.parent)
       , level_(init.level)
       , location_(init.location)
       , dx_(init.dx)
@@ -145,7 +165,9 @@ struct OCTOPUS_EXPORT octree_server
       , offset_(init.offset)
       , origin_(init.origin)
       , step_(0)
-    {}
+    {
+        OCTOPUS_TEST_IN_PLACE(parent_ == hpx::invalid_id);
+    }
 
     // FIXME: Non-optimal, inject_state_from_parent should be called with
     // fire-and-forget semantics. However, the lifetime of parent_U then
@@ -158,6 +180,7 @@ struct OCTOPUS_EXPORT octree_server
         )
       : siblings_set_(0)
       , received_state_(false)
+      , parent_(init.parent)
       , level_(init.level)
       , location_(init.location)
       , dx_(init.dx)
@@ -166,6 +189,11 @@ struct OCTOPUS_EXPORT octree_server
       , origin_(init.origin)
       , step_(0)
     {
+        // Make sure our parent reference is not reference counted.
+        OCTOPUS_ASSERT_MSG(
+            init.parent.get_management_type() == hpx::id_type::unmanaged,
+            "reference cycle detected in child");
+ 
         inject_state_from_parent(parent_U);
     }
 

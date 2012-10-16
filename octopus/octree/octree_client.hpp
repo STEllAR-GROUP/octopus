@@ -121,9 +121,19 @@ struct OCTOPUS_EXPORT octree_client
         return gid_;
     }
 
+    /// \brief Used to construct parent references.
+    octree_client(hpx::id_type const& gid)
+      : gid_(gid), kind_(real_boundary)
+    {}
+
+    /// \brief Used to construct parent references.
+    octree_client(BOOST_RV_REF(hpx::id_type) gid)
+      : gid_(gid), kind_(real_boundary)
+    {}
+
   public:
     octree_client()
-      : gid_(hpx::naming::invalid_id), kind_(real_boundary)
+      : gid_(hpx::naming::invalid_id), kind_(invalid_boundary)
     {}
 
     octree_client(octree_client const& other)
