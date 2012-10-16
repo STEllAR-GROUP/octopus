@@ -21,6 +21,10 @@ using boost::program_options::value;
 
 using hpx::components::stubs::runtime_support;
 
+namespace octopus { OCTOPUS_EXPORT int default_main(variables_map& vm); }
+
+OCTOPUS_EXPORT int main(int argc, char** argv);
+
 int hpx_main(variables_map& vm)
 {
     int result = 0;
@@ -93,16 +97,16 @@ int hpx_main(variables_map& vm)
         hpx::wait(engines);   
 
         ///////////////////////////////////////////////////////////////////////
-        // Invoke user entry point. 
+        // Invoke user entry point or default main.
         if (main_p.first)
             result = (*main_p.first)(vm);
+        else
+            result = octopus::default_main(vm);
     }
 
     hpx::finalize();
     return result;
 }
-
-OCTOPUS_EXPORT int main(int argc, char** argv);
 
 int main(int argc, char** argv)
 {
