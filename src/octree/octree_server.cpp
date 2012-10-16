@@ -20,7 +20,7 @@
 #include <octopus/operators/std_vector_arithmetic.hpp>
 
 // TODO: Add invariant checker for functions which should only be called during
-// initialization.
+// initialization. (I think I did this?).
 
 namespace octopus
 {
@@ -504,6 +504,15 @@ void octree_server::tie_child_sibling(
         (source_kid, source_f, children_[target_kid]);
 } // }}}
 
+boost::array<octree_client, 6> octree_server::get_siblings()
+{ // {{{
+    // Make sure that we are initialized.
+    initialized_.wait();
+
+    mutex_type::scoped_lock l(mtx_);
+    return siblings_;
+} // }}}
+
 void octree_server::inject_state_from_children()
 { // {{{ IMPLEMENT
 
@@ -551,6 +560,9 @@ vector3d<std::vector<double> > octree_server::send_ghost_zone(
 { // {{{
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().spatial_size;
+
+    // Make sure that we are initialized.
+    initialized_.wait();
 
     mutex_type::scoped_lock l(mtx_);
 
@@ -924,6 +936,9 @@ void octree_server::integrate_ghost_zone(
 
 void octree_server::receive_ghost_zones()
 { // {{{
+    // Make sure that we are initialized.
+    initialized_.wait();
+
     // REVIEW: It'd be deadlocky to call this function on an octree_server that
     // is it's own sibling. Is this ever possible? Can't safely check for it
     // without locking the mutex, so no point in adding an assert (it'd deadlock

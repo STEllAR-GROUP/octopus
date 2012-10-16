@@ -15,6 +15,7 @@ add_hpx_component(octopus
           science/reconstruction.cpp
           science/science_table.cpp
           driver.cpp
+          default_main.cpp
   FOLDER "Core"
   ESSENTIAL)
 

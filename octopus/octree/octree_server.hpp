@@ -279,6 +279,21 @@ struct OCTOPUS_EXPORT octree_server
                                 tie_child_sibling_action);
 
     ///////////////////////////////////////////////////////////////////////////
+    /// \brief Set \a target_sib as the \a target_f sibling of this node's
+    ///        \a target_kid child. Additionally, set this node's \a target_kid
+    ///        child as the invert(target_f) sibling of \a target_sib.
+    /// 
+    /// Remote Operations:   Possibly.
+    /// Concurrency Control: Waits on initialization_, locks mtx_.
+    /// Synchrony Gurantee:  Fire-and-Forget.
+    boost::array<octree_client, 6> get_siblings();
+
+    // REVIEW: Should this be a direct action?
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                get_siblings,
+                                get_siblings_action);
+
+    ///////////////////////////////////////////////////////////////////////////
     // IMPLEMENT
     void inject_state_from_children();
 
@@ -353,7 +368,10 @@ struct OCTOPUS_EXPORT octree_server
 
     ///////////////////////////////////////////////////////////////////////////
     /// \brief Evolve the system for a temporal period of \a dt.
-    // NOTE: The implementation of this should be in the science table.
+    // NOTE: The implementation of this should be in the science table, or
+    // maybe the whole thing should live in the driver.
+    // NOTE: This function DOES NOT LOCK, do not call concurrently without
+    // synchronization. 
     void step(double dt);
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
@@ -361,7 +379,10 @@ struct OCTOPUS_EXPORT octree_server
                                 step_action);  
 
   private:
-    // NOTE: The implementation of this should really be in the science table.
+    // NOTE: The implementation of this should be in the science table, or
+    // maybe the whole thing should live in the driver.
+    // NOTE: This function DOES NOT LOCK, do not call concurrently without
+    // synchronization.
     void sub_step(double dt, double beta);
 
   public:
@@ -454,6 +475,7 @@ OCTOPUS_REGISTER_ACTION(set_sibling);
 OCTOPUS_REGISTER_ACTION(tie_sibling);
 OCTOPUS_REGISTER_ACTION(set_child_sibling);
 OCTOPUS_REGISTER_ACTION(tie_child_sibling);
+OCTOPUS_REGISTER_ACTION(get_siblings);
 OCTOPUS_REGISTER_ACTION(inject_state_from_children);
 OCTOPUS_REGISTER_ACTION(send_ghost_zone);
 OCTOPUS_REGISTER_ACTION(receive_ghost_zones);

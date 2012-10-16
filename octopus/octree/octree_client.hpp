@@ -16,6 +16,7 @@
 #include <octopus/face.hpp>
 
 #include <boost/serialization/access.hpp>
+#include <boost/serialization/array.hpp>
 
 namespace octopus
 {
@@ -27,11 +28,23 @@ struct OCTOPUS_EXPORT octree_server;
 // REVIEW: Should this have a serialization version?
 enum boundary_kind
 {
-    real_boundary
+    invalid_boundary
+  , real_boundary
   , physical_boundary
   , amr_boundary 
-  , invalid_boundary
 };
+
+inline std::ostream& operator<<(std::ostream& os, boundary_kind k)
+{
+    switch (k)
+    {
+        case real_boundary:     os << "real_boundary"; break; 
+        case physical_boundary: os << "physical_boundary"; break; 
+        case amr_boundary:      os << "amr_boundary"; break; 
+        default: os << "invalid_boundary"; break; 
+    }
+    return os;
+}
 
 }
 
@@ -62,13 +75,23 @@ BOOST_SERIALIZATION_SPLIT_FREE(octopus::boundary_kind);
 namespace octopus
 {
 
-// TODO: Implement type punning for the three octree types.
 struct OCTOPUS_EXPORT octree_client
 {
   private:
     hpx::id_type gid_;
     boundary_kind kind_;
 
+    // FIXME: This is only used by non-real boundaries.
+    face face_;
+
+    // FIXME: This is only used for physical boundaries, optimize.
+    vector3d<std::vector<double> > map_;
+    bool reflect_;
+    boost::uint64_t direction_; ///< 0 == x, 1 == y, 2 == z 
+
+    // FIXME: This is only used for AMR boundaries, optimize.
+    boost::array<boost::int64_t, 3> offset_; ///< Relative offset.
+    
     BOOST_COPYABLE_AND_MOVABLE(octree_client);
 
     friend struct octree_server;
@@ -78,20 +101,67 @@ struct OCTOPUS_EXPORT octree_client
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int version)
     {
-        ar & gid_ & kind_;
+        ar & gid_;
+        ar & kind_;
+        if (!real())
+        {
+            ar & face_;
+            ar & map_;
+            ar & reflect_;
+            ar & direction_;
+            ar & offset_;
+        }
     }
 
     /// \brief Create a client for a real grid node.
     ///
     /// \note Internal use only; GIDs are not exposed to the user.
     octree_client(hpx::id_type const& gid)
-      : gid_(gid), kind_(real_boundary) {}
+      : gid_(gid)
+      , kind_(real_boundary)
+      , face_()
+      , map_()
+      , reflect_()
+      , direction_()
+      , offset_()
+    {}
 
     /// \brief Create a client for a real grid node.
     ///
     /// \note Internal use only; GIDs are not exposed to the user.
     octree_client(BOOST_RV_REF(hpx::id_type) gid)
-      : gid_(gid), kind_(real_boundary) {}
+      : gid_(gid)
+      , kind_(real_boundary)
+      , face_()
+      , map_()
+      , reflect_()
+      , direction_()
+      , offset_()
+    {}
+
+    octree_client(hpx::id_type const& parent, boundary_kind kind)
+      : gid_(parent)
+      , kind_(kind)
+      , face_()
+      , map_()
+      , reflect_()
+      , direction_()
+      , offset_()
+    {
+        OCTOPUS_ASSERT(kind != real_boundary);
+    }
+
+    octree_client(BOOST_RV_REF(hpx::id_type) parent, boundary_kind kind)
+      : gid_(parent)
+      , kind_(kind)
+      , face_()
+      , map_()
+      , reflect_()
+      , direction_()
+      , offset_()
+    {
+        OCTOPUS_ASSERT(kind != real_boundary);
+    }
 
     /// \brief Assign the GID of a real grid node to this client. 
     ///
@@ -100,6 +170,13 @@ struct OCTOPUS_EXPORT octree_client
     {
         gid_ = gid;
         kind_ = real_boundary;
+        face_ = face();
+        map_.clear();
+        reflect_ = false;
+        direction_ = 0;
+        offset_[0] = 0;
+        offset_[1] = 0;
+        offset_[2] = 0;
         return *this;
     }
 
@@ -110,6 +187,13 @@ struct OCTOPUS_EXPORT octree_client
     {
         gid_ = gid;
         kind_ = real_boundary;
+        face_ = face();
+        map_.clear();
+        reflect_ = false;
+        direction_ = 0;
+        offset_[0] = 0;
+        offset_[1] = 0;
+        offset_[2] = 0;
         return *this;
     }
 
@@ -121,35 +205,64 @@ struct OCTOPUS_EXPORT octree_client
         return gid_;
     }
 
-    /// \brief Used to construct parent references.
-    octree_client(hpx::id_type const& gid)
-      : gid_(gid), kind_(real_boundary)
-    {}
-
-    /// \brief Used to construct parent references.
-    octree_client(BOOST_RV_REF(hpx::id_type) gid)
-      : gid_(gid), kind_(real_boundary)
-    {}
+    void ensure_real()
+    {
+        OCTOPUS_ASSERT_FMT_MSG(kind_ == real_boundary,
+            "illegal operation for %1% client, expected real boundary",
+            kind_);
+    }
 
   public:
     octree_client()
-      : gid_(hpx::naming::invalid_id), kind_(invalid_boundary)
+      : gid_(hpx::naming::invalid_id)
+      , kind_(invalid_boundary)
+      , face_()
+      , map_()
+      , reflect_()
+      , direction_()
+      , offset_()
     {}
 
     octree_client(octree_client const& other)
-      : gid_(other.gid_), kind_(other.kind_) {}
+      : gid_(other.gid_)
+      , kind_(other.kind_)
+      , face_(other.face_)
+      , map_(other.map_)
+      , reflect_(other.reflect_)
+      , direction_(other.direction_)
+      , offset_(other.offset_)
+    {}
 
     octree_client(BOOST_RV_REF(octree_client) other)
-      : gid_(other.gid_), kind_(other.kind_) {}
+      : gid_(other.gid_)
+      , kind_(other.kind_)
+      , face_(other.face_)
+      , map_(other.map_)
+      , reflect_(other.reflect_)
+      , direction_(other.direction_)
+      , offset_(other.offset_)
+    {}
 
     octree_client(octree_client const& parent, boundary_kind kind)
-      : gid_(parent.gid_), kind_(kind)
+      : gid_(parent.gid_)
+      , kind_(kind)
+      , face_()
+      , map_()
+      , reflect_()
+      , direction_()
+      , offset_()
     {
         OCTOPUS_ASSERT(kind != real_boundary);
     }
 
     octree_client(BOOST_RV_REF(octree_client) parent, boundary_kind kind)
-      : gid_(parent.gid_), kind_(kind)
+      : gid_(parent.gid_)
+      , kind_(kind)
+      , face_()
+      , map_()
+      , reflect_()
+      , direction_()
+      , offset_()
     {
         OCTOPUS_ASSERT(kind != real_boundary);
     }
@@ -158,6 +271,11 @@ struct OCTOPUS_EXPORT octree_client
     {
         gid_ = other.gid_;
         kind_ = other.kind_;        
+        face_ = other.face_;
+        map_ = other.map_;
+        reflect_ = other.reflect_;
+        direction_ = other.direction_;
+        offset_ = other.offset_;
         return *this;
     }
 
@@ -165,6 +283,11 @@ struct OCTOPUS_EXPORT octree_client
     {
         gid_ = other.gid_;
         kind_ = other.kind_;        
+        face_ = other.face_;
+        map_ = other.map_;
+        reflect_ = other.reflect_;
+        direction_ = other.direction_;
+        offset_ = other.offset_;
         return *this;
     }
 
@@ -257,9 +380,30 @@ struct OCTOPUS_EXPORT octree_client
         );
     // }}}
 
+  private:
+    void set_sibling_for_amr_boundary(
+        face f
+      , octree_client const& sib 
+        );
+
+    void tie_sibling_for_amr_boundary(
+        face f
+      , octree_client const& sib 
+        );
+
+    void set_sibling_for_physical_boundary(
+        face f
+      , octree_client const& sib 
+        );
+
+    void tie_sibling_for_physical_boundary(
+        face f
+      , octree_client const& sib 
+        );
+    
+  public:
     ///////////////////////////////////////////////////////////////////////////
     // {{{ set_sibling
-    // IMPLEMENT: Special handling for AMR and physical boundaries.
     void set_sibling(
         face f
       , octree_client const& sib 
@@ -301,7 +445,6 @@ struct OCTOPUS_EXPORT octree_client
 
     ///////////////////////////////////////////////////////////////////////////
     // {{{ tie_child_sibling
-    // IMPLEMENT: Special handling for AMR and physical boundaries.
     void tie_child_sibling(
         child_index kid
       , face f
@@ -316,6 +459,26 @@ struct OCTOPUS_EXPORT octree_client
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
+    // {{{ get_siblings
+    boost::array<octree_client, 6> get_siblings()
+    {
+        return get_siblings_async().get();
+    }
+
+    hpx::future<boost::array<octree_client, 6> > get_siblings_async();
+    // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
+  private:
+    vector3d<std::vector<double> > interpolate(
+        face f
+        );
+
+    vector3d<std::vector<double> > mirror_or_outflow(
+        face f
+        );
+
+  public:
     // {{{ receive_ghost_zones
     void receive_ghost_zones()
     {
@@ -325,14 +488,10 @@ struct OCTOPUS_EXPORT octree_client
     hpx::future<void> receive_ghost_zones_async();
     // }}}
 
-    // IMPLEMENT: Special handling for AMR and physical boundaries.
     // {{{ send_ghost_zone
     vector3d<std::vector<double> > send_ghost_zone(
         face f
-        )
-    {
-        return send_ghost_zone_async(f).get();
-    }
+        );
 
     hpx::future<vector3d<std::vector<double> > > send_ghost_zone_async(
         face f

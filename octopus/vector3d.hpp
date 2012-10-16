@@ -148,6 +148,14 @@ struct vector3d
         data_.resize(x_length * y_length * z_length, dflt);    
     }
 
+    void clear()
+    {
+        x_length_ = 0;
+        y_length_ = 0;
+        z_length_ = 0;
+        data_.clear();
+    }
+
     T& operator()(std::size_t x, std::size_t y, std::size_t z)
     {
         OCTOPUS_ASSERT_FMT_MSG(x < x_length_,

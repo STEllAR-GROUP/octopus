@@ -17,6 +17,7 @@ namespace octopus
 OCTOPUS_EXPORT int default_main(variables_map& vm)
 {
     // IMPLEMENT
+    return 0;
 }
 
 }
