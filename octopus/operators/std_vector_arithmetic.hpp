@@ -80,6 +80,25 @@ OCTOPUS_DEFINE_ARITHMETIC_OPERATOR(/)
 
 #undef OCTOPUS_DEFINE_ARITHMETIC_OPERATOR
 
+template <typename T>
+std::vector<T> operator-(
+    std::vector<T> const& a
+    ) 
+{
+    std::vector<T> tmp; 
+    for (std::size_t i = 0; i < a.size(); ++i)
+        tmp[i] = T(0) - a[i];
+    return tmp; 
+}
+
+template <typename T>
+std::vector<T> operator+(
+    std::vector<T> const& a
+    ) 
+{
+    return a;
+}
+
 }}
 
 #endif // OCTOPUS_F5DDF845_26AB_417F_9AC2_2824296CC18A

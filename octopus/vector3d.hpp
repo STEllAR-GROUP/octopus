@@ -21,6 +21,7 @@
 namespace octopus
 {
 
+// FIXME: Optimize this to be "4d" for zero-copy purposes.
 template <typename T>
 struct vector3d
 {

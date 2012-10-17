@@ -16,6 +16,7 @@ add_hpx_component(octopus
           science/science_table.cpp
           driver.cpp
           default_main.cpp
+          child_index.cpp
   FOLDER "Core"
   ESSENTIAL)
 

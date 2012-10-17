@@ -84,7 +84,7 @@ boost::array<T, Size> operator-(
 {
     boost::array<T, Size> tmp; 
     for (std::size_t i = 0; i < Size; ++i)
-        tmp[i] = T(0) - a;
+        tmp[i] = T(0) - a[i];
     return tmp; 
 }
 

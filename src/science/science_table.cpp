@@ -8,6 +8,7 @@
 #include <octopus/engine/science_table.hpp>
 #include <octopus/science/physical_boundaries.hpp>
 #include <octopus/science/reconstruction.hpp>
+#include <octopus/science/state.hpp>
 
 namespace octopus
 {
@@ -22,6 +23,8 @@ science_table default_science_table()
 
     sci.reconstruction = minmod_reconstruction(); 
     sci.ghost_zone_width = minmod_reconstruction::ghost_zone_width;
+
+    sci.get_rho_from_state = get_rho_from_state();
 
     return sci;
 }

@@ -38,6 +38,7 @@ struct config_data
     boost::uint64_t max_refinement_level; 
 
     ///< The spatial size of each grid including ghost zones.
+    // NOTE: This MUST be a power of 2.
     boost::uint64_t spatial_size; // GNX, 8+2*bw, TODO: validate min/max 
 
     ///< Order of Runge Kutta used to solve the PDE.

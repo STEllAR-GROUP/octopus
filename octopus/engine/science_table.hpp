@@ -51,6 +51,12 @@ struct science_table
     boost::uint64_t ghost_zone_width; /// The width of ghost zones on all sides,
                                       /// measured in number of grid points. 
 
+    ///////////////////////////////////////////////////////////////////////////
+    // State getters. 
+    hpx::util::function<
+        double(std::vector<double> const&)
+    > get_rho_from_state; 
+
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int version)
     {

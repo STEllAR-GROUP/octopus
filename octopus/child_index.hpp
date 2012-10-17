@@ -10,6 +10,7 @@
 #define OCTOPUS_0CBAD952_ED85_4D22_84DF_6AB16A34E518
 
 #include <octopus/assert.hpp>
+#include <octopus/face.hpp>
 
 #include <boost/serialization/access.hpp>
 #include <boost/cstdint.hpp>
@@ -113,6 +114,8 @@ inline std::ostream& operator<<(std::ostream& os, child_index idx)
     os << "(" << idx.x() << ", " << idx.y() << ", " << idx.z() << ")";
     return os;
 }
+
+OCTOPUS_EXPORT child_index invert(face f, child_index const& idx);
 
 }
 

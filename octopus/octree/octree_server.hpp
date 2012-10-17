@@ -96,6 +96,10 @@ struct OCTOPUS_EXPORT octree_server
     {
         OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
         OCTOPUS_ASSERT_MSG(siblings_set_ < 6, "double initialization");
+
+        for (std::size_t i = 0; i < 6; ++i)
+            OCTOPUS_ASSERT(siblings_[i] != hpx::invalid_id);
+
         if ((++siblings_set_ == 6) && received_state_)
             initialized_.set(); 
     }  
@@ -134,7 +138,7 @@ struct OCTOPUS_EXPORT octree_server
     /// Remote Operations:   No.
     /// Concurrency Control: No.
     /// Synchrony Gurantee:  Synchronous. 
-    hpx::id_type safe_reference()
+    hpx::id_type reference_from_this()
     {
         // We shouldn't need to lock here, I believe.
         hpx::id_type gid = get_gid();
@@ -142,6 +146,24 @@ struct OCTOPUS_EXPORT octree_server
             gid.get_management_type() == hpx::id_type::unmanaged,
             "get_gid() should return an unmanaged GID");
         return gid;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// \brief Get a client referencing this node that is safe to pass to our
+    ///        children. The reference the child holds must be uncounted to
+    ///        prevent reference cycles.
+    /// 
+    /// Remote Operations:   No.
+    /// Concurrency Control: No.
+    /// Synchrony Gurantee:  Synchronous. 
+    octree_client client_from_this()
+    {
+        // We shouldn't need to lock here, I believe.
+        hpx::id_type gid = get_gid();
+        OCTOPUS_ASSERT_MSG(
+            gid.get_management_type() == hpx::id_type::unmanaged,
+            "get_gid() should return an unmanaged GID");
+        return octree_client(gid);;
     }
 
   public:
@@ -236,7 +258,8 @@ struct OCTOPUS_EXPORT octree_server
     /// Synchrony Gurantee:  Fire-and-Forget. 
     void tie_sibling(
         face target_f
-      , octree_client target_sib
+      , octree_client const& target_sib
+      , octree_client const& target_sib_parent
         );
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
@@ -271,7 +294,7 @@ struct OCTOPUS_EXPORT octree_server
     void tie_child_sibling(
         child_index target_kid
       , face target_f
-      , octree_client target_sib
+      , octree_client const& target_sib
         );
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
