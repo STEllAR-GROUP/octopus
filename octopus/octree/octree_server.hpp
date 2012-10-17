@@ -109,7 +109,12 @@ struct OCTOPUS_EXPORT octree_server
     {
         OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
         OCTOPUS_ASSERT_MSG(received_state_ == true, "double initialization");
+
         received_state_ = true;
+
+        for (std::size_t i = 0; i < 6; ++i)
+            OCTOPUS_ASSERT(siblings_[i] != hpx::invalid_id);
+
         if (siblings_set_ == 6)
             initialized_.set(); 
     }  

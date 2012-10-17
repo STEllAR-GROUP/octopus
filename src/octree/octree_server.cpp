@@ -19,13 +19,12 @@
 #include <octopus/operators/boost_array_arithmetic.hpp>
 #include <octopus/operators/std_vector_arithmetic.hpp>
 
-// TODO: Add invariant checker for functions which should only be called during
-// initialization. (I think I did this?).
+// TODO: Verify the size of parent_U and it's elements when initialization is
+// complete.
 
 namespace octopus
 {
 
-// TODO: Verify the size of parent_U and it's elements.
 void octree_server::inject_state_from_parent(
     vector3d<std::vector<double> > const& parent_U 
     )
@@ -280,7 +279,7 @@ void octree_server::create_child(
 
         case amr_boundary:
         {
-            octree_client bound(reference_from_this(), physical_boundary); 
+            octree_client bound(reference_from_this(), amr_boundary); 
 
             kid_client.tie_sibling_push(interior_x_face, bound,
                 client_from_this());
@@ -319,7 +318,7 @@ void octree_server::create_child(
 
         case amr_boundary:
         {
-            octree_client bound(reference_from_this(), physical_boundary); 
+            octree_client bound(reference_from_this(), amr_boundary); 
 
             kid_client.tie_sibling_push(interior_y_face, bound,
                 client_from_this());
@@ -358,7 +357,7 @@ void octree_server::create_child(
 
         case amr_boundary:
         {
-            octree_client bound(reference_from_this(), physical_boundary); 
+            octree_client bound(reference_from_this(), amr_boundary); 
 
             kid_client.tie_sibling_push(interior_z_face, bound,
                 client_from_this());
@@ -554,6 +553,9 @@ void octree_server::tie_child_sibling(
 
             source_sib = children_[target_kid];
         }
+
+        else
+            source_sib = octree_client(reference_from_this(), amr_boundary); 
     }
 
     // We established by assertion earlier that siblings_[source_f] is not NULL.
