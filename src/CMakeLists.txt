@@ -4,6 +4,7 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
 add_definitions(-DOCTOPUS_INTERNAL)
+add_definitions(-DOCTOPUS_EXPORTS)
 
 add_hpx_component(octopus
   SOURCES

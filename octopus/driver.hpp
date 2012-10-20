@@ -19,11 +19,11 @@
 /// octopus_define_problem is called after the AMR framework has been
 /// initialized. It is passed an octopus::science_table filled with default
 /// values. 
-void octopus_define_problem(octopus::science_table& sci);
+extern "C" void octopus_define_problem(octopus::science_table& sci);
 
 /// octopus_main is called after the AMR framework has been initialized and the
 /// problem defined.
-int octopus_main(boost::program_options::variables_map& vm);
+extern "C" int octopus_main(boost::program_options::variables_map& vm);
 
 #endif // OCTOPUS_17914F5A_C09A_42A4_9819_0641B54EBF15
 

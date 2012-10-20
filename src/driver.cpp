@@ -12,7 +12,6 @@
 #include <hpx/lcos/future.hpp>
 #include <hpx/lcos/future_wait.hpp>
 
-#include <octopus/driver.hpp>
 #include <octopus/engine/engine_server.hpp>
 
 using boost::program_options::options_description;
@@ -70,13 +69,28 @@ int hpx_main(variables_map& vm)
         // Figure out where we are.
         boost::plugin::dll this_exe(hpx::util::get_executable_filename());
 
-        std::pair<define_function, define_deleter> define_p = 
-            this_exe.get<define_function, define_deleter>
-                ("octopus_define_problem");
+        std::pair<define_function, define_deleter> define_p;
+        std::pair<main_function, main_deleter> main_p; 
 
-        std::pair<main_function, main_deleter> main_p = 
-            this_exe.get<main_function, main_deleter>
+        try
+        {
+            main_p = this_exe.get<main_function, main_deleter>
                 ("octopus_main");
+        }
+        catch (std::logic_error& le)
+        {
+            // Ignore the failure.
+        }
+
+        try
+        {
+            define_p = this_exe.get<define_function, define_deleter>
+                ("octopus_define_problem");
+        }
+        catch (std::logic_error& le)
+        {
+            // Ignore the failure.
+        }
 
         OCTOPUS_ASSERT_MSG(define_p.first || main_p.first,
             "either octopus_define_problem or octopus_main must be defined");
