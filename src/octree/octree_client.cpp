@@ -13,6 +13,7 @@
 #include <octopus/octree/octree_server.hpp>
 #include <octopus/engine/engine_interface.hpp>
 #include <octopus/operators/std_vector_arithmetic.hpp>
+#include <octopus/operators/boost_array_arithmetic.hpp>
 #include <octopus/math.hpp>
 
 namespace octopus
@@ -58,22 +59,110 @@ hpx::future<void> octree_client::create_child_async(
     return hpx::async<octree_server::create_child_action>(gid_, kid);
 }
 
+// FIXME: Non-optimal, find a better way to get the offsets.
 void octree_client::set_sibling_for_amr_boundary(
     face f
   , octree_client const& sib 
-  , octree_client const& parent
+  , octree_client const& sib_parent
     ) const
 {
-    // IMPLEMENT
+    gid_ = sib.gid_;
+
+    // FIXME: Non-optimal.
+    hpx::future<boost::array<boost::int64_t, 3> > sib_offset
+        = sib.get_offset_async(); 
+
+    // FIXME: Non-optimal.
+    hpx::future<boost::array<boost::int64_t, 3> > sib_parent_offset
+        = sib_parent.get_offset_async(); 
+
+    face_ = f;
+
+    boost::array<boost::int64_t, 3> v = { { 0, 0, 0 } };
+
+    switch (f)
+    {
+        case XU:
+            v[0] = -1;
+            break;
+        case XL:
+            v[0] = 1;
+            break;
+        case YU:
+            v[1] = -1;
+            break;
+        case YL:
+            v[1] = 1;
+            break;
+        case ZU:
+            v[2] = -1;
+            break;
+        case ZL:
+            v[2] = 1;
+            break;
+        default:
+            OCTOPUS_ASSERT(false);
+            break;
+    }
+
+    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const gnx = config().spatial_size;
+
+    using namespace octopus::operators;
+
+    v *= (gnx - 2 * bw);
+
+    offset_ = sib_offset.get();
+    offset_ += v;
+    offset_ -= sib_parent_offset.get() * 2;
 }
 
 void octree_client::set_sibling_for_physical_boundary(
     face f
   , octree_client const& sib 
-  , octree_client const& parent
     ) const
 {
-    // IMPLEMENT
+    gid_ = sib.gid_;
+
+    switch (f)
+    {
+        ///////////////////////////////////////////////////////////////////////
+        // Y-axis.
+        case XU:
+            reflect_ = config().x_reflect;
+            direction_ = 1;
+            break;
+        case XL:
+            reflect_ = false; 
+            direction_ = 1;
+            break;
+
+        ///////////////////////////////////////////////////////////////////////
+        // Y-axis.
+        case YU:
+            reflect_ = config().y_reflect;
+            direction_ = 2;
+            break;
+        case YL:
+            reflect_ = false; 
+            direction_ = 2;
+            break;
+
+        ///////////////////////////////////////////////////////////////////////
+        // Z-axis.
+        case ZU:
+            reflect_ = config().z_reflect;
+            direction_ = 3;
+            break;
+        case ZL:
+            reflect_ = false;
+            direction_ = 3;
+            break;
+        default:
+            OCTOPUS_ASSERT(false);
+            break;
+    }
+    
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -95,7 +184,7 @@ void octree_client::set_sibling(
 
     else if (physical_boundary == kind_)
     {
-        set_sibling_for_physical_boundary(f, sib, sib_parent); 
+        set_sibling_for_physical_boundary(f, sib); 
         return;
     }
 
@@ -124,7 +213,7 @@ void octree_client::set_sibling_push(
     {
         hpx::apply(boost::bind(
             &octree_client::set_sibling_for_physical_boundary, this,
-                _1, _2, _3), f, sib, sib_parent);
+                _1, _2), f, sib);
         return;
     }
 
@@ -199,7 +288,7 @@ void octree_client::tie_child_sibling(
     OCTOPUS_ASSERT_FMT_MSG(out_of_bounds > target_f,
                            "invalid face, face(%1%)",
                            boost::uint16_t(target_f));
-    hpx::async<octree_server::set_child_sibling_action>
+    hpx::async<octree_server::tie_child_sibling_action>
         (gid_, target_kid, target_f, target_sib).get();
 }
 
@@ -213,7 +302,7 @@ void octree_client::tie_child_sibling_push(
     OCTOPUS_ASSERT_FMT_MSG(out_of_bounds > target_f,
                            "invalid face, face(%1%)",
                            boost::uint16_t(target_f));
-    hpx::apply<octree_server::set_child_sibling_action>
+    hpx::apply<octree_server::tie_child_sibling_action>
         (gid_, target_kid, target_f, target_sib);
 }
     
@@ -223,6 +312,14 @@ octree_client::get_siblings_async() const
 {
     ensure_real();
     return hpx::async<octree_server::get_siblings_action>(gid_);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+hpx::future<boost::array<boost::int64_t, 3> >
+octree_client::get_offset_async() const
+{
+    ensure_real();
+    return hpx::async<octree_server::get_offset_action>(gid_);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -240,6 +337,8 @@ vector3d<std::vector<double> > octree_client::interpolate(
     face f
     ) const
 { // {{{
+    OCTOPUS_ASSERT(face_ == f);
+
     vector3d<std::vector<double> > input =
         hpx::async<octree_server::send_ghost_zone_action>(gid_, f).get();
 
@@ -275,11 +374,11 @@ vector3d<std::vector<double> > octree_client::interpolate(
                         boost::uint64_t const k_out = k - bw; 
 
                         ///////////////////////////////////////////////////////
-                    	bool const i0 = (offset_[0] + i) % 2;
+                        bool const i0 = (offset_[0] + i) % 2;
 
-                    	boost::uint64_t const i1 = (offset_[0] + i) / 2;
+                        boost::uint64_t const i1 = (offset_[0] + i) / 2;
                         boost::uint64_t const j1 = (offset_[1] + j) / 2;
-                    	boost::uint64_t const k1 = (offset_[2] + k) / 2;
+                        boost::uint64_t const k1 = (offset_[2] + k) / 2;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
@@ -326,11 +425,11 @@ vector3d<std::vector<double> > octree_client::interpolate(
                         boost::uint64_t const k_out = k - bw; 
 
                         ///////////////////////////////////////////////////////
-                    	bool const i0 = (offset_[0] + i) % 2;
+                        bool const i0 = (offset_[0] + i) % 2;
 
-                    	boost::uint64_t const i1 = (offset_[0] + i) / 2;
+                        boost::uint64_t const i1 = (offset_[0] + i) / 2;
                         boost::uint64_t const j1 = (offset_[1] + j) / 2;
-                    	boost::uint64_t const k1 = (offset_[2] + k) / 2;
+                        boost::uint64_t const k1 = (offset_[2] + k) / 2;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
@@ -381,9 +480,9 @@ vector3d<std::vector<double> > octree_client::interpolate(
                         ///////////////////////////////////////////////////////
                         bool const j0 = (offset_[1] + j) % 2;
 
-                    	boost::uint64_t const i1 = (offset_[0] + i) / 2;
+                        boost::uint64_t const i1 = (offset_[0] + i) / 2;
                         boost::uint64_t const j1 = (offset_[1] + j) / 2;
-                    	boost::uint64_t const k1 = (offset_[2] + k) / 2;
+                        boost::uint64_t const k1 = (offset_[2] + k) / 2;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
@@ -432,9 +531,9 @@ vector3d<std::vector<double> > octree_client::interpolate(
                         ///////////////////////////////////////////////////////
                         bool const j0 = (offset_[1] + j) % 2;
 
-                    	boost::uint64_t const i1 = (offset_[0] + i) / 2;
+                        boost::uint64_t const i1 = (offset_[0] + i) / 2;
                         boost::uint64_t const j1 = (offset_[1] + j) / 2;
-                    	boost::uint64_t const k1 = (offset_[2] + k) / 2;
+                        boost::uint64_t const k1 = (offset_[2] + k) / 2;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
@@ -485,9 +584,9 @@ vector3d<std::vector<double> > octree_client::interpolate(
                         ///////////////////////////////////////////////////////
                         bool const k0 = (offset_[1] + k) % 2;
 
-                    	boost::uint64_t const i1 = (offset_[0] + i) / 2;
+                        boost::uint64_t const i1 = (offset_[0] + i) / 2;
                         boost::uint64_t const j1 = (offset_[1] + j) / 2;
-                    	boost::uint64_t const k1 = (offset_[2] + k) / 2;
+                        boost::uint64_t const k1 = (offset_[2] + k) / 2;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
@@ -534,11 +633,11 @@ vector3d<std::vector<double> > octree_client::interpolate(
                         boost::uint64_t const k_out = k - (gnx - bw);
 
                         ///////////////////////////////////////////////////////
-                    	bool const k0 = (offset_[2] + k) % 2;
+                        bool const k0 = (offset_[2] + k) % 2;
 
-                    	boost::uint64_t const i1 = (offset_[0] + i) / 2;
+                        boost::uint64_t const i1 = (offset_[0] + i) / 2;
                         boost::uint64_t const j1 = (offset_[1] + j) / 2;
-                    	boost::uint64_t const k1 = (offset_[2] + k) / 2;
+                        boost::uint64_t const k1 = (offset_[2] + k) / 2;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
@@ -572,11 +671,13 @@ vector3d<std::vector<double> > octree_client::interpolate(
     return output; 
 } // }}}
 
-// IMPLEMENT
+// IMPLEMENT: This needs some server side support.
 vector3d<std::vector<double> > octree_client::mirror_or_outflow(
     face f
     ) const
 {
+    OCTOPUS_ASSERT(face_ == f);
+
     return vector3d<std::vector<double> >();
 }
 

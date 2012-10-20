@@ -33,7 +33,7 @@ void octree_server::inject_state_from_parent(
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().spatial_size;
     
-    const indexer2d<2> indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
+    indexer2d<2> const indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
 
     mutex_type::scoped_lock l(mtx_);
   

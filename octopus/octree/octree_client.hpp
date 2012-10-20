@@ -75,23 +75,23 @@ BOOST_SERIALIZATION_SPLIT_FREE(octopus::boundary_kind);
 namespace octopus
 {
 
-// NOTE: This class is NOT thread safe when it is a physical or amr boundary.
+// FIXME: Avoid using 'mutable'. 
+// NOTE: This class is NOT thread safe when it is a physical or AMR boundary.
 struct OCTOPUS_EXPORT octree_client
 {
   private:
-    hpx::id_type gid_;
+    mutable hpx::id_type gid_;
     boundary_kind kind_;
 
-    // FIXME: This is only used by non-real boundaries.
-    face face_;
+    // FIXME: This is only used by non-real boundaries, optimize.
+    mutable face face_;
 
     // FIXME: This is only used for physical boundaries, optimize.
-    vector3d<std::vector<double> > map_;
-    bool reflect_;
-    boost::uint64_t direction_; ///< 0 == x, 1 == y, 2 == z 
+    mutable bool reflect_;
+    mutable boost::uint64_t direction_; ///< 0 == x, 1 == y, 2 == z 
 
     // FIXME: This is only used for AMR boundaries, optimize.
-    boost::array<boost::int64_t, 3> offset_; ///< Relative offset.
+    mutable boost::array<boost::int64_t, 3> offset_; ///< Relative offset.
     
     BOOST_COPYABLE_AND_MOVABLE(octree_client);
 
@@ -107,7 +107,6 @@ struct OCTOPUS_EXPORT octree_client
         if (!real())
         {
             ar & face_;
-            ar & map_;
             ar & reflect_;
             ar & direction_;
             ar & offset_;
@@ -121,7 +120,6 @@ struct OCTOPUS_EXPORT octree_client
       : gid_(gid)
       , kind_(real_boundary)
       , face_()
-      , map_()
       , reflect_()
       , direction_()
       , offset_()
@@ -134,7 +132,6 @@ struct OCTOPUS_EXPORT octree_client
       : gid_(gid)
       , kind_(real_boundary)
       , face_()
-      , map_()
       , reflect_()
       , direction_()
       , offset_()
@@ -144,7 +141,6 @@ struct OCTOPUS_EXPORT octree_client
       : gid_(parent)
       , kind_(kind)
       , face_()
-      , map_()
       , reflect_()
       , direction_()
       , offset_()
@@ -156,7 +152,6 @@ struct OCTOPUS_EXPORT octree_client
       : gid_(parent)
       , kind_(kind)
       , face_()
-      , map_()
       , reflect_()
       , direction_()
       , offset_()
@@ -172,7 +167,6 @@ struct OCTOPUS_EXPORT octree_client
         gid_ = gid;
         kind_ = real_boundary;
         face_ = face();
-        map_.clear();
         reflect_ = false;
         direction_ = 0;
         offset_[0] = 0;
@@ -189,7 +183,6 @@ struct OCTOPUS_EXPORT octree_client
         gid_ = gid;
         kind_ = real_boundary;
         face_ = face();
-        map_.clear();
         reflect_ = false;
         direction_ = 0;
         offset_[0] = 0;
@@ -218,7 +211,6 @@ struct OCTOPUS_EXPORT octree_client
       : gid_(hpx::naming::invalid_id)
       , kind_(invalid_boundary)
       , face_()
-      , map_()
       , reflect_()
       , direction_()
       , offset_()
@@ -228,7 +220,6 @@ struct OCTOPUS_EXPORT octree_client
       : gid_(other.gid_)
       , kind_(other.kind_)
       , face_(other.face_)
-      , map_(other.map_)
       , reflect_(other.reflect_)
       , direction_(other.direction_)
       , offset_(other.offset_)
@@ -238,7 +229,6 @@ struct OCTOPUS_EXPORT octree_client
       : gid_(other.gid_)
       , kind_(other.kind_)
       , face_(other.face_)
-      , map_(other.map_)
       , reflect_(other.reflect_)
       , direction_(other.direction_)
       , offset_(other.offset_)
@@ -249,7 +239,6 @@ struct OCTOPUS_EXPORT octree_client
       : gid_(parent.gid_)
       , kind_(kind)
       , face_()
-      , map_()
       , reflect_()
       , direction_()
       , offset_()
@@ -261,7 +250,6 @@ struct OCTOPUS_EXPORT octree_client
       : gid_(parent.gid_)
       , kind_(kind)
       , face_()
-      , map_()
       , reflect_()
       , direction_()
       , offset_()
@@ -275,7 +263,6 @@ struct OCTOPUS_EXPORT octree_client
         gid_ = other.gid_;
         kind_ = other.kind_;        
         face_ = other.face_;
-        map_ = other.map_;
         reflect_ = other.reflect_;
         direction_ = other.direction_;
         offset_ = other.offset_;
@@ -287,7 +274,6 @@ struct OCTOPUS_EXPORT octree_client
         gid_ = other.gid_;
         kind_ = other.kind_;        
         face_ = other.face_;
-        map_ = other.map_;
         reflect_ = other.reflect_;
         direction_ = other.direction_;
         offset_ = other.offset_;
@@ -393,7 +379,6 @@ struct OCTOPUS_EXPORT octree_client
     void set_sibling_for_physical_boundary(
         face f
       , octree_client const& sib 
-      , octree_client const& sib_parent
         ) const;
     
   public:
@@ -465,6 +450,16 @@ struct OCTOPUS_EXPORT octree_client
     }
 
     hpx::future<boost::array<octree_client, 6> > get_siblings_async() const;
+    // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
+    // {{{ get_offset
+    boost::array<boost::int64_t, 3> get_offset() const
+    {
+        return get_offset_async().get();
+    }
+
+    hpx::future<boost::array<boost::int64_t, 3> > get_offset_async() const;
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////

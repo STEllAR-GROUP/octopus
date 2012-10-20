@@ -61,6 +61,11 @@ if(OCTOPUS_TEST_IN_PLACE)
 else()
   add_definitions(-DOCTOPUS_ENABLE_TEST_IN_PLACE=0)
 endif()
+  
+################################################################################
+hpx_include(CompilerFlags)
+
+hpx_use_flag_if_available(-Werror=switch LANGUAGES CXX)
 
 ################################################################################
 add_subdirectory(src)
