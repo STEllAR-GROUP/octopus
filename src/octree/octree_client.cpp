@@ -25,7 +25,7 @@ void octree_client::create_root(
   , octree_init_data const& init
     ) 
 {
-    ensure_real();
+    kind_ = real_boundary;
 
     OCTOPUS_ASSERT_FMT_MSG(!(locality.get_msb() & 0xFF),
                            "target is not a locality, gid(%1%)",
@@ -40,7 +40,7 @@ void octree_client::create_root(
   , BOOST_RV_REF(octree_init_data) init
     ) 
 {
-    ensure_real();
+    kind_ = real_boundary;
 
     OCTOPUS_ASSERT_FMT_MSG(!(locality.get_msb() & 0xFF),
                            "target is not a locality, gid(%1%)",
