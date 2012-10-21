@@ -35,7 +35,7 @@ struct science_table
     // Any code in the AMR driver that needs to be aware of what's in the state
     // should be in the science table instead. 
     hpx::util::function<
-        double&(std::vector<double> const&)
+        double const&(std::vector<double> const&)
     > rho; 
 
     /// Defines the physical boundaries. Returns true if a face at a location in

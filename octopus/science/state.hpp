@@ -17,7 +17,7 @@ namespace octopus
 template <std::size_t Index>
 struct get_value_from_state : trivial_serialization
 {
-    typedef double result_type;
+    typedef double const& result_type;
  
     result_type operator()(
         std::vector<double> const& state 

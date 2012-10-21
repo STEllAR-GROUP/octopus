@@ -11,7 +11,7 @@ struct enforce_outflow : octopus::trivial_serialization
 {
     typedef void result_type;
 
-    result_type operator()(boost::array<double, 3> const& x, face f) const
+    result_type operator()(boost::array<double, 3> x, octopus::face f) const
     {
         // IMPLEMENT
     } 
