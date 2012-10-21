@@ -11,13 +11,14 @@
 
 #include <octopus/assert.hpp>
 #include <octopus/face.hpp>
+#include <octopus/trivial_serialization.hpp>
 
 #include <boost/array.hpp>
 
 namespace octopus
 {
 
-struct physical_boundaries_at_zero
+struct physical_boundaries_at_zero : trivial_serialization
 {
     typedef bool result_type;
  
@@ -57,9 +58,6 @@ struct physical_boundaries_at_zero
         OCTOPUS_ASSERT(false);
         return false;
     }
-
-    // Trivial serialization support.
-    template <typename Archive> void serialize(Archive&, unsigned int) {}
 };
 
 }

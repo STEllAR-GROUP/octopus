@@ -31,6 +31,10 @@ struct OCTOPUS_EXPORT octree_server
     boost::uint8_t siblings_set_;
     bool received_state_;
 
+    // Circular doubly-linked list of timesteps.
+    octree_client future_;
+    octree_client past_;
+
     ///////////////////////////////////////////////////////////////////////////
     // From OctNode
     octree_client parent_; 
@@ -42,8 +46,9 @@ struct OCTOPUS_EXPORT octree_server
 
     ///////////////////////////////////////////////////////////////////////////
     // From Grid/GridNode
-    double dx_;   ///< The spatial size of the node (w/o ghost zones).
-                  ///  NOTE: Confirmation needed from Dominic. 
+    // NOTE: Rename dx_;
+    double dx_;   ///< The spatial size of the node (w/o ghost zones). h in the
+                  ///  original code. NOTE: Confirmation needed from Dominic.  
     double time_; ///< The current (physics?) time.
                   ///  NOTE: Confirmation needed from Dominic.
 
@@ -64,10 +69,6 @@ struct OCTOPUS_EXPORT octree_server
                                        ///  ghost zones. Size of the state
                                        ///  vectors comes from the science
                                        ///  table.
-
-    vector3d<std::vector<double> > U0_; ///< 3d array of state vectors, includes
-                                        ///  ghost zones. Used for summing the
-                                        ///  differential. 
 
     ///////////////////////////////////////////////////////////////////////////
     // TODO: Migration.
@@ -184,6 +185,8 @@ struct OCTOPUS_EXPORT octree_server
         )
       : siblings_set_(6)
       , received_state_(false)
+      , future_(init.future)
+      , past_(init.past)
       , parent_(init.parent)
       , level_(init.level)
       , location_(init.location)
@@ -207,6 +210,8 @@ struct OCTOPUS_EXPORT octree_server
         )
       : siblings_set_(0)
       , received_state_(false)
+      , future_(init.future)
+      , past_(init.past)
       , parent_(init.parent)
       , level_(init.level)
       , location_(init.location)
@@ -223,6 +228,63 @@ struct OCTOPUS_EXPORT octree_server
  
         inject_state_from_parent(parent_U);
     }
+
+    // FIXME: More descriptive name.
+    boost::array<double, 3> xfx(
+        boost::uint64_t i
+      , boost::uint64_t j
+      , boost::uint64_t k
+        ) const
+    {
+    	boost::array<double, 3> x = { { xf(i), yc(j), zc(k) } };
+    	return x;
+    }
+    
+    // FIXME: More descriptive name.
+    boost::array<double, 3> xfy(
+        boost::uint64_t i
+      , boost::uint64_t j
+      , boost::uint64_t k
+        ) const
+    {
+    	boost::array<double, 3> x = { { xc(i), yf(j), zc(k) } };
+    	return x;
+    }
+    
+    // FIXME: More descriptive name.
+    boost::array<double, 3> xfz(
+        boost::uint64_t i
+      , boost::uint64_t j
+      , boost::uint64_t k
+        ) const
+    {
+    	boost::array<double, 3> x = { { xc(i), yc(j), zf(k) } };
+    	return x;
+    }
+
+    // FIXME: More descriptive name.
+    double xc(boost::uint64_t i) const
+    {
+        return xf(i) + 0.5 * dx_;
+    }
+
+    // FIXME: More descriptive name.
+    double yc(boost::uint64_t j) const
+    {
+        return yf(j) + 0.5 * dx_;
+    }
+
+    // FIXME: More descriptive name.
+    double zc(boost::uint64_t k) const
+    {
+        return zf(k) + 0.5 * dx_;
+    }
+
+    double xf(boost::uint64_t i) const;
+
+    double yf(boost::uint64_t i) const;
+
+    double zf(boost::uint64_t i) const;
 
     ///////////////////////////////////////////////////////////////////////////
     /// \brief Create the \a kid child for this node.
@@ -245,7 +307,7 @@ struct OCTOPUS_EXPORT octree_server
     /// Concurrency Control: Locks mtx_.
     /// Synchrony Gurantee:  Fire-and-Forget 
     void set_sibling(
-        face f
+        face f ///< Caller's direction, relative to us.
       , octree_client const& sib
         );
 
@@ -342,8 +404,8 @@ struct OCTOPUS_EXPORT octree_server
 
 
     ///////////////////////////////////////////////////////////////////////////
-    // FIXME: Push don't pull.
     // NOTE: enforce_boundaries in the original code.
+    // IMPLEMENT: Push don't pull.
     /// \brief Requests ghost zone data from all siblings. 
     void receive_ghost_zones();
 
@@ -351,7 +413,7 @@ struct OCTOPUS_EXPORT octree_server
                                 receive_ghost_zones,
                                 receive_ghost_zones_action);
 
-    // FIXME: Push don't pull.
+    // IMPLEMENT: Push don't pull.
     /// \brief Produces ghost zone data for a sibling.
     vector3d<std::vector<double> > send_ghost_zone(
         face f ///< Our direction, relative to the caller.
@@ -360,6 +422,17 @@ struct OCTOPUS_EXPORT octree_server
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                 send_ghost_zone,
                                 send_ghost_zone_action);
+
+    // IMPLEMENT: Push don't pull.
+    vector3d<std::vector<double> > send_mapped_ghost_zone(
+        face f ///< Our direction, relative to the caller.
+      , bool reflect
+      , axis direction
+        );
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                send_mapped_ghost_zone,
+                                send_mapped_ghost_zone_action);
 
   private:
     // FIXME: Rvalue reference kung-fo must be applied here
@@ -382,12 +455,16 @@ struct OCTOPUS_EXPORT octree_server
                                 apply_action);
 
     ///////////////////////////////////////////////////////////////////////////
+/*
+    // REVIEW: Not sure this is necessary, can't we just look up these values 
+    // from the previous timestep?
     // IMPLEMENT
     void save_state();
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                 save_state,
                                 save_state_action);  
+*/
 
     ///////////////////////////////////////////////////////////////////////////
     // IMPLEMENT
@@ -411,6 +488,7 @@ struct OCTOPUS_EXPORT octree_server
     // maybe the whole thing should live in the driver.
     // NOTE: This function DOES NOT LOCK, do not call concurrently without
     // synchronization. 
+    // IMPLEMENT: Push don't pull.
     void step(double dt);
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
@@ -422,6 +500,7 @@ struct OCTOPUS_EXPORT octree_server
     // maybe the whole thing should live in the driver.
     // NOTE: This function DOES NOT LOCK, do not call concurrently without
     // synchronization.
+    // IMPLEMENT: Push don't pull.
     void sub_step(double dt, double beta);
 
   public:
@@ -509,6 +588,7 @@ struct OCTOPUS_EXPORT octree_server
         BOOST_PP_CAT(octopus_octree_server_, BOOST_PP_CAT(name, _action)))  \
     /**/
 
+// FIXME: Make sure this is in order.
 OCTOPUS_REGISTER_ACTION(create_child);
 OCTOPUS_REGISTER_ACTION(set_sibling);
 OCTOPUS_REGISTER_ACTION(tie_sibling);
@@ -517,10 +597,11 @@ OCTOPUS_REGISTER_ACTION(tie_child_sibling);
 OCTOPUS_REGISTER_ACTION(get_siblings);
 OCTOPUS_REGISTER_ACTION(get_offset);
 OCTOPUS_REGISTER_ACTION(inject_state_from_children);
-OCTOPUS_REGISTER_ACTION(send_ghost_zone);
 OCTOPUS_REGISTER_ACTION(receive_ghost_zones);
+OCTOPUS_REGISTER_ACTION(send_ghost_zone);
+OCTOPUS_REGISTER_ACTION(send_mapped_ghost_zone);
 OCTOPUS_REGISTER_ACTION(apply);
-OCTOPUS_REGISTER_ACTION(save_state);
+//OCTOPUS_REGISTER_ACTION(save_state);
 OCTOPUS_REGISTER_ACTION(add_differentials);
 OCTOPUS_REGISTER_ACTION(clear_differentials);
 OCTOPUS_REGISTER_ACTION(step);

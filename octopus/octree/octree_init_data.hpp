@@ -20,6 +20,8 @@ namespace octopus
 // NOTE: Aggregate for laziness.
 struct octree_init_data
 {
+    hpx::id_type                    future;
+    hpx::id_type                    past;
     hpx::id_type                    parent;
     boost::uint64_t                 level;
     boost::array<boost::int64_t, 3> location;
@@ -31,6 +33,8 @@ struct octree_init_data
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int version)
     {
+        ar & future;
+        ar & past;
         ar & parent;
         ar & level;
         ar & boost::serialization::make_array(location.data(), location.size());     

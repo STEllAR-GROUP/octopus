@@ -21,14 +21,15 @@
 namespace octopus
 {
 
-// FIXME: Optimize this to be "4d" for zero-copy purposes.
 template <typename T>
 struct vector3d
 {
+    typedef boost::uint64_t size_type;
+
   private:
-    std::size_t x_length_;
-    std::size_t y_length_;
-    std::size_t z_length_;
+    size_type x_length_;
+    size_type y_length_;
+    size_type z_length_;
     std::vector<T> data_;
 
     BOOST_COPYABLE_AND_MOVABLE(vector3d);
@@ -45,7 +46,7 @@ struct vector3d
     vector3d() {}
 
     vector3d(
-        std::size_t length
+        size_type length
       , T dflt = T()
         )
       : x_length_(length)
@@ -55,9 +56,9 @@ struct vector3d
     {}
 
     vector3d(
-        std::size_t x_length
-      , std::size_t y_length
-      , std::size_t z_length
+        size_type x_length
+      , size_type y_length
+      , size_type z_length
       , T dflt = T()
         )
       : x_length_(x_length)
@@ -100,33 +101,33 @@ struct vector3d
 
     vector3d& operator=(T const& value)
     {
-        for (std::size_t i = 0; i < data_.size(); ++i)
+        for (size_type i = 0; i < data_.size(); ++i)
             data_[i] = value;
         return *this;
     }
 
-    std::size_t size() const
+    size_type size() const
     {
         return data_.size();
     } 
 
-    std::size_t x_length() const
+    size_type x_length() const
     {
         return x_length_; 
     } 
 
-    std::size_t y_length() const
+    size_type y_length() const
     {
         return y_length_; 
     } 
 
-    std::size_t z_length() const
+    size_type z_length() const
     {
         return z_length_; 
     } 
 
     void resize(
-        std::size_t length
+        size_type length
       , T dflt = T()
         )
     {
@@ -137,9 +138,9 @@ struct vector3d
     }
 
     void resize(
-        std::size_t x_length
-      , std::size_t y_length
-      , std::size_t z_length
+        size_type x_length
+      , size_type y_length
+      , size_type z_length
       , T dflt = T()
         )
     {
@@ -157,7 +158,7 @@ struct vector3d
         data_.clear();
     }
 
-    T& operator()(std::size_t x, std::size_t y, std::size_t z)
+    T& operator()(size_type x, size_type y, size_type z)
     {
         OCTOPUS_ASSERT_FMT_MSG(x < x_length_,
             "x coordinate (%1%) is larger than the x length (%2%)",
@@ -171,7 +172,7 @@ struct vector3d
         return data_[x + y * x_length_ + z * x_length_ * y_length_];
     }
 
-    T const& operator()(std::size_t x, std::size_t y, std::size_t z) const
+    T const& operator()(size_type x, size_type y, size_type z) const
     {
         OCTOPUS_ASSERT_FMT_MSG(x < x_length_,
             "x coordinate (%1%) is larger than the x length (%2%)",
@@ -185,7 +186,17 @@ struct vector3d
         return data_[x + y * x_length_ + z * x_length_ * y_length_];
     }
 
-    T& operator[](std::size_t idx)
+    T& operator()(boost::array<size_type, 3> const& xyz)
+    {
+        return (*this)(xyz[0], xyz[1], xyz[2]);
+    }
+
+    T const& operator()(boost::array<size_type, 3> const& xyz) const
+    {
+        return (*this)(xyz[0], xyz[1], xyz[2]);
+    }
+
+    T& operator[](size_type idx)
     {
         OCTOPUS_ASSERT_FMT_MSG(idx < data_.size(),
             "index (%1%) is larger than the data size (%2%)",
@@ -193,7 +204,7 @@ struct vector3d
         return data_[idx];
     }
 
-    T const& operator[](std::size_t idx) const
+    T const& operator[](size_type idx) const
     {
         OCTOPUS_ASSERT_FMT_MSG(idx < data_.size(),
             "index (%1%) is larger than the data size (%2%)",

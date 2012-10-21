@@ -5,25 +5,14 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
+#if !defined(OCTOPUS_6B85CEFD_F97E_42AD_91FA_FEA7261EFFCB)
+#define OCTOPUS_6B85CEFD_F97E_42AD_91FA_FEA7261EFFCB
+
 #include <octopus/science/science_table.hpp>
+
+#include <octopus/science/state.hpp>
 #include <octopus/science/physical_boundaries.hpp>
 #include <octopus/science/reconstruction.hpp>
-#include <octopus/science/state.hpp>
 
-namespace octopus
-{
-
-science_table default_science_table()
-{
-    science_table sci;
-
-    sci.physical_boundaries = physical_boundaries_at_zero();
-
-    sci.reconstruction = minmod_reconstruction(); 
-    sci.ghost_zone_width = minmod_reconstruction::ghost_zone_width;
-
-    return sci;
-}
-
-}
+#endif // OCTOPUS_6B85CEFD_F97E_42AD_91FA_FEA7261EFFCB
 

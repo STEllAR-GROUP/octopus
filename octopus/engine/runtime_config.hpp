@@ -37,14 +37,27 @@ struct config_data
 
     boost::uint64_t max_refinement_level; 
 
-    ///< The spatial size of each grid including ghost zones.
+    ///< The edge length of each grid node (units == discrete points aka zones) 
+    ///  including ghost zones.
+    /// NOTE: Needs confirmation. 
     // NOTE: This MUST be a power of 2.
-    boost::uint64_t spatial_size; // GNX, 8+2*bw, TODO: validate min/max 
+    boost::uint64_t grid_node_length; // GNX, 8+2*BW, TODO: validate min/max 
 
-    ///< Order of Runge Kutta used to solve the PDE.
+    ///< The spatial edge length of the problem NOTE: Confirm.
+    double spatial_domain; // GRID_DIM, 1.5e-4 (Zach) and 1.0 (Dominic) 
+
+    ///< The "physics" distance between zones in the root node/most coarse
+    ///  refinement level (aka level 0). 
+    /// NOTE: Needs confirmation. 
+    /// NOTE: Rename to initial_space_step 
+    double initial_spatial_step; // h0, (2*GRID_DIM/double(GNX-2*BW)),
+                                 // TODO: validate min/max
+
+    ///< Order of (TVD) Runge Kutta used to solve the PDE.
     boost::uint16_t runge_kutta_order;
 
-    ///< Reflection control for each axis.
+    ///< Reflection control for each axis. TODO: error handling if no reflection
+    ///  function is available for a particular axis.
     bool x_reflect;
     bool y_reflect;
     bool z_reflect;
@@ -63,7 +76,9 @@ struct config_data
     void serialize(Archive& ar, const unsigned int version)
     {
         ar & max_refinement_level;
-        ar & spatial_size;
+        ar & grid_node_length;
+        ar & spatial_domain;
+        ar & initial_spatial_step;
         ar & runge_kutta_order;
         ar & x_reflect;
         ar & y_reflect;

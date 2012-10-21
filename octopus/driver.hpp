@@ -9,7 +9,7 @@
 #define OCTOPUS_17914F5A_C09A_42A4_9819_0641B54EBF15
 
 #include <octopus/config.hpp>
-#include <octopus/engine/science_table.hpp>
+#include <octopus/science/science_table.hpp>
 
 #include <boost/program_options.hpp>
 

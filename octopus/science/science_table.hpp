@@ -14,6 +14,7 @@
 
 // NOTE: (to self) Don't forgot to update default_science_table when
 // science_table is updated.
+// FIXME: This should probably live in another header.
 
 namespace octopus
 {
@@ -27,7 +28,15 @@ namespace octopus
 struct science_table
 {
     boost::uint64_t state_size;  /// Number of doubles needed for state for
-                                 /// each discrete value on the grid.
+                                 /// each discrete value (zone) on the grid.
+
+    ///////////////////////////////////////////////////////////////////////////
+    // State getters. FIXME: Abstract these away entirely into application code.
+    // Any code in the AMR driver that needs to be aware of what's in the state
+    // should be in the science table instead. 
+    hpx::util::function<
+        double&(std::vector<double> const&)
+    > rho; 
 
     /// Defines the physical boundaries. Returns true if a face at a location in
     /// the octree and a particular level of refinement is a physical boundary. 
@@ -40,6 +49,8 @@ struct science_table
     > physical_boundaries; 
 
     /// The reconstruction scheme.
+    // FIXME: How did an std::vector<std::vector<> > sneak into this code? Use
+    // vector3d instead.
     hpx::util::function<
         void(
             std::vector<std::vector<double> > const&
@@ -51,19 +62,39 @@ struct science_table
     boost::uint64_t ghost_zone_width; /// The width of ghost zones on all sides,
                                       /// measured in number of grid points. 
 
-    ///////////////////////////////////////////////////////////////////////////
-    // State getters. 
     hpx::util::function<
-        double(std::vector<double> const&)
-    > get_rho_from_state; 
+        void(
+            boost::array<double, 3> const&
+          , face
+            )
+    > enforce_outflow; 
+
+    hpx::util::function<
+        void(std::vector<double>&)
+    > reflect_on_x; 
+
+    hpx::util::function<
+        void(std::vector<double>&)
+    > reflect_on_y; 
+
+    hpx::util::function<
+        void(std::vector<double>&)
+    > reflect_on_z; 
 
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int version)
     {
-        ar & ghost_zone_width;
         ar & state_size;
+        ar & rho; 
+
         ar & physical_boundaries;
         ar & reconstruction;
+        ar & ghost_zone_width;
+        ar & enforce_outflow;
+
+        ar & reflect_on_x;
+        ar & reflect_on_y;
+        ar & reflect_on_z;
     }
 };
 

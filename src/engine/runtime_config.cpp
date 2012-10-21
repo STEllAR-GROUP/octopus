@@ -13,6 +13,10 @@
 
 #include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/preprocessor/stringize.hpp>
+
+#include <iomanip>
+
 
 namespace octopus
 {
@@ -63,6 +67,35 @@ struct config_reader
     }
 };
 
+boost::format format_option(
+    std::string const& name
+  , bool value
+    )
+{
+    char const* const fmt = "%1% %|40t| = %2%";
+    return ( boost::format(fmt) % name
+           % boost::io::group(std::boolalpha, value));
+}
+
+boost::format format_option(
+    std::string const& name
+  , double value
+    )
+{
+    char const* const fmt = "%1% %|40t| = %e";
+    return (boost::format(fmt) % name % value);
+}
+
+template <typename T>
+boost::format format_option(
+    std::string const& name
+  , T const& value
+    )
+{
+    char const* const fmt = "%1% %|40t| = %2%";
+    return (boost::format(fmt) % name % value);
+}
+
 // }}}
  
 ///////////////////////////////////////////////////////////////////////////////
@@ -71,25 +104,24 @@ std::ostream& operator<<(
   , config_data const& cfg
     )
 {
-    char const* fmt = "%1% %|40t| = %2%";
+    #define OCTOPUS_FORMAT_OPTION(option)                                   \
+        format_option("octopus." BOOST_PP_STRINGIZE(option), cfg.option)    \
+        /**/
 
     // NOTE: Last item should not have a newline after it.
     os
-        << (boost::format(fmt) % "octopus.max_refinement_level"
-                               % cfg.max_refinement_level) << "\n"
-        << (boost::format(fmt) % "octopus.spatial_size"
-                               % cfg.spatial_size) << "\n"
-        << (boost::format(fmt) % "octopus.runge_kutta_order"
-                               % cfg.runge_kutta_order) << "\n"
-        << (boost::format(fmt) % "octopus.x_reflect"
-                               % cfg.x_reflect) << "\n"
-        << (boost::format(fmt) % "octopus.y_reflect"
-                               % cfg.y_reflect) << "\n"
-        << (boost::format(fmt) % "octopus.z_reflect"
-                               % cfg.z_reflect) << "\n"
-        << (boost::format(fmt) % "octopus.temporal_prediction_gap"
-                               % cfg.temporal_prediction_gap)
+        << OCTOPUS_FORMAT_OPTION(max_refinement_level) << "\n"
+        << OCTOPUS_FORMAT_OPTION(grid_node_length) << "\n"
+        << OCTOPUS_FORMAT_OPTION(spatial_domain) << "\n"
+        << OCTOPUS_FORMAT_OPTION(initial_spatial_step) << "\n"
+        << OCTOPUS_FORMAT_OPTION(runge_kutta_order) << "\n"
+        << OCTOPUS_FORMAT_OPTION(x_reflect) << "\n"
+        << OCTOPUS_FORMAT_OPTION(y_reflect) << "\n"
+        << OCTOPUS_FORMAT_OPTION(z_reflect) << "\n"
+        << OCTOPUS_FORMAT_OPTION(temporal_prediction_gap)
     ;
+
+    #undef OCTOPUS_FORMAT_OPTION
 
     return os;
 }
@@ -100,9 +132,13 @@ config_data config_from_ini()
 
     config_reader reader;
 
+    // FIXME: Math in INI would make this smoother, some of these settings
+    // should default to a formula not a hard-coded value.
     reader
         ("max_refinement_level", cfg.max_refinement_level, 1) 
-        ("spatial_size", cfg.spatial_size, 12) 
+        ("grid_node_length", cfg.grid_node_length, 12) 
+        ("spatial_domain", cfg.spatial_domain, 1.5e-4) 
+        ("initial_spatial_step", cfg.initial_spatial_step, 3.75e-5) 
         ("runge_kutta_order", cfg.runge_kutta_order, 1) 
         ("x_reflect", cfg.x_reflect, false) 
         ("y_reflect", cfg.y_reflect, false) 

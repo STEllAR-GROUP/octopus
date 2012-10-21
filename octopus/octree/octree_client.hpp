@@ -14,6 +14,7 @@
 #include <octopus/octree/octree_init_data.hpp>
 #include <octopus/child_index.hpp>
 #include <octopus/face.hpp>
+#include <octopus/axis.hpp>
 
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/array.hpp>
@@ -88,7 +89,7 @@ struct OCTOPUS_EXPORT octree_client
 
     // FIXME: This is only used for physical boundaries, optimize.
     mutable bool reflect_;
-    mutable boost::uint64_t direction_; ///< 0 == x, 1 == y, 2 == z 
+    mutable axis direction_; 
 
     // FIXME: This is only used for AMR boundaries, optimize.
     mutable boost::array<boost::int64_t, 3> offset_; ///< Relative offset.
@@ -121,7 +122,7 @@ struct OCTOPUS_EXPORT octree_client
       , kind_(real_boundary)
       , face_()
       , reflect_()
-      , direction_()
+      , direction_(invalid_axis)
       , offset_()
     {}
 
@@ -133,7 +134,7 @@ struct OCTOPUS_EXPORT octree_client
       , kind_(real_boundary)
       , face_()
       , reflect_()
-      , direction_()
+      , direction_(invalid_axis)
       , offset_()
     {}
 
@@ -142,7 +143,7 @@ struct OCTOPUS_EXPORT octree_client
       , kind_(kind)
       , face_()
       , reflect_()
-      , direction_()
+      , direction_(invalid_axis)
       , offset_()
     {
         OCTOPUS_ASSERT(kind != real_boundary);
@@ -153,7 +154,7 @@ struct OCTOPUS_EXPORT octree_client
       , kind_(kind)
       , face_()
       , reflect_()
-      , direction_()
+      , direction_(invalid_axis)
       , offset_()
     {
         OCTOPUS_ASSERT(kind != real_boundary);
@@ -168,7 +169,7 @@ struct OCTOPUS_EXPORT octree_client
         kind_ = real_boundary;
         face_ = face();
         reflect_ = false;
-        direction_ = 0;
+        direction_ = invalid_axis;
         offset_[0] = 0;
         offset_[1] = 0;
         offset_[2] = 0;
@@ -184,7 +185,7 @@ struct OCTOPUS_EXPORT octree_client
         kind_ = real_boundary;
         face_ = face();
         reflect_ = false;
-        direction_ = 0;
+        direction_ = invalid_axis;
         offset_[0] = 0;
         offset_[1] = 0;
         offset_[2] = 0;
@@ -212,7 +213,7 @@ struct OCTOPUS_EXPORT octree_client
       , kind_(invalid_boundary)
       , face_()
       , reflect_()
-      , direction_()
+      , direction_(invalid_axis)
       , offset_()
     {}
 
@@ -240,7 +241,7 @@ struct OCTOPUS_EXPORT octree_client
       , kind_(kind)
       , face_()
       , reflect_()
-      , direction_()
+      , direction_(invalid_axis)
       , offset_()
     {
         OCTOPUS_ASSERT(kind != real_boundary);
@@ -251,7 +252,7 @@ struct OCTOPUS_EXPORT octree_client
       , kind_(kind)
       , face_()
       , reflect_()
-      , direction_()
+      , direction_(invalid_axis)
       , offset_()
     {
         OCTOPUS_ASSERT(kind != real_boundary);
@@ -463,14 +464,28 @@ struct OCTOPUS_EXPORT octree_client
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
+    // {{{ Boundary code. 
   private:
+    // AMR boundary.
     vector3d<std::vector<double> > interpolate(
         face f
         ) const;
 
-    vector3d<std::vector<double> > mirror_or_outflow(
+    // AMR boundary.
+    hpx::future<vector3d<std::vector<double> > > interpolate_async(
         face f
         ) const;
+
+    // Physical boundary. 
+    vector3d<std::vector<double> > map(
+        face f
+        ) const;
+
+    // Physical boundary. 
+    hpx::future<vector3d<std::vector<double> > > map_async(
+        face f
+        ) const;
+    // }}}
 
   public:
     // {{{ receive_ghost_zones

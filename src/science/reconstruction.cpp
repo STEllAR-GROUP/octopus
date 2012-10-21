@@ -20,7 +20,7 @@ void minmod_reconstruction::operator()(
     ) const
 {
     boost::uint64_t const ss = science().state_size;
-    boost::uint64_t const gnx = config().spatial_size;
+    boost::uint64_t const gnx = config().grid_node_length;
 
     std::vector<std::vector<double> > slope(gnx, std::vector<double>(ss));
 

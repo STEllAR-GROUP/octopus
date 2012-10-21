@@ -60,12 +60,14 @@ hpx::future<void> octree_client::create_child_async(
 }
 
 // FIXME: Non-optimal, find a better way to get the offsets.
+// P.S. A way that doesn't involve passing a billion parameters, e.g. something
+// like *_init_data.
 void octree_client::set_sibling_for_amr_boundary(
     face f
   , octree_client const& sib 
   , octree_client const& sib_parent
     ) const
-{
+{ // {{{
     gid_ = sib.gid_;
 
     // FIXME: Non-optimal.
@@ -106,7 +108,7 @@ void octree_client::set_sibling_for_amr_boundary(
     }
 
     boost::uint64_t const bw = science().ghost_zone_width;
-    boost::uint64_t const gnx = config().spatial_size;
+    boost::uint64_t const gnx = config().grid_node_length;
 
     using namespace octopus::operators;
 
@@ -115,13 +117,13 @@ void octree_client::set_sibling_for_amr_boundary(
     offset_ = sib_offset.get();
     offset_ += v;
     offset_ -= sib_parent_offset.get() * 2;
-}
+} // }}}
 
 void octree_client::set_sibling_for_physical_boundary(
     face f
   , octree_client const& sib 
     ) const
-{
+{ // {{{
     gid_ = sib.gid_;
 
     switch (f)
@@ -130,40 +132,41 @@ void octree_client::set_sibling_for_physical_boundary(
         // Y-axis.
         case XU:
             reflect_ = config().x_reflect;
-            direction_ = 1;
+            direction_ = x_axis;
             break;
         case XL:
             reflect_ = false; 
-            direction_ = 1;
+            direction_ = x_axis;
             break;
 
         ///////////////////////////////////////////////////////////////////////
         // Y-axis.
         case YU:
             reflect_ = config().y_reflect;
-            direction_ = 2;
+            direction_ = y_axis;
             break;
         case YL:
             reflect_ = false; 
-            direction_ = 2;
+            direction_ = y_axis;
             break;
 
         ///////////////////////////////////////////////////////////////////////
         // Z-axis.
         case ZU:
             reflect_ = config().z_reflect;
-            direction_ = 3;
+            direction_ = z_axis;
             break;
         case ZL:
             reflect_ = false;
-            direction_ = 3;
+            direction_ = z_axis;
             break;
         default:
             OCTOPUS_ASSERT(false);
             break;
     }
-    
-}
+
+    OCTOPUS_ASSERT(false);
+} // }}}
 
 ///////////////////////////////////////////////////////////////////////////////
 void octree_client::set_sibling(
@@ -337,17 +340,20 @@ vector3d<std::vector<double> > octree_client::interpolate(
     face f
     ) const
 { // {{{
-    OCTOPUS_ASSERT(face_ == f);
+    // set_sibling(f), f is the direction of the caller relative to the sibling
+    // (the sibling == us). send_ghost_zone, f is our direction relative to the
+    // the caller. REVIEW: I think.
+    OCTOPUS_ASSERT(face_ == invert(f));
 
     vector3d<std::vector<double> > input =
-        hpx::async<octree_server::send_ghost_zone_action>(gid_, f).get();
+        hpx::async<octree_server::send_ghost_zone_action>(gid_, face_).get();
 
     boost::uint64_t const bw = science().ghost_zone_width;
-    boost::uint64_t const gnx = config().spatial_size;
+    boost::uint64_t const gnx = config().grid_node_length;
 
     vector3d<std::vector<double> > output; 
 
-    switch (f)
+    switch (face_)
     {
         
         ///////////////////////////////////////////////////////////////////////
@@ -397,7 +403,9 @@ vector3d<std::vector<double> > octree_client::interpolate(
 
                         m -= m * 0.25;
 
-                        OCTOPUS_ASSERT(science().get_rho_from_state(m) > 0.0);
+                        // FIXME: This is too specific to Dominic/Zach's
+                        // code, move this into the science table.
+                        OCTOPUS_ASSERT(science().rho(m) > 0.0);
                     }
 
             break;
@@ -448,7 +456,9 @@ vector3d<std::vector<double> > octree_client::interpolate(
 
                         m -= m * 0.25;
 
-                        OCTOPUS_ASSERT(science().get_rho_from_state(m) > 0.0);
+                        // FIXME: This is too specific to Dominic/Zach's
+                        // code, move this into the science table.
+                        OCTOPUS_ASSERT(science().rho(m) > 0.0);
                     }
 
             break;
@@ -501,7 +511,9 @@ vector3d<std::vector<double> > octree_client::interpolate(
 
                         m -= m * 0.25;
 
-                        OCTOPUS_ASSERT(science().get_rho_from_state(m) > 0.0);
+                        // FIXME: This is too specific to Dominic/Zach's
+                        // code, move this into the science table.
+                        OCTOPUS_ASSERT(science().rho(m) > 0.0);
                     }
 
             break;
@@ -552,7 +564,9 @@ vector3d<std::vector<double> > octree_client::interpolate(
 
                         m -= m * 0.25;
 
-                        OCTOPUS_ASSERT(science().get_rho_from_state(m) > 0.0);
+                        // FIXME: This is too specific to Dominic/Zach's
+                        // code, move this into the science table.
+                        OCTOPUS_ASSERT(science().rho(m) > 0.0);
                     }
 
             break;
@@ -605,7 +619,9 @@ vector3d<std::vector<double> > octree_client::interpolate(
 
                         m -= m * 0.25;
 
-                        OCTOPUS_ASSERT(science().get_rho_from_state(m) > 0.0);
+                        // FIXME: This is too specific to Dominic/Zach's
+                        // code, move this into the science table.
+                        OCTOPUS_ASSERT(science().rho(m) > 0.0);
                     }
 
             break;
@@ -656,7 +672,9 @@ vector3d<std::vector<double> > octree_client::interpolate(
 
                         m -= m * 0.25;
 
-                        OCTOPUS_ASSERT(science().get_rho_from_state(m) > 0.0);
+                        // FIXME: This is too specific to Dominic/Zach's
+                        // code, move this into the science table.
+                        OCTOPUS_ASSERT(science().rho(m) > 0.0);
                     }
 
             break;
@@ -671,14 +689,35 @@ vector3d<std::vector<double> > octree_client::interpolate(
     return output; 
 } // }}}
 
-// IMPLEMENT: This needs some server side support.
-vector3d<std::vector<double> > octree_client::mirror_or_outflow(
+hpx::future<vector3d<std::vector<double> > > octree_client::interpolate_async(
     face f
     ) const
 {
-    OCTOPUS_ASSERT(face_ == f);
+    return hpx::async(boost::bind(&octree_client::interpolate, this, _1), f); 
+}
 
-    return vector3d<std::vector<double> >();
+vector3d<std::vector<double> > octree_client::map(
+    face f
+    ) const
+{
+    // set_sibling(f), f is the direction of the caller relative to the sibling
+    // (the sibling == us). send_ghost_zone, f is our direction relative to the
+    // the caller. REVIEW: I think.
+    OCTOPUS_ASSERT(face_ == invert(f));
+    return hpx::async<octree_server::send_mapped_ghost_zone_action>
+        (gid_, face_, reflect_, direction_).get();
+}
+
+hpx::future<vector3d<std::vector<double> > > octree_client::map_async(
+    face f
+    ) const
+{
+    // set_sibling(f), f is the direction of the caller relative to the sibling
+    // (the sibling == us). send_ghost_zone, f is our direction relative to the
+    // the caller. REVIEW: I think.
+    OCTOPUS_ASSERT(face_ == invert(f));
+    return hpx::async<octree_server::send_mapped_ghost_zone_action>
+        (gid_, face_, reflect_, direction_);
 }
 
 vector3d<std::vector<double> > octree_client::send_ghost_zone(
@@ -692,7 +731,7 @@ vector3d<std::vector<double> > octree_client::send_ghost_zone(
         case amr_boundary:
             return interpolate(f);
         case physical_boundary:
-            return mirror_or_outflow(f); 
+            return map(f); 
         default:
             break;
     }
@@ -711,11 +750,9 @@ octree_client::send_ghost_zone_async(
         case real_boundary:
             return hpx::async<octree_server::send_ghost_zone_action>(gid_, f);
         case amr_boundary:
-            return hpx::async(
-                boost::bind(&octree_client::interpolate, this, _1), f); 
+            return interpolate_async(f);
         case physical_boundary:
-            return hpx::async(
-                boost::bind(&octree_client::mirror_or_outflow, this, _1), f);
+            return map_async(f); 
         default:
             break;
     }

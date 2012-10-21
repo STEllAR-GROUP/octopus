@@ -9,11 +9,13 @@
 #if !defined(OCTOPUS_60B35C73_7FD4_47AB_8928_3AD5AC5FE5B5)
 #define OCTOPUS_60B35C73_7FD4_47AB_8928_3AD5AC5FE5B5
 
+#include <octopus/trivial_serialization.hpp>
+
 namespace octopus
 {
 
 template <std::size_t Index>
-struct get_element_from_state
+struct get_value_from_state : trivial_serialization
 {
     typedef double result_type;
  
@@ -27,12 +29,7 @@ struct get_element_from_state
             return state[Index];
         #endif
     }
-
-    // Trivial serialization support.
-    template <typename Archive> void serialize(Archive&, unsigned int) {}
 };
-
-typedef get_element_from_state<0> get_rho_from_state;
 
 }
 
