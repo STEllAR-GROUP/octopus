@@ -82,8 +82,9 @@ boost::format format_option(
   , double value
     )
 {
-    char const* const fmt = "%1% %|40t| = %e";
-    return (boost::format(fmt) % name % value);
+    char const* const fmt = "%1% %|40t| = %2%";
+    return ( boost::format(fmt) % name
+           % boost::io::group(std::scientific, value));
 }
 
 template <typename T>

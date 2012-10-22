@@ -20,6 +20,7 @@ namespace octopus
 
 enum face
 {
+    // TODO: More descriptive names.
                       // direction
     XL = 0, // X-lower: (-1,  0,  0) 
     XU = 1, // X-upper: (+1,  0,  0) 
@@ -28,7 +29,7 @@ enum face
     ZL = 4, // Z-lower: ( 0,  0, -1)
     ZU = 5, // Z-upper: ( 0,  0, +1)
 
-    out_of_bounds
+    invalid_face
 };
 
 inline face invert(face f)
@@ -45,7 +46,7 @@ inline face invert(face f)
     }
 
     OCTOPUS_ASSERT_MSG(false, "attempt to invert out-of-bounds face"); 
-    return out_of_bounds;
+    return invalid_face;
 }
 
 inline std::ostream& operator<<(std::ostream& os, face f)
@@ -58,7 +59,7 @@ inline std::ostream& operator<<(std::ostream& os, face f)
         case YU: os << "YU"; break; 
         case ZL: os << "ZL"; break;  
         case ZU: os << "ZU"; break; 
-        default: os << "out_of_bounds"; break; 
+        default: os << "invalid_face"; break; 
     }
     return os;
 }

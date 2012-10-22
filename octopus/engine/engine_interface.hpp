@@ -21,7 +21,7 @@ namespace octopus
 /// Synchrony Gurantee:  Synchronous.
 inline config_data const& config()
 {
-    OCTOPUS_ASSERT_MSG(engine_ptr == 0, "engine_ptr is NULL");
+    OCTOPUS_ASSERT_MSG(engine_ptr != 0, "engine_ptr is NULL");
     return engine_ptr->config();    
 }
 
@@ -32,7 +32,7 @@ inline config_data const& config()
 /// Synchrony Gurantee:  Synchronous.
 inline science_table const& /* Lets do some */ science() /* ! */
 {
-    OCTOPUS_ASSERT_MSG(engine_ptr == 0, "engine_ptr is NULL");
+    OCTOPUS_ASSERT_MSG(engine_ptr != 0, "engine_ptr is NULL");
     return engine_ptr->science(); 
 }
 
@@ -48,7 +48,7 @@ inline hpx::future<hpx::id_type, hpx::naming::gid_type> create_octree_async(
   , vector3d<std::vector<double> > const& parent_U
     )
 {
-    OCTOPUS_ASSERT_MSG(engine_ptr == 0, "engine_ptr is NULL");
+    OCTOPUS_ASSERT_MSG(engine_ptr != 0, "engine_ptr is NULL");
     return engine_ptr->create_octree_async(init, parent_U);
 }
 
@@ -57,7 +57,7 @@ inline hpx::future<hpx::id_type, hpx::naming::gid_type> create_octree_async(
   , BOOST_RV_REF(vector3d<std::vector<double> >) parent_U
     )
 {
-    OCTOPUS_ASSERT_MSG(engine_ptr == 0, "engine_ptr is NULL");
+    OCTOPUS_ASSERT_MSG(engine_ptr != 0, "engine_ptr is NULL");
     return engine_ptr->create_octree_async(init, parent_U);
 }
 

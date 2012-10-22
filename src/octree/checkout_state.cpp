@@ -5,13 +5,13 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#if !defined(OCTOPUS_6B85CEFD_F97E_42AD_91FA_FEA7261EFFCB)
-#define OCTOPUS_6B85CEFD_F97E_42AD_91FA_FEA7261EFFCB
+#include <octopus/octree/checkout_state.hpp>
+#include <octopus/engine/engine_interface.hpp>
 
-#include <octopus/science/science_table.hpp>
+namespace octopus
+{
 
-#include <octopus/science/physical_boundaries.hpp>
-#include <octopus/science/reconstruction.hpp>
+checkout_for_init_tag checkout_for_init = {};
 
-#endif // OCTOPUS_6B85CEFD_F97E_42AD_91FA_FEA7261EFFCB
+}
 

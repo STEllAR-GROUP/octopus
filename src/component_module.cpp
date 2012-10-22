@@ -36,25 +36,13 @@ OCTOPUS_REGISTER_ACTION(set_child_sibling);
 OCTOPUS_REGISTER_ACTION(tie_child_sibling);
 OCTOPUS_REGISTER_ACTION(get_siblings);
 OCTOPUS_REGISTER_ACTION(get_offset);
-OCTOPUS_REGISTER_ACTION(inject_state_from_children);
 OCTOPUS_REGISTER_ACTION(receive_ghost_zones);
 OCTOPUS_REGISTER_ACTION(send_ghost_zone);
 OCTOPUS_REGISTER_ACTION(send_mapped_ghost_zone);
 OCTOPUS_REGISTER_ACTION(apply);
-//OCTOPUS_REGISTER_ACTION(save_state);
-OCTOPUS_REGISTER_ACTION(add_differentials);
-OCTOPUS_REGISTER_ACTION(clear_differentials);
 OCTOPUS_REGISTER_ACTION(step);
-OCTOPUS_REGISTER_ACTION(refine);
-OCTOPUS_REGISTER_ACTION(compute_x_flux);
-OCTOPUS_REGISTER_ACTION(compute_y_flux);
-OCTOPUS_REGISTER_ACTION(compute_z_flux);
-OCTOPUS_REGISTER_ACTION(adjust_x_flux);
-OCTOPUS_REGISTER_ACTION(adjust_y_flux);
-OCTOPUS_REGISTER_ACTION(adjust_z_flux);
-OCTOPUS_REGISTER_ACTION(sum_x_differentials);
-OCTOPUS_REGISTER_ACTION(sum_y_differentials);
-OCTOPUS_REGISTER_ACTION(sum_z_differentials);
+OCTOPUS_REGISTER_ACTION(step_to_time);
+OCTOPUS_REGISTER_ACTION(clone_and_refine);
 
 #undef OCTOPUS_REGISTER_ACTION
 

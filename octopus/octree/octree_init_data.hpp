@@ -17,11 +17,11 @@ namespace octopus
 {
 
 // FIXME: Tactic needed for constructing the init data for root.
+// (update): Tactic - split this into two classes, child_init_data and
+// root_init_data.
 // NOTE: Aggregate for laziness.
 struct octree_init_data
 {
-    hpx::id_type                    future;
-    hpx::id_type                    past;
     hpx::id_type                    parent;
     boost::uint64_t                 level;
     boost::array<boost::int64_t, 3> location;
@@ -29,12 +29,11 @@ struct octree_init_data
     double                          time; 
     boost::array<boost::int64_t, 3> offset; 
     boost::array<double, 3>         origin;
+    bool                            wait_for_state;
 
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int version)
     {
-        ar & future;
-        ar & past;
         ar & parent;
         ar & level;
         ar & boost::serialization::make_array(location.data(), location.size());     
@@ -42,6 +41,7 @@ struct octree_init_data
         ar & time;
         ar & boost::serialization::make_array(offset.data(), offset.size());     
         ar & boost::serialization::make_array(origin.data(), origin.size());     
+        ar & wait_for_state;
     }
 };
 

@@ -27,9 +27,7 @@ struct OCTOPUS_EXPORT minmod_reconstruction
     // TODO: Verify the width with Dominic. 
     enum { ghost_zone_width = 2 };
 
-    typedef void result_type;
-
-    result_type operator()(
+    void operator()(
         std::vector<std::vector<double> > const& q0
       , std::vector<std::vector<double> >& ql
       , std::vector<std::vector<double> >& qr

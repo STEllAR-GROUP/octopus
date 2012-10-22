@@ -95,6 +95,7 @@ int hpx_main(variables_map& vm)
         OCTOPUS_ASSERT_MSG(define_p.first || main_p.first,
             "either octopus_define_problem or octopus_main must be defined");
 
+        ///////////////////////////////////////////////////////////////////////
         // Initialize the science table.
         octopus::science_table sci = octopus::default_science_table(); 
 

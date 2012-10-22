@@ -20,9 +20,7 @@ namespace octopus
 
 struct physical_boundaries_at_zero : trivial_serialization
 {
-    typedef bool result_type;
- 
-    result_type operator()(
+    bool operator()(
         boost::array<boost::int64_t, 3> const& location
       , face f
       , boost::uint64_t level

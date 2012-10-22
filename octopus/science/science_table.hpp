@@ -8,13 +8,13 @@
 #if !defined(OCTOPUS_903E5732_EB7C_4CBC_A13E_24DF0582AF0E)
 #define OCTOPUS_903E5732_EB7C_4CBC_A13E_24DF0582AF0E
 
+#include <octopus/octree/octree_server.hpp>
 #include <octopus/face.hpp>
 
 #include <boost/cstdint.hpp>
 
 // NOTE: (to self) Don't forgot to update default_science_table when
 // science_table is updated.
-// FIXME: This should probably live in another header.
 
 namespace octopus
 {
@@ -29,14 +29,6 @@ struct science_table
 {
     boost::uint64_t state_size;  /// Number of doubles needed for state for
                                  /// each discrete value (zone) on the grid.
-
-    ///////////////////////////////////////////////////////////////////////////
-    // State getters. FIXME: Abstract these away entirely into application code.
-    // Any code in the AMR driver that needs to be aware of what's in the state
-    // should be in the science table instead. 
-    hpx::util::function<
-        double const&(std::vector<double> const&)
-    > rho; 
 
     /// Defines the physical boundaries. Returns true if a face at a location in
     /// the octree and a particular level of refinement is a physical boundary. 
@@ -57,44 +49,61 @@ struct science_table
           , std::vector<std::vector<double> >&
           , std::vector<std::vector<double> >&
             )
-    > reconstruction; 
+    > reconstruct; 
 
     boost::uint64_t ghost_zone_width; /// The width of ghost zones on all sides,
                                       /// measured in number of grid points. 
 
     hpx::util::function<
-        void(
-            boost::array<double, 3> const&
-          , face
-            )
+        void(octree_server&)
+    > initialize;
+
+    hpx::util::function<
+        void(face, boost::array<double, 3> const&)
     > enforce_outflow; 
 
     hpx::util::function<
-        void(std::vector<double>&)
-    > reflect_on_x; 
+        void(axis, std::vector<double>&)
+    > reflect; 
 
     hpx::util::function<
-        void(std::vector<double>&)
-    > reflect_on_y; 
+        double(
+            axis
+          , std::vector<double> const&     /// state 
+          , boost::array<double, 3> const& 
+            )
+    > max_eigenvalue; 
 
     hpx::util::function<
-        void(std::vector<double>&)
-    > reflect_on_z; 
+        void(
+            std::vector<double>& 
+          , boost::array<double, 3> const&
+            )
+    > conserved_to_primitive; 
+
+    hpx::util::function<
+        void(
+            std::vector<double>& 
+          , boost::array<double, 3> const&
+            )
+    > primitive_to_conserved; 
 
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int version)
     {
         ar & state_size;
-        ar & rho; 
 
         ar & physical_boundaries;
-        ar & reconstruction;
+        ar & reconstruct;
         ar & ghost_zone_width;
-        ar & enforce_outflow;
 
-        ar & reflect_on_x;
-        ar & reflect_on_y;
-        ar & reflect_on_z;
+        ar & initialize;
+        ar & enforce_outflow;
+        ar & reflect;
+        ar & max_eigenvalue;
+
+        ar & conserved_to_primitive;
+        ar & primitive_to_conserved;
     }
 };
 

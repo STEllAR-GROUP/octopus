@@ -12,18 +12,25 @@ though.
 * *DONE* Set up physical boundaries for root.
 * *DONE* Implement enforce_boundaries(). 
 * *DONE* Implement exec_function().
-* Implement refinment. 
+* Implement refinement. 
 * *DONE* Implement step():
-    * Push semantics
+    * Push semantics.
 * *DONE* Implement sub_step():
-    * Implement compute_(x|y|z)_flux() 
+    * *DONE* Implement compute_(x|y|z)_flux() 
     * Implement adjust_(x|y|z)_flux()
-    * Implement sum_(x|y|z)_difs()
-    * Implement add_difs()
+    * *DONE* Implement sum_(x|y|z)_difs()
+    * *DONE* Implement add_difs()
     * Add state injection from children.
-    * Push semantics
+    * Push semantics.
 * *DONE* Add interface for defining the problem (e.g. defining the science_table).
     * *DONE* Add defaults to science_table before passing it to the user.
 * Add I/O for verification.
 * Implement default_main.
+* A lot of recursive functions need to be called from within step/sub-step to break the global barriers.
+* An off switch would be nice.
 
+Long-term todo list
+===================
+
+* Application INI helpers.
+* More descriptive names (this is a problem both internally and at the interface level).

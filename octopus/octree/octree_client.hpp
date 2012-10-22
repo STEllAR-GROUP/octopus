@@ -138,19 +138,8 @@ struct OCTOPUS_EXPORT octree_client
       , offset_()
     {}
 
-    octree_client(hpx::id_type const& parent, boundary_kind kind)
-      : gid_(parent)
-      , kind_(kind)
-      , face_()
-      , reflect_()
-      , direction_(invalid_axis)
-      , offset_()
-    {
-        OCTOPUS_ASSERT(kind != real_boundary);
-    }
-
-    octree_client(BOOST_RV_REF(hpx::id_type) parent, boundary_kind kind)
-      : gid_(parent)
+    octree_client(boundary_kind kind)
+      : gid_(hpx::invalid_id) // Set by set_sibling.
       , kind_(kind)
       , face_()
       , reflect_()
@@ -511,7 +500,7 @@ struct OCTOPUS_EXPORT octree_client
     // {{{ apply
     void apply(
         hpx::util::function<void(octree_server&)> const& f
-      , boost::uint64_t minimum_level
+      , boost::uint64_t minimum_level = 0
         ) const
     {
         return apply_async(f, minimum_level).get();
@@ -519,16 +508,29 @@ struct OCTOPUS_EXPORT octree_client
 
     hpx::future<void> apply_async(
         hpx::util::function<void(octree_server&)> const& f
-      , boost::uint64_t minimum_level
+      , boost::uint64_t minimum_level = 0
         ) const;
 
     void apply_push(
         hpx::util::function<void(octree_server&)> const& f
-      , boost::uint64_t minimum_level
+      , boost::uint64_t minimum_level = 0
         ) const;
     // }}} 
 
     // NOTE: (to self) Keep the order the same as octree_server please.
+    // (update to self) Bad self.
+
+    ///////////////////////////////////////////////////////////////////////////
+    // {{{ step_to_time and step 
+    void step(double dt) const
+    {
+        return step_async().get();
+    }
+
+    hpx::future<void> step_async(double dt) const;
+
+    void step_to_time_push(double dt, double until) const;
+    // }}}
 };
 
 }

@@ -12,6 +12,7 @@ add_hpx_component(octopus
           engine/runtime_config.cpp
           octree/octree_client.cpp
           octree/octree_server.cpp
+          octree/checkout_state.cpp
           component_module.cpp
           science/reconstruction.cpp
           science/science_table.cpp

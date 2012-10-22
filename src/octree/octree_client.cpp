@@ -133,35 +133,34 @@ void octree_client::set_sibling_for_physical_boundary(
         case XU:
             reflect_ = config().x_reflect;
             direction_ = x_axis;
-            break;
+            return;
         case XL:
             reflect_ = false; 
             direction_ = x_axis;
-            break;
+            return;
 
         ///////////////////////////////////////////////////////////////////////
         // Y-axis.
         case YU:
             reflect_ = config().y_reflect;
             direction_ = y_axis;
-            break;
+            return;
         case YL:
             reflect_ = false; 
             direction_ = y_axis;
-            break;
+            return;
 
         ///////////////////////////////////////////////////////////////////////
         // Z-axis.
         case ZU:
             reflect_ = config().z_reflect;
             direction_ = z_axis;
-            break;
+            return;
         case ZL:
             reflect_ = false;
             direction_ = z_axis;
-            break;
+            return;
         default:
-            OCTOPUS_ASSERT(false);
             break;
     }
 
@@ -175,7 +174,7 @@ void octree_client::set_sibling(
   , octree_client const& sib_parent
     ) const
 {
-    OCTOPUS_ASSERT_FMT_MSG(out_of_bounds > f,
+    OCTOPUS_ASSERT_FMT_MSG(invalid_face > f,
                            "invalid face, face(%1%)",
                            boost::uint16_t(f));
 
@@ -200,7 +199,7 @@ void octree_client::set_sibling_push(
   , octree_client const& sib_parent
     ) const
 {
-    OCTOPUS_ASSERT_FMT_MSG(out_of_bounds > f,
+    OCTOPUS_ASSERT_FMT_MSG(invalid_face > f,
                            "invalid face, face(%1%)",
                            boost::uint16_t(f));
 
@@ -214,9 +213,9 @@ void octree_client::set_sibling_push(
 
     else if (physical_boundary == kind_)
     {
-        hpx::apply(boost::bind(
-            &octree_client::set_sibling_for_physical_boundary, this,
-                _1, _2), f, sib);
+        // This is guranteed to be a purely local operation, and is also
+        // trivial, so we just do it directly.
+        set_sibling_for_physical_boundary(f, sib); 
         return;
     }
 
@@ -231,7 +230,7 @@ void octree_client::tie_sibling(
     ) const
 {
     ensure_real();
-    OCTOPUS_ASSERT_FMT_MSG(out_of_bounds > target_f,
+    OCTOPUS_ASSERT_FMT_MSG(invalid_face > target_f,
                            "invalid face, face(%1%)",
                            boost::uint16_t(target_f));
     hpx::async<octree_server::tie_sibling_action>
@@ -245,7 +244,7 @@ void octree_client::tie_sibling_push(
     ) const
 {
     ensure_real();
-    OCTOPUS_ASSERT_FMT_MSG(out_of_bounds > target_f,
+    OCTOPUS_ASSERT_FMT_MSG(invalid_face > target_f,
                            "invalid face, face(%1%)",
                            boost::uint16_t(target_f));
     hpx::apply<octree_server::tie_sibling_action>
@@ -260,7 +259,7 @@ void octree_client::set_child_sibling(
     ) const
 {
     ensure_real();
-    OCTOPUS_ASSERT_FMT_MSG(out_of_bounds > f,
+    OCTOPUS_ASSERT_FMT_MSG(invalid_face > f,
                            "invalid face, face(%1%)",
                            boost::uint16_t(f));
     hpx::async<octree_server::set_child_sibling_action>
@@ -274,7 +273,7 @@ void octree_client::set_child_sibling_push(
     ) const
 {
     ensure_real();
-    OCTOPUS_ASSERT_FMT_MSG(out_of_bounds > f,
+    OCTOPUS_ASSERT_FMT_MSG(invalid_face > f,
                            "invalid face, face(%1%)",
                            boost::uint16_t(f));
     hpx::apply<octree_server::set_child_sibling_action>(gid_, kid, f, sib);
@@ -288,7 +287,7 @@ void octree_client::tie_child_sibling(
     ) const
 {
     ensure_real();
-    OCTOPUS_ASSERT_FMT_MSG(out_of_bounds > target_f,
+    OCTOPUS_ASSERT_FMT_MSG(invalid_face > target_f,
                            "invalid face, face(%1%)",
                            boost::uint16_t(target_f));
     hpx::async<octree_server::tie_child_sibling_action>
@@ -302,7 +301,7 @@ void octree_client::tie_child_sibling_push(
     ) const
 {
     ensure_real();
-    OCTOPUS_ASSERT_FMT_MSG(out_of_bounds > target_f,
+    OCTOPUS_ASSERT_FMT_MSG(invalid_face > target_f,
                            "invalid face, face(%1%)",
                            boost::uint16_t(target_f));
     hpx::apply<octree_server::tie_child_sibling_action>
@@ -405,7 +404,7 @@ vector3d<std::vector<double> > octree_client::interpolate(
 
                         // FIXME: This is too specific to Dominic/Zach's
                         // code, move this into the science table.
-                        OCTOPUS_ASSERT(science().rho(m) > 0.0);
+                        //OCTOPUS_ASSERT(science().rho(m) > 0.0);
                     }
 
             break;
@@ -458,7 +457,7 @@ vector3d<std::vector<double> > octree_client::interpolate(
 
                         // FIXME: This is too specific to Dominic/Zach's
                         // code, move this into the science table.
-                        OCTOPUS_ASSERT(science().rho(m) > 0.0);
+                        //OCTOPUS_ASSERT(science().rho(m) > 0.0);
                     }
 
             break;
@@ -513,7 +512,7 @@ vector3d<std::vector<double> > octree_client::interpolate(
 
                         // FIXME: This is too specific to Dominic/Zach's
                         // code, move this into the science table.
-                        OCTOPUS_ASSERT(science().rho(m) > 0.0);
+                        //OCTOPUS_ASSERT(science().rho(m) > 0.0);
                     }
 
             break;
@@ -566,7 +565,7 @@ vector3d<std::vector<double> > octree_client::interpolate(
 
                         // FIXME: This is too specific to Dominic/Zach's
                         // code, move this into the science table.
-                        OCTOPUS_ASSERT(science().rho(m) > 0.0);
+                        //OCTOPUS_ASSERT(science().rho(m) > 0.0);
                     }
 
             break;
@@ -621,7 +620,7 @@ vector3d<std::vector<double> > octree_client::interpolate(
 
                         // FIXME: This is too specific to Dominic/Zach's
                         // code, move this into the science table.
-                        OCTOPUS_ASSERT(science().rho(m) > 0.0);
+                        //OCTOPUS_ASSERT(science().rho(m) > 0.0);
                     }
 
             break;
@@ -674,7 +673,7 @@ vector3d<std::vector<double> > octree_client::interpolate(
 
                         // FIXME: This is too specific to Dominic/Zach's
                         // code, move this into the science table.
-                        OCTOPUS_ASSERT(science().rho(m) > 0.0);
+                        //OCTOPUS_ASSERT(science().rho(m) > 0.0);
                     }
 
             break;
@@ -768,7 +767,8 @@ hpx::future<void> octree_client::apply_async(
     ) const
 {
     ensure_real();
-    return hpx::async<octree_server::apply_action>(gid_, f, minimum_level);
+    return hpx::async<octree_server::apply_action>
+        (gid_, f, minimum_level);
 }
 
 void octree_client::apply_push(
@@ -778,6 +778,18 @@ void octree_client::apply_push(
 {
     ensure_real();
     hpx::apply<octree_server::apply_action>(gid_, f, minimum_level);
+}
+
+hpx::future<void> octree_client::step_async(double dt) const
+{
+    ensure_real();
+    return hpx::async<octree_server::step_action>(gid_, dt);
+}
+
+void step_to_time_push(double dt, double until) const
+{
+    ensure_real();
+    hpx::apply<octree_server::step_to_time_action>(gid_, dt, until);
 }
 
 }

@@ -17,6 +17,26 @@
 #include <octopus/octree/octree_init_data.hpp>
 #include <octopus/octree/octree_client.hpp>
 
+// This is either really beautiful, really messy, or both.
+
+namespace octopus
+{
+
+struct OCTOPUS_EXPORT octree_server; 
+
+}
+
+namespace hpx { namespace traits
+{
+
+template <>
+struct managed_component_ctor_policy<octopus::octree_server>
+{
+    typedef hpx::traits::construct_with_back_ptr type;
+};
+
+}}
+
 namespace octopus
 {
 
@@ -24,16 +44,21 @@ struct OCTOPUS_EXPORT octree_server
   : hpx::components::managed_component_base<octree_server>
 {
   private:
+    friend struct checkout_state;
+
+    typedef hpx::components::managed_component_base<octree_server> base_type;
+
+    typedef hpx::components::managed_component<octree_server>*
+        back_pointer_type;
+
     typedef hpx::lcos::local::mutex mutex_type;
 
+    ///< This event is triggered when we are first initialized. 
     hpx::lcos::local::event initialized_;
+
     mutable mutex_type mtx_; 
     boost::uint8_t siblings_set_;
-    bool received_state_;
-
-    // Circular doubly-linked list of timesteps.
-    octree_client future_;
-    octree_client past_;
+    bool state_received_;
 
     ///////////////////////////////////////////////////////////////////////////
     // From OctNode
@@ -70,6 +95,19 @@ struct OCTOPUS_EXPORT octree_server
                                        ///  vectors comes from the science
                                        ///  table.
 
+    vector3d<std::vector<double> > U0_; ///< Data from the previous timestep.
+
+    vector3d<std::vector<double> > FX_; ///< Flux (X-axis).
+    vector3d<std::vector<double> > FY_; ///< Flux (Y-axis).
+    vector3d<std::vector<double> > FZ_; ///< Flux (Z-axis).
+
+    std::vector<double> FO_; ///< Flow off (stuff that leaves the problem
+                             ///  space).
+
+    vector3d<std::vector<double> > D_; ///< Flux differential.
+
+    std::vector<double> DFO_; ///< Flow off differential. 
+
     ///////////////////////////////////////////////////////////////////////////
     // TODO: Migration.
 #if 0
@@ -92,7 +130,7 @@ struct OCTOPUS_EXPORT octree_server
         return idx; 
     }
 
-    // Precondition: mtx_ must be locked.
+    // Preconditions: mtx_ must be locked, siblings_set_ must be less than 6.
     void sibling_set_locked(mutex_type::scoped_lock& l)
     {
         OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
@@ -101,17 +139,17 @@ struct OCTOPUS_EXPORT octree_server
         for (std::size_t i = 0; i < 6; ++i)
             OCTOPUS_ASSERT(siblings_[i] != hpx::invalid_id);
 
-        if ((++siblings_set_ == 6) && received_state_)
+        if ((++siblings_set_ == 6) && state_received_)
             initialized_.set(); 
     }  
 
-    // Precondition: mtx_ must be locked.
+    // Preconditions: mtx_ must be locked, state_received_ is false. 
     void state_received_locked(mutex_type::scoped_lock& l)
     {
         OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
-        OCTOPUS_ASSERT_MSG(received_state_ == true, "double initialization");
+        OCTOPUS_ASSERT_MSG(state_received_ == false, "double initialization");
 
-        received_state_ = true;
+        state_received_ = true;
 
         for (std::size_t i = 0; i < 6; ++i)
             OCTOPUS_ASSERT(siblings_[i] != hpx::invalid_id);
@@ -173,31 +211,17 @@ struct OCTOPUS_EXPORT octree_server
     }
 
   public:
-    octree_server()
+    octree_server(back_pointer_type back_ptr)
+      : base_type(back_ptr) 
     {
         OCTOPUS_ASSERT_MSG(false, "octree_server can't be default constructed");
     } 
 
-    // FIXME: Create physical bounds?
-    /// \brief Construct a root node 
+    /// \brief Construct a root node. 
     octree_server(
-        octree_init_data const& init
-        )
-      : siblings_set_(6)
-      , received_state_(false)
-      , future_(init.future)
-      , past_(init.past)
-      , parent_(init.parent)
-      , level_(init.level)
-      , location_(init.location)
-      , dx_(init.dx)
-      , time_(init.time)
-      , offset_(init.offset)
-      , origin_(init.origin)
-      , step_(0)
-    {
-        OCTOPUS_TEST_IN_PLACE(parent_ == hpx::invalid_id);
-    }
+        back_pointer_type back_ptr
+      , octree_init_data const& init
+        );
 
     // FIXME: Non-optimal, inject_state_from_parent should be called with
     // fire-and-forget semantics. However, the lifetime of parent_U then
@@ -205,29 +229,10 @@ struct OCTOPUS_EXPORT octree_server
     // shared_ptr.
     /// \brief Construct a child node.
     octree_server(
-        octree_init_data const& init
+        back_pointer_type back_ptr
+      , octree_init_data const& init
       , vector3d<std::vector<double> > const& parent_U
-        )
-      : siblings_set_(0)
-      , received_state_(false)
-      , future_(init.future)
-      , past_(init.past)
-      , parent_(init.parent)
-      , level_(init.level)
-      , location_(init.location)
-      , dx_(init.dx)
-      , time_(init.time)
-      , offset_(init.offset)
-      , origin_(init.origin)
-      , step_(0)
-    {
-        // Make sure our parent reference is not reference counted.
-        OCTOPUS_ASSERT_MSG(
-            init.parent.get_management_type() == hpx::id_type::unmanaged,
-            "reference cycle detected in child");
- 
-        inject_state_from_parent(parent_U);
-    }
+        );
 
     // FIXME: More descriptive name.
     boost::array<double, 3> xfx(
@@ -395,15 +400,6 @@ struct OCTOPUS_EXPORT octree_server
                                 get_offset_action);
 
     ///////////////////////////////////////////////////////////////////////////
-    // IMPLEMENT
-    void inject_state_from_children();
-
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                inject_state_from_children,
-                                inject_state_from_children_action);
-
-
-    ///////////////////////////////////////////////////////////////////////////
     // NOTE: enforce_boundaries in the original code.
     // IMPLEMENT: Push don't pull.
     /// \brief Requests ghost zone data from all siblings. 
@@ -442,12 +438,11 @@ struct OCTOPUS_EXPORT octree_server
         );
 
   public:
-
     ///////////////////////////////////////////////////////////////////////////
     // NOTE: exec_function in the original code.
     void apply(
         hpx::util::function<void(octree_server&)> const& f
-      , boost::uint64_t minimum_level
+      , boost::uint64_t minimum_level = 0
         );
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
@@ -455,129 +450,55 @@ struct OCTOPUS_EXPORT octree_server
                                 apply_action);
 
     ///////////////////////////////////////////////////////////////////////////
-/*
-    // REVIEW: Not sure this is necessary, can't we just look up these values 
-    // from the previous timestep?
-    // IMPLEMENT
-    void save_state();
-
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                save_state,
-                                save_state_action);  
-*/
-
-    ///////////////////////////////////////////////////////////////////////////
-    // IMPLEMENT
-    void add_differentials(double dt, double beta); 
-
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                add_differentials,
-                                add_differentials_action);  
-
-    ///////////////////////////////////////////////////////////////////////////
-    // IMPLEMENT
-    void clear_differentials(); 
-
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                clear_differentials,
-                                clear_differentials_action);  
-
-    ///////////////////////////////////////////////////////////////////////////
-    /// \brief Evolve the system for a temporal period of \a dt.
     // NOTE: The implementation of this should be in the science table, or
     // maybe the whole thing should live in the driver.
-    // NOTE: This function DOES NOT LOCK, do not call concurrently without
-    // synchronization. 
-    // IMPLEMENT: Push don't pull.
+
     void step(double dt);
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                 step,
                                 step_action);  
 
+    /// Perform a timestep of period \a dt. Then, call step_to_time() so long as
+    /// \a time_ is less than \a until. 
+    void step_to_time(double dt, double until);
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                step_to_time,
+                                step_to_time_action);  
+
+    // IMPLEMENT
+    octree_client clone_and_refine();
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                clone_and_refine,
+                                clone_and_refine_action);  
+
   private:
     // NOTE: The implementation of this should be in the science table, or
     // maybe the whole thing should live in the driver.
-    // NOTE: This function DOES NOT LOCK, do not call concurrently without
-    // synchronization.
-    // IMPLEMENT: Push don't pull.
-    void sub_step(double dt, double beta);
+    void sub_step_kernel(double dt, double beta);
 
-  public:
-
-    ///////////////////////////////////////////////////////////////////////////
     // IMPLEMENT
-    void refine();
+    void receive_state_from_children();
 
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                refine,
-                                refine_action);  
+    void add_differentials(double dt, double beta); 
 
-    ///////////////////////////////////////////////////////////////////////////
+    void prepare_differentials(); 
+
+    // NOTE: Operations on each axis overlap each other.
+    void compute_flux_kernel();
+
+    void compute_x_flux_kernel();
+
+    void compute_y_flux_kernel();
+
+    void compute_z_flux_kernel();
+
     // IMPLEMENT 
-    void compute_x_flux();
+    void adjust_flux_kernel();
 
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                compute_x_flux,
-                                compute_x_flux_action);  
-
-    // IMPLEMENT
-    void compute_y_flux();
-
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                compute_y_flux,
-                                compute_y_flux_action);  
-
-    // IMPLEMENT
-    void compute_z_flux();
-
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                compute_z_flux,
-                                compute_z_flux_action);  
-
-    ///////////////////////////////////////////////////////////////////////////
-    // IMPLEMENT 
-    void adjust_x_flux();
-
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                adjust_x_flux,
-                                adjust_x_flux_action);  
-
-    // IMPLEMENT
-    void adjust_y_flux();
-
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                adjust_y_flux,
-                                adjust_y_flux_action);  
-
-    // IMPLEMENT
-    void adjust_z_flux();
-
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                adjust_z_flux,
-                                adjust_z_flux_action);  
-
-    ///////////////////////////////////////////////////////////////////////////
-    // IMPLEMENT 
-    void sum_x_differentials();
-
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                sum_x_differentials,
-                                sum_x_differentials_action);  
-
-    // IMPLEMENT
-    void sum_y_differentials();
-
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                sum_y_differentials,
-                                sum_y_differentials_action);  
-
-    // IMPLEMENT
-    void sum_z_differentials();
-
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                sum_z_differentials,
-                                sum_z_differentials_action);  
+    void sum_differentials_kernel();
 };
 
 }
@@ -596,25 +517,13 @@ OCTOPUS_REGISTER_ACTION(set_child_sibling);
 OCTOPUS_REGISTER_ACTION(tie_child_sibling);
 OCTOPUS_REGISTER_ACTION(get_siblings);
 OCTOPUS_REGISTER_ACTION(get_offset);
-OCTOPUS_REGISTER_ACTION(inject_state_from_children);
 OCTOPUS_REGISTER_ACTION(receive_ghost_zones);
 OCTOPUS_REGISTER_ACTION(send_ghost_zone);
 OCTOPUS_REGISTER_ACTION(send_mapped_ghost_zone);
 OCTOPUS_REGISTER_ACTION(apply);
-//OCTOPUS_REGISTER_ACTION(save_state);
-OCTOPUS_REGISTER_ACTION(add_differentials);
-OCTOPUS_REGISTER_ACTION(clear_differentials);
 OCTOPUS_REGISTER_ACTION(step);
-OCTOPUS_REGISTER_ACTION(refine);
-OCTOPUS_REGISTER_ACTION(compute_x_flux);
-OCTOPUS_REGISTER_ACTION(compute_y_flux);
-OCTOPUS_REGISTER_ACTION(compute_z_flux);
-OCTOPUS_REGISTER_ACTION(adjust_x_flux);
-OCTOPUS_REGISTER_ACTION(adjust_y_flux);
-OCTOPUS_REGISTER_ACTION(adjust_z_flux);
-OCTOPUS_REGISTER_ACTION(sum_x_differentials);
-OCTOPUS_REGISTER_ACTION(sum_y_differentials);
-OCTOPUS_REGISTER_ACTION(sum_z_differentials);
+OCTOPUS_REGISTER_ACTION(step_to_time);
+OCTOPUS_REGISTER_ACTION(clone_and_refine);
 
 #undef OCTOPUS_REGISTER_ACTION
 
