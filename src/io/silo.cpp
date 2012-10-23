@@ -8,10 +8,16 @@
 #include <octopus/io/silo.hpp>
 #include <octopus/engine/engine_interface.hpp>
 
+#include <boost/smart_ptr/scoped_array.hpp>
+#include <boost/ptr_container/ptr_vector.hpp>
+
 namespace octopus
 {
 
-void open_locked(boost::uint64_t step, mutex_type::scoped_lock& l)
+void single_variable_silo_writer::open_locked(
+    boost::uint64_t step
+  , mutex_type::scoped_lock& l
+    )
 {
     OCTOPUS_ASSERT(l.owns_lock());
 
@@ -21,7 +27,7 @@ void open_locked(boost::uint64_t step, mutex_type::scoped_lock& l)
     step_ = step;
 
     file_ = DBCreate(boost::str( boost::format(file_name_)
-                               % step_ % file_name_)._c_str() 
+                               % step_ % hpx::get_locality_id()).c_str() 
                    , DB_CLOBBER, DB_LOCAL, NULL, DB_PDB);
     OCTOPUS_ASSERT(file_ != 0);
 
@@ -65,10 +71,10 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
         DBtoc* contents = DBGetToc(file_);
 
         // Make the mesh and variable names.
-        boost::ptr_vector<char*> mesh_names(contents->nqmesh);
-        boost::ptr_vector<char*> variable_names(contents->nqmesh);
+        boost::ptr_vector<char> mesh_names(contents->nqmesh);
+        boost::ptr_vector<char> variable_names(contents->nqmesh);
         
-        for (boost::uint64_t j = 0; j < contents->nqmesh; ++j)
+        for (boost::uint64_t j = 0; j < boost::uint64_t(contents->nqmesh); ++j)
         {
             std::string tmp;
 
@@ -120,11 +126,11 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
             DBObjectType type = DB_QUADVAR;
             DBAddOption(optlist, DBOPT_MB_BLOCK_TYPE, &type);
 
-            int error = DBPutMultimesh(file_
-                                     , multi_variable_name.c_str()
-                                     , contents->nqmesh
-                                     , variable_names.c_array()
-                                     , NULL, optlist);
+            int error = DBPutMultivar(file_
+                                    , multi_variable_name.c_str()
+                                    , contents->nqmesh
+                                    , variable_names.c_array()
+                                    , NULL, optlist);
             OCTOPUS_ASSERT(error == 0);
         }
     }
@@ -142,15 +148,15 @@ void single_variable_silo_writer::operator()(octree_server& e)
     boost::uint64_t level = e.get_level();
 
     int nnodes[] = {
-        gnx - 2 * bw + 1
-      , gnx - 2 * bw + 1
-      , gnx - 2 * bw + 1
+        int(gnx - 2 * bw + 1)
+      , int(gnx - 2 * bw + 1)
+      , int(gnx - 2 * bw + 1)
     };
 
     int nzones[] = {
-        gnx - 2 * bw 
-      , gnx - 2 * bw 
-      , gnx - 2 * bw 
+        int(gnx - 2 * bw) 
+      , int(gnx - 2 * bw) 
+      , int(gnx - 2 * bw) 
     };
 
     char* coordinate_names[] = { (char*) "X", (char*) "Y", (char*) "Z" };
@@ -203,8 +209,8 @@ void single_variable_silo_writer::operator()(octree_server& e)
     OCTOPUS_ASSERT(error == 0);
 
     error = DBPutQuadvar1(file_
-                        , variable_name
-                        , mesh_name
+                        , variable_name.c_str()
+                        , mesh_name.c_str()
                         , variables.get()
                         , nzones
                         , 3, NULL, 0, DB_DOUBLE, DB_ZONECENT, NULL);

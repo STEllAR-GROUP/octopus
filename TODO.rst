@@ -1,10 +1,6 @@
 Short-term todo list
 ====================
 
-These are the things necessary to refine the initial timestep (e.g. produce the
-equivalent of X.initial.silo.gz). This basically gives us everything else,
-though.
-
 * *DONE* Implement AMR/physical bounds client-side via type-punning.
     * *DONE* Special handling for send_ghost_zone_async() (aka operator(), aka interpolation)
     * *DONE* Special handling for get_sibling()
@@ -24,13 +20,16 @@ though.
     * Push semantics.
 * *DONE* Add interface for defining the problem (e.g. defining the science_table).
     * *DONE* Add defaults to science_table before passing it to the user.
-* Add I/O for verification.
+* *DONE* Add I/O for verification.
 * Implement default_main.
-* A lot of recursive functions need to be called from within step/sub-step to break the global barriers.
+* *DONE* A lot of recursive functions need to be called from within step/sub-step to break the global barriers.
 * An off switch would be nice.
+* Visit control component.
 
 Long-term todo list
 ===================
 
 * Application INI helpers.
 * More descriptive names (this is a problem both internally and at the interface level).
+* --help should show INI options (maybe).
+
