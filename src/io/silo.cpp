@@ -130,7 +130,7 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
 
         {
             DBoptlist* optlist = DBMakeOptlist(2);
-            DBObjectType type1 = DB_QUADRECT;
+            DBObjectType type1 = DB_QUADVAR;
             DBAddOption(optlist, DBOPT_MB_BLOCK_TYPE, &type1);
             int type2 = DB_COLMAJOR;
             DBAddOption(optlist, DBOPT_MAJORORDER, &type2);
