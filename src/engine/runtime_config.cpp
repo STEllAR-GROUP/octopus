@@ -136,7 +136,7 @@ config_data config_from_ini()
     // FIXME: Math in INI would make this smoother, some of these settings
     // should default to a formula not a hard-coded value.
     reader
-        ("max_refinement_level", cfg.max_refinement_level, 1) 
+        ("max_refinement_level", cfg.max_refinement_level, 0) 
         ("grid_node_length", cfg.grid_node_length, 12) 
         ("spatial_domain", cfg.spatial_domain, 1.5e-4) 
         ("initial_spatial_step", cfg.initial_spatial_step, 3.75e-5) 

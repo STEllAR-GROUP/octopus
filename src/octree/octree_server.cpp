@@ -90,7 +90,7 @@ octree_server::octree_server(
   , initialized_()
   , mtx_()
   , siblings_set_(6)
-  , state_received_(!init.wait_for_state)
+  , state_received_(true)
   , parent_(init.parent)
   , siblings_()
   , level_(init.level)
@@ -101,13 +101,18 @@ octree_server::octree_server(
   , origin_(init.origin)
   , step_(0)
   , U_(config().grid_node_length, std::vector<double>(science().state_size))
-  , U0_(config().grid_node_length, std::vector<double>(science().state_size))
+  , U0_()
   , FX_(config().grid_node_length, std::vector<double>(science().state_size))
   , FY_(config().grid_node_length, std::vector<double>(science().state_size))
   , FZ_(config().grid_node_length, std::vector<double>(science().state_size))
+  , FO_(science().state_size)
+  , FO0_()
+  , D_(config().grid_node_length, std::vector<double>(science().state_size))
   , DFO_(science().state_size)
 {
     OCTOPUS_TEST_IN_PLACE(parent_ == hpx::invalid_id);
+
+    initialized_.set();
 
     for (face i = XL; i < invalid_face; i = face(boost::uint8_t(i + 1)))
     {
@@ -130,7 +135,7 @@ octree_server::octree_server(
   , initialized_()
   , mtx_()
   , siblings_set_(0)
-  , state_received_(!init.wait_for_state)
+  , state_received_(false)
   , parent_(init.parent)
   , siblings_()
   , level_(init.level)
@@ -139,12 +144,15 @@ octree_server::octree_server(
   , time_(init.time)
   , offset_(init.offset)
   , origin_(init.origin)
-  , step_(0)
+  , step_(init.step)
   , U_(config().grid_node_length, std::vector<double>(science().state_size))
-  , U0_(config().grid_node_length, std::vector<double>(science().state_size))
+  , U0_()
   , FX_(config().grid_node_length, std::vector<double>(science().state_size))
   , FY_(config().grid_node_length, std::vector<double>(science().state_size))
   , FZ_(config().grid_node_length, std::vector<double>(science().state_size))
+  , FO_(science().state_size)
+  , FO0_()
+  , D_(config().grid_node_length, std::vector<double>(science().state_size))
   , DFO_(science().state_size)
 {
     // Make sure our parent reference is not reference counted.
@@ -247,13 +255,14 @@ void octree_server::create_child(
 
     using namespace octopus::operators;
 
-    kid_init.parent    = reference_from_this(); 
-    kid_init.level     = level_ + 1; 
-    kid_init.location  = location_ * 2 + kid.array(); 
-    kid_init.dx        = dx_ * 0.5;
-    kid_init.time      = time_;
-    kid_init.offset    = offset_ * 2 + bw + (kid.array() * (gnx - 2 * bw));
-    kid_init.origin    = origin_;
+    kid_init.parent         = reference_from_this(); 
+    kid_init.level          = level_ + 1; 
+    kid_init.location       = location_ * 2 + kid.array(); 
+    kid_init.dx             = dx_ * 0.5;
+    kid_init.time           = time_;
+    kid_init.offset         = offset_ * 2 + bw + (kid.array() * (gnx - 2 * bw));
+    kid_init.origin         = origin_;
+    kid_init.step           = step_;
 
     // Start creating the child. 
     hpx::future<hpx::id_type, hpx::naming::gid_type> kid_gid
@@ -689,15 +698,6 @@ void octree_server::tie_child_sibling(
     // caller, then this is non-optimal.
     siblings_[source_f].set_child_sibling_push
         (source_kid, source_f, children_[target_kid]);
-} // }}}
-
-boost::array<octree_client, 6> octree_server::get_siblings()
-{ // {{{
-    // Make sure that we are initialized.
-    initialized_.wait();
-
-    mutex_type::scoped_lock l(mtx_);
-    return siblings_;
 } // }}}
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1555,30 +1555,24 @@ void octree_server::apply(
   , boost::uint64_t minimum_level
     )
 { // {{{
+    std::vector<hpx::future<void> > recursion_is_parallelism;
+
     // Make sure that we are initialized.
     initialized_.wait();
-
-    mutex_type::scoped_lock l(mtx_);
-
-    std::vector<hpx::future<void> > recursion_is_parallelism;
+    
     recursion_is_parallelism.reserve(8);
-
+    
     for (boost::uint64_t i = 0; i < 8; ++i)
         if (hpx::invalid_id != children_[i])
             recursion_is_parallelism.push_back(
                 children_[i].apply_async(f, minimum_level)); 
-
-    // Invoke the function on ourselves.
+    
+    // Invoke the kernel on ourselves ...
     if (level_ >= minimum_level)
         f(*this);
 
-    {
-        // Unlock the lock ... 
-        hpx::util::unlock_the_lock<mutex_type::scoped_lock> ul(l);
-
-        // ... and block while our children to receive their ghost zones.
-        hpx::wait(recursion_is_parallelism); 
-    }
+    // ... and block while our children compute.
+    hpx::wait(recursion_is_parallelism); 
 } // }}}
 
 // The "boring" version. Does one step. 
@@ -1586,19 +1580,27 @@ void octree_server::step(double dt)
 { // {{{
     OCTOPUS_ASSERT_MSG(0 < dt, "invalid timestep size");
 
-    // Make sure that we are initialized.
-    initialized_.wait();
+    std::vector<hpx::future<void> > recursion_is_parallelism;
 
-    mutex_type::scoped_lock l(mtx_);
+    {
+        // Make sure that we are initialized.
+        initialized_.wait();
+    
+        mutex_type::scoped_lock l(mtx_);
+    
+        recursion_is_parallelism.reserve(8);
+    
+        // Start recursively executing the kernel function on our children.
+        for (boost::uint64_t i = 0; i < 8; ++i)
+            if (hpx::invalid_id != children_[i])
+                recursion_is_parallelism.push_back(children_[i].step_async(dt)); 
+    
+        // Kernel.
+        step_kernel(dt, l);
+    }
 
-    // Start recursively executing the kernel function on our children.
-    for (boost::uint64_t i = 0; i < 8; ++i)
-        if (hpx::invalid_id != children_[i])
-            children_[i].step_push(dt, until); 
-
-    ///////////////////////////////////////////////////////////////////////////
-    // Kernel.
-    step_kernel(dt, l);
+    // Block while our children compute.
+    hpx::wait(recursion_is_parallelism); 
 } // }}}
 
 // Recursion is parallel iteration.
@@ -1606,37 +1608,34 @@ void octree_server::step_to_time(double dt, double until)
 { // {{{
     OCTOPUS_ASSERT_MSG(0 < dt, "invalid timestep size");
 
-    // Make sure that we are initialized.
-    initialized_.wait();
+    {
+        // Make sure that we are initialized.
+        initialized_.wait();
 
-    mutex_type::scoped_lock l(mtx_);
+        mutex_type::scoped_lock l(mtx_);
 
-    // Start recursively executing the kernel on our children.
-    for (boost::uint64_t i = 0; i < 8; ++i)
-        if (hpx::invalid_id != children_[i])
-            children_[i].step_push(dt, until); 
+        // Start recursively executing the kernel on our children.
+        for (boost::uint64_t i = 0; i < 8; ++i)
+            if (hpx::invalid_id != children_[i])
+                children_[i].step_to_time_push(dt, until); 
 
-    ///////////////////////////////////////////////////////////////////////////
-    // Kernel.
-    step_kernel(dt, l);
+        ///////////////////////////////////////////////////////////////////////
+        // Kernel.
+        step_kernel(dt, l);
+    }
 
     // Are we done?
-    if (until <= time_)
+    if ((level_ == 0) && (until <= time_))
     {
-        // FIXME: This should be done in a separate thread, as it could be
-        // expensive (e.g. CFL).
-        double next_dt = science().next_timestep(*this, dt, until);
+        // If not, keep going. 
+        double next_dt = science().next_timestep_size(*this, step_, dt, until);
 
+        // Locks.
         octree_client tomorrow = clone_and_refine(); 
 
         // More recursion!
-        tomorrow.step_push(next_dt, until);
+        tomorrow.step_to_time_push(next_dt, until);
     }
-} // }}}
-
-octree_client octree_server::clone_and_refine()
-{ // {{{ IMPLEMENT
-    return octree_client();
 } // }}}
 
 void octree_server::step_kernel(
@@ -1645,6 +1644,9 @@ void octree_server::step_kernel(
     )
 { // {{{
     OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
+
+    U0_ = U_;
+    FO0_ = FO_;
 
     // NOTE (to self): I have no good place to put this, so I'm putting it
     // here: we do TVD RK3 (google is your friend).
@@ -1730,6 +1732,9 @@ void octree_server::add_differentials_kernel(
 { // {{{
     OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
 
+    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const gnx = config().grid_node_length;
+
     using namespace octopus::operators;
 
     for (boost::uint64_t i = bw; i < gnx - bw; ++i)
@@ -1742,12 +1747,12 @@ void octree_server::add_differentials_kernel(
 
                 // Here, you can see the temporal dependency.
                 U_(i, j, k) = (U_(i, j, k) + D_(i, j, k) * dt) * beta
-                            + UO_(i, j, k) * (1.0 - beta); 
+                            + U0_(i, j, k) * (1.0 - beta); 
 
                 science().floor(U_(i, j, k), X);
             }
-   
-    FO_ = (FO_ + DFO_ * dt) * beta + FO0 * (1.0 - beta);
+
+    FO_ = (FO_ + DFO_ * dt) * beta + FO0_ * (1.0 - beta);
 } // }}}
 
 void octree_server::prepare_differentials_kernel(
@@ -1771,8 +1776,8 @@ void octree_server::prepare_differentials_kernel(
             for (boost::uint64_t k = 0; k < gnx; ++k)
                 for (boost::uint64_t l = 0; l < ss; ++l)
                 {
-                    OCTOPUS_ASSET(D_(i, j, k).size() == ss);
-                    D_(i, j, k) = 0.0;
+                    OCTOPUS_ASSERT(D_(i, j, k).size() == ss);
+                    D_(i, j, k)[l] = 0.0;
                 }
 } // }}}
 
@@ -1803,23 +1808,19 @@ void octree_server::compute_flux_kernel(
     hpx::wait(xyz[0], xyz[1]);
 } // }}}
 
-void octree_server::compute_x_flux_kernel(
-    mutex_type::scoped_lock &l
-    )
+void octree_server::compute_x_flux_kernel()
 { // {{{
-    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
-
     boost::uint64_t const ss = science().state_size;
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
 
-    indexer2d<2> indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
+    indexer2d<2> const indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
 
     std::vector<std::vector<double> > q0(gnx, std::vector<double>(ss));
     std::vector<std::vector<double> > ql(gnx, std::vector<double>(ss));
     std::vector<std::vector<double> > qr(gnx, std::vector<double>(ss));
 
-    for (boost::uint64_t index = 0; index <= indexer.max_index(); ++index)
+    for (boost::uint64_t index = 0; index <= indexer.maximum; ++index)
     {
         boost::uint64_t k = indexer.x(index);
         boost::uint64_t j = indexer.y(index);
@@ -1837,7 +1838,6 @@ void octree_server::compute_x_flux_kernel(
 
         for (boost::uint64_t i = bw; i < gnx - bw + 1; ++i)
         {
-            boost::array<double, 3> v = vfx(i, j, k);
             boost::array<double, 3> X = xfx(i, j, k);
 
             science().primitive_to_conserved(ql[i], X);
@@ -1845,35 +1845,31 @@ void octree_server::compute_x_flux_kernel(
 
             double const a =
                 (std::max)(science().max_eigenvalue(x_axis, ql[i], X)
-                         , science().max_eigenvalue(x_axis, qr[i], X);
+                         , science().max_eigenvalue(x_axis, qr[i], X));
 
-            double const ql_flux = science().flux(x_axis, ql[i], X);
-            double const qr_flux = science().flux(x_axis, qr[i], X);
+            std::vector<double> ql_flux = science().flux(x_axis, ql[i], X);
+            std::vector<double> qr_flux = science().flux(x_axis, qr[i], X);
 
-            using octopus::operators;
+            using namespace octopus::operators;
  
-            FZ_(i, j, k) = ((ql_flux + qr_flux) - (qr[i] - ql[i]) * a) * 0.5;
+            FX_(i, j, k) = ((ql_flux + qr_flux) - (qr[i] - ql[i]) * a) * 0.5;
         }
     }
 } // }}}
 
-void octree_server::compute_y_flux_kernel(
-    mutex_type::scoped_lock &l
-    )
+void octree_server::compute_y_flux_kernel()
 { // {{{
-    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
-
     boost::uint64_t const ss = science().state_size;
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
 
-    indexer2d<2> indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
+    indexer2d<2> const indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
 
     std::vector<std::vector<double> > q0(gnx, std::vector<double>(ss));
     std::vector<std::vector<double> > ql(gnx, std::vector<double>(ss));
     std::vector<std::vector<double> > qr(gnx, std::vector<double>(ss));
 
-    for (boost::uint64_t index = 0; index <= indexer.max_index(); ++index)
+    for (boost::uint64_t index = 0; index <= indexer.maximum; ++index)
     {
         boost::uint64_t i = indexer.y(index);
         boost::uint64_t k = indexer.x(index);
@@ -1891,7 +1887,6 @@ void octree_server::compute_y_flux_kernel(
 
         for (boost::uint64_t j = bw; j < gnx - bw + 1; ++j)
         {
-            boost::array<double, 3> v = vfy(i, j, k);
             boost::array<double, 3> X = xfy(i, j, k);
 
             science().primitive_to_conserved(ql[j], X);
@@ -1899,12 +1894,12 @@ void octree_server::compute_y_flux_kernel(
 
             double const a =
                 (std::max)(science().max_eigenvalue(y_axis, ql[j], X)
-                         , science().max_eigenvalue(y_axis, qr[j], X);
+                         , science().max_eigenvalue(y_axis, qr[j], X));
 
-            double const ql_flux = science().flux(y_axis, ql[j], X);
-            double const qr_flux = science().flux(y_axis, qr[j], X);
+            std::vector<double> ql_flux = science().flux(y_axis, ql[j], X);
+            std::vector<double> qr_flux = science().flux(y_axis, qr[j], X);
  
-            using octopus::operators;
+            using namespace octopus::operators;
 
             FY_(i, j, k) = ((ql_flux + qr_flux) - (qr[j] - ql[j]) * a) * 0.5;
         }
@@ -1912,12 +1907,8 @@ void octree_server::compute_y_flux_kernel(
 
 } // }}}
 
-void octree_server::compute_z_flux_kernel(
-    mutex_type::scoped_lock& l
-    )
+void octree_server::compute_z_flux_kernel()
 { // {{{
-    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
-
     boost::uint64_t const ss = science().state_size;
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
@@ -1928,7 +1919,7 @@ void octree_server::compute_z_flux_kernel(
     std::vector<std::vector<double> > ql(gnx, std::vector<double>(ss));
     std::vector<std::vector<double> > qr(gnx, std::vector<double>(ss));
 
-    for (boost::uint64_t index = 0; index <= indexer.max_index(); ++index)
+    for (boost::uint64_t index = 0; index <= indexer.maximum; ++index)
     {
         boost::uint64_t i = indexer.x(index);
         boost::uint64_t j = indexer.y(index);
@@ -1946,7 +1937,6 @@ void octree_server::compute_z_flux_kernel(
 
         for (boost::uint64_t k = bw; k < gnx - bw + 1; ++k)
         {
-            boost::array<double, 3> v = vfz(i, j, k);
             boost::array<double, 3> X = xfz(i, j, k);
 
             science().primitive_to_conserved(ql[k], X);
@@ -1954,12 +1944,12 @@ void octree_server::compute_z_flux_kernel(
 
             double const a =
                 (std::max)(science().max_eigenvalue(z_axis, ql[k], X)
-                         , science().max_eigenvalue(z_axis, qr[k], X);
+                         , science().max_eigenvalue(z_axis, qr[k], X));
 
-            double const ql_flux = science().flux(z_axis, ql[k], X);
-            double const qr_flux = science().flux(z_axis, qr[k], X);
+            std::vector<double> ql_flux = science().flux(z_axis, ql[k], X);
+            std::vector<double> qr_flux = science().flux(z_axis, qr[k], X);
  
-            using octopus::operators;
+            using namespace octopus::operators;
 
             FZ_(i, j, k) = ((ql_flux + qr_flux) - (qr[k] - ql[k]) * a) * 0.5;
         }
@@ -1988,7 +1978,7 @@ void octree_server::sum_differentials_kernel(
 
     ///////////////////////////////////////////////////////////////////////////
     // Kernel.
-    using octopus::operators;
+    using namespace octopus::operators;
 
     // NOTE: This is probably too tight a loop to parallelize with HPX, but
     // could be vectorized. 
@@ -2027,6 +2017,32 @@ void octree_server::sum_differentials_kernel(
                     DFO_ += (FZ_(i, j, gnx - bw) - FZ_(i, j, bw)) * dx_ * dx_;
             }
         }
+} // }}}
+
+octree_client octree_server::clone_and_refine()
+{ // {{{ IMPLEMENT
+    return octree_client();
+} // }}}
+
+void octree_server::output()
+{ // {{{ IMPLEMENT
+    std::vector<hpx::future<void> > recursion_is_parallelism;
+
+    // Make sure that we are initialized.
+    initialized_.wait();
+    
+    mutex_type::scoped_lock l(mtx_);
+    
+    recursion_is_parallelism.reserve(8);
+    
+    for (boost::uint64_t i = 0; i < 8; ++i)
+        if (hpx::invalid_id != children_[i])
+            recursion_is_parallelism.push_back(
+                hpx::async<output_action>(children_[i].get_gid()));
+
+    science().output(*this); 
+
+    hpx::wait(recursion_is_parallelism); 
 } // }}}
 
 }

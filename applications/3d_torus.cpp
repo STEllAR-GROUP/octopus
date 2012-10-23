@@ -9,7 +9,8 @@
 
 #include <octopus/driver.hpp>
 #include <octopus/science.hpp>
-#include <octopus/octree/checkout_state.hpp>
+#include <octopus/engine/engine_interface.hpp>
+#include <octopus/io/silo.hpp>
 
 /// Mass density
 inline double&       rho(std::vector<double>& u)       { return u.at(0); }
@@ -38,10 +39,8 @@ inline double const& tau(std::vector<double> const& u) { return u.at(5); }
 // Initialization kernel.
 struct initialize : octopus::trivial_serialization
 {
-    void operator()(octopus::octree_server& e) const
+    void operator()(octopus::octree_server& U) const
     {
-        octopus::checkout_state U(e, octopus::checkout_for_init);
-
         using std::pow;
         using std::sqrt;
 
@@ -69,17 +68,18 @@ struct initialize : octopus::trivial_serialization
         double const h = sqrt(2.0*G*M_c*R_inner*R_outer/(R_inner + R_outer));
 
         double const C = 0.5*pow(h/R_inner, 2) - G*M_c/R_inner;    
-   
+  
+        boost::uint64_t const gnx = octopus::config().grid_node_length;
  
-        for (boost::uint64_t i = 0; i < U.x_length(); ++i)
+        for (boost::uint64_t i = 0; i < gnx; ++i)
         {
-            for (boost::uint64_t j = 0; j < U.y_length(); ++j)
+            for (boost::uint64_t j = 0; j < gnx; ++j)
             {
-                for (boost::uint64_t k = 0; k < U.z_length(); ++k)
+                for (boost::uint64_t k = 0; k < gnx; ++k)
                 {
-                    double const x = e.xc(i);
-                    double const y = e.yc(j);
-                    double const z = e.zc(k);
+                    double const x = U.xc(i);
+                    double const y = U.yc(j);
+                    double const z = U.zc(k);
                   
                     // Cylindrical R.  
                     double const r = sqrt(pow(x, 2) + pow(y, 2));
@@ -136,6 +136,20 @@ void octopus_define_problem(octopus::science_table& sci)
     sci.enforce_outflow = enforce_outflow();
 
     sci.initialize = initialize();
+
+    sci.output = octopus::single_variable_silo_writer(0, "rho");
 }
 
+int octopus_main(boost::program_options::variables_map& vm)
+{
+    octopus::octree_client root;
+
+    root.create_root(hpx::find_here(), octopus::octree_init_data());
+
+    root.apply(octopus::science().initialize);
+
+    root.output();
+
+    return 0;
+}
 

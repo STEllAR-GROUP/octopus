@@ -517,20 +517,32 @@ struct OCTOPUS_EXPORT octree_client
         ) const;
     // }}} 
 
-    // NOTE: (to self) Keep the order the same as octree_server please.
-    // (update to self) Bad self.
-
     ///////////////////////////////////////////////////////////////////////////
     // {{{ step_to_time and step 
     void step(double dt) const
     {
-        return step_async().get();
+        return step_async(dt).get();
     }
 
     hpx::future<void> step_async(double dt) const;
 
+    void step_push(double dt) const;
+
     void step_to_time_push(double dt, double until) const;
     // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
+    // {{{ output - FIXME: I am not safe to do concurrently.
+    void output() const
+    {
+        return output_async().get();
+    }
+
+    hpx::future<void> output_async() const;
+    // }}}
+
+    // NOTE: (to self) Keep the order the same as octree_server please.
+    // (update to self) Bad self.
 };
 
 }

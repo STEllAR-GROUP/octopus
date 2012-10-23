@@ -70,6 +70,11 @@ struct OCTOPUS_EXPORT engine_server
         return science_;
     }
 
+    std::vector<hpx::id_type> const& localities() const
+    {
+        return localities_;
+    }
+
     hpx::future<hpx::id_type, hpx::naming::gid_type> create_octree_async(
         octree_init_data const& init
       , vector3d<std::vector<double> > const& parent_U
@@ -79,6 +84,13 @@ struct OCTOPUS_EXPORT engine_server
         octree_init_data const& init
       , BOOST_RV_REF(vector3d<std::vector<double> >) parent_U
         );
+
+  private:
+    friend void OCTOPUS_EXPORT enforce_io_epoch(boost::uint64_t step);
+
+    // NOTE: It is not safe to call this function concurrently. Actually, you
+    // probably shouldn't be calling it directly.
+    void io_epoch(boost::uint64_t step);
 };
 
 }

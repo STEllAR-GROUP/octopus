@@ -36,6 +36,17 @@ inline science_table const& /* Lets do some */ science() /* ! */
     return engine_ptr->science(); 
 }
 
+/// \brief Retrieve a list of all localities that are running Octopus. 
+///
+/// Remote Operations:   No.
+/// Concurrency Control: None (read by multiple threads; data is read-only). 
+/// Synchrony Gurantee:  Synchronous.
+inline std::vector<hpx::id_type> const& localities() 
+{
+    OCTOPUS_ASSERT_MSG(engine_ptr != 0, "engine_ptr is NULL");
+    return engine_ptr->localities(); 
+}
+
 /// \brief Asynchronously create a new octree node using the distributed
 ///        load-balancer.
 ///

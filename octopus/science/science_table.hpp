@@ -9,6 +9,7 @@
 #define OCTOPUS_903E5732_EB7C_4CBC_A13E_24DF0582AF0E
 
 #include <octopus/octree/octree_server.hpp>
+#include <octopus/io/writer.hpp>
 #include <octopus/face.hpp>
 
 #include <boost/cstdint.hpp>
@@ -25,6 +26,7 @@ namespace octopus
 /// in a science table represent values that vary from problem to problem, but
 /// are fixed within the scope of each problem. 
 // NOTE: Aggregate for laziness.
+// NOTE: Users should never copy this.
 struct science_table
 {
     boost::uint64_t state_size;  /// Number of doubles needed for state for
@@ -69,10 +71,19 @@ struct science_table
     hpx::util::function<
         double(
             axis
-          , std::vector<double> const&     /// state 
+          , std::vector<double> const& ///< State 
           , boost::array<double, 3> const& 
             )
     > max_eigenvalue; 
+
+    hpx::util::function<
+        double(
+            octree_server&
+          , boost::uint64_t ///< Step  
+          , double ///< Current timestep.
+          , double ///< Time to step to.
+            )
+    > next_timestep_size;
 
     hpx::util::function<
         void(
@@ -88,6 +99,30 @@ struct science_table
             )
     > primitive_to_conserved; 
 
+    hpx::util::function<
+        std::vector<double>(
+            std::vector<double>& 
+          , boost::array<double, 3> const&
+            )
+    > source; 
+
+    hpx::util::function<
+        void(
+            std::vector<double>& 
+          , boost::array<double, 3> const&
+            )
+    > floor; 
+
+    hpx::util::function<
+        std::vector<double>(
+            axis
+          , std::vector<double>& ///< State 
+          , boost::array<double, 3> const& 
+            )
+    > flux; 
+
+    writer output;
+
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int version)
     {
@@ -101,9 +136,16 @@ struct science_table
         ar & enforce_outflow;
         ar & reflect;
         ar & max_eigenvalue;
+        ar & next_timestep_size;
 
         ar & conserved_to_primitive;
         ar & primitive_to_conserved;
+
+        ar & source;
+        ar & floor;
+        ar & flux;
+
+        ar & output;
     }
 };
 

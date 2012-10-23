@@ -6,8 +6,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <hpx/lcos/future.hpp>
+#include <hpx/lcos/future_wait.hpp>
+#include <hpx/lcos/local/packaged_continuation.hpp>
 #include <hpx/async.hpp>
 #include <hpx/apply.hpp>
+#include <hpx/include/actions.hpp>
 #include <hpx/runtime/components/runtime_support.hpp>
 
 #include <octopus/octree/octree_server.hpp>
@@ -786,10 +789,91 @@ hpx::future<void> octree_client::step_async(double dt) const
     return hpx::async<octree_server::step_action>(gid_, dt);
 }
 
-void step_to_time_push(double dt, double until) const
+void octree_client::step_push(double dt) const
+{
+    ensure_real();
+    hpx::apply<octree_server::step_action>(gid_, dt);
+}
+
+void octree_client::step_to_time_push(double dt, double until) const
 {
     ensure_real();
     hpx::apply<octree_server::step_to_time_action>(gid_, dt, until);
+}
+
+void begin_io_epoch(boost::uint64_t step)
+{
+    science().output.open(step);
+}
+
+void end_io_epoch()
+{
+    science().output.close();
+}
+
+}
+
+HPX_PLAIN_ACTION(octopus::begin_io_epoch, begin_io_epoch_action);
+HPX_PLAIN_ACTION(octopus::end_io_epoch, end_io_epoch_action);
+
+namespace octopus
+{
+
+struct end_io_epoch_continuation
+{
+    typedef void result_type;
+
+    hpx::future<void> f_;
+
+    end_io_epoch_continuation(hpx::future<void> const& f)
+      : f_(f)
+    {}
+
+    result_type operator()(hpx::future<void> res) const
+    {
+        std::vector<hpx::id_type> const& targets = localities();
+
+        std::vector<hpx::future<void> > futures;
+        futures.reserve(targets.size());
+
+        end_io_epoch_action act;
+
+        for (boost::uint64_t i = 0; i < targets.size(); ++i)
+            futures.push_back(hpx::async(act, targets[i]));
+
+        hpx::wait(futures);
+    }
+};
+
+hpx::future<void> octree_client::output_async() const
+{
+    ensure_real();
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Begin I/O epoch.
+    // FIXME: Sub-optimal.
+    hpx::future<boost::uint64_t> step_ 
+        = hpx::async<octree_server::get_step_action>(gid_);
+
+    std::vector<hpx::id_type> const& targets = localities();
+
+    std::vector<hpx::future<void> > futures;
+    futures.reserve(targets.size());
+
+    begin_io_epoch_action act;
+
+    for (boost::uint64_t i = 0; i < targets.size(); ++i)
+        futures.push_back(hpx::async(act, targets[i], step_.get()));
+
+    hpx::wait(futures);
+
+    ///////////////////////////////////////////////////////////////////////////
+    // FIXME: This is broken.
+    //return hpx::async<octree_server::output_action>(gid_).when
+    //    (end_io_epoch_continuation());
+
+    hpx::future<void> f = hpx::async<octree_server::output_action>(gid_);
+    return f.when(end_io_epoch_continuation(f));
 }
 
 }

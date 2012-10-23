@@ -29,7 +29,7 @@ struct octree_init_data
     double                          time; 
     boost::array<boost::int64_t, 3> offset; 
     boost::array<double, 3>         origin;
-    bool                            wait_for_state;
+    boost::uint64_t                 step;
 
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int version)
@@ -41,7 +41,7 @@ struct octree_init_data
         ar & time;
         ar & boost::serialization::make_array(offset.data(), offset.size());     
         ar & boost::serialization::make_array(origin.data(), origin.size());     
-        ar & wait_for_state;
+        ar & step;
     }
 };
 

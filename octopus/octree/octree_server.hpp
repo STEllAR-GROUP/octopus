@@ -104,6 +104,8 @@ struct OCTOPUS_EXPORT octree_server
     std::vector<double> FO_; ///< Flow off (stuff that leaves the problem
                              ///  space).
 
+    std::vector<double> FO0_;
+
     vector3d<std::vector<double> > D_; ///< Flux differential.
 
     std::vector<double> DFO_; ///< Flow off differential. 
@@ -244,7 +246,46 @@ struct OCTOPUS_EXPORT octree_server
     	boost::array<double, 3> x = { { xf(i), yc(j), zc(k) } };
     	return x;
     }
-    
+
+    boost::uint64_t get_level() const
+    {
+        return level_;
+    }
+
+    boost::uint64_t get_step() const
+    {
+        return step_;
+    }
+
+    // Only used as an action by output().
+    HPX_DEFINE_COMPONENT_CONST_DIRECT_ACTION(octree_server,
+                                             get_step,
+                                             get_step_action);  
+
+    std::vector<double>& operator()(
+        boost::uint64_t i
+      , boost::uint64_t j
+      , boost::uint64_t k
+        )
+    {
+        return U_(i, j, k);
+    } 
+
+    std::vector<double> const& operator()(
+        boost::uint64_t i
+      , boost::uint64_t j
+      , boost::uint64_t k
+        ) const
+    {
+        return U_(i, j, k);
+    } 
+
+    // NOTE: Use with caution.
+    mutex_type& get_mutex() const
+    {
+        return mtx_;
+    }
+
     // FIXME: More descriptive name.
     boost::array<double, 3> xfy(
         boost::uint64_t i
@@ -374,30 +415,29 @@ struct OCTOPUS_EXPORT octree_server
                                 tie_child_sibling_action);
 
     ///////////////////////////////////////////////////////////////////////////
-    /// \brief Set \a target_sib as the \a target_f sibling of this node's
-    ///        \a target_kid child. Additionally, set this node's \a target_kid
-    ///        child as the invert(target_f) sibling of \a target_sib.
-    /// 
-    /// Remote Operations:   Possibly.
-    /// Concurrency Control: Waits on initialization_, locks mtx_.
-    /// Synchrony Gurantee:  Fire-and-Forget.
-    boost::array<octree_client, 6> get_siblings();
+    boost::array<octree_client, 6> get_siblings() 
+    {
+        // Make sure that we are initialized.
+        initialized_.wait();
 
-    // REVIEW: Should this be a direct action?
+        // Is the lock needed?
+        mutex_type::scoped_lock l(mtx_);
+        return siblings_;
+    }
+
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                 get_siblings,
                                 get_siblings_action);
 
     ///////////////////////////////////////////////////////////////////////////
-    boost::array<boost::int64_t, 3> get_offset()
+    boost::array<boost::int64_t, 3> get_offset() const
     {
         return offset_;
     }
 
-    // REVIEW: Should this be a direct action?
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                get_offset,
-                                get_offset_action);
+    HPX_DEFINE_COMPONENT_CONST_DIRECT_ACTION(octree_server,
+                                             get_offset,
+                                             get_offset_action);
 
     ///////////////////////////////////////////////////////////////////////////
     // NOTE: enforce_boundaries in the original code.
@@ -405,6 +445,12 @@ struct OCTOPUS_EXPORT octree_server
     /// \brief Requests ghost zone data from all siblings. 
     void receive_ghost_zones();
 
+  private:
+    void receive_ghost_zones_kernel(
+        mutex_type::scoped_lock& l
+        );
+
+  public:
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                 receive_ghost_zones,
                                 receive_ghost_zones_action);
@@ -450,9 +496,6 @@ struct OCTOPUS_EXPORT octree_server
                                 apply_action);
 
     ///////////////////////////////////////////////////////////////////////////
-    // NOTE: The implementation of this should be in the science table, or
-    // maybe the whole thing should live in the driver.
-
     void step(double dt);
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
@@ -467,6 +510,48 @@ struct OCTOPUS_EXPORT octree_server
                                 step_to_time,
                                 step_to_time_action);  
 
+  private:
+    void step_kernel(
+        double dt
+      , mutex_type::scoped_lock& l
+        );
+
+    void sub_step_kernel(
+        double dt
+      , double beta
+      , mutex_type::scoped_lock& l
+        );
+
+    // IMPLEMENT
+    void receive_state_from_children_kernel(mutex_type::scoped_lock& l);
+
+    void add_differentials_kernel(
+        double dt
+      , double beta
+      , mutex_type::scoped_lock& l
+        ); 
+
+    void prepare_differentials_kernel(mutex_type::scoped_lock& l); 
+
+    // NOTE: Operations on each axis overlap each other.
+    void compute_flux_kernel(mutex_type::scoped_lock& l);
+
+    // NOTE: Reads from U_, writes to FX_.
+    void compute_x_flux_kernel();
+
+    // NOTE: Reads from U_, writes to FY_.
+    void compute_y_flux_kernel();
+
+    // NOTE: Reads from U_, writes to FZ_.
+    void compute_z_flux_kernel();
+
+    // IMPLEMENT 
+    void adjust_flux_kernel(mutex_type::scoped_lock& l);
+
+    void sum_differentials_kernel(mutex_type::scoped_lock& l);
+
+  public:
+    ///////////////////////////////////////////////////////////////////////////
     // IMPLEMENT
     octree_client clone_and_refine();
 
@@ -474,31 +559,12 @@ struct OCTOPUS_EXPORT octree_server
                                 clone_and_refine,
                                 clone_and_refine_action);  
 
-  private:
-    // NOTE: The implementation of this should be in the science table, or
-    // maybe the whole thing should live in the driver.
-    void sub_step_kernel(double dt, double beta);
+    ///////////////////////////////////////////////////////////////////////////
+    void output();
 
-    // IMPLEMENT
-    void receive_state_from_children();
-
-    void add_differentials(double dt, double beta); 
-
-    void prepare_differentials(); 
-
-    // NOTE: Operations on each axis overlap each other.
-    void compute_flux_kernel();
-
-    void compute_x_flux_kernel();
-
-    void compute_y_flux_kernel();
-
-    void compute_z_flux_kernel();
-
-    // IMPLEMENT 
-    void adjust_flux_kernel();
-
-    void sum_differentials_kernel();
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                output,
+                                output_action);  
 };
 
 }
@@ -517,6 +583,7 @@ OCTOPUS_REGISTER_ACTION(set_child_sibling);
 OCTOPUS_REGISTER_ACTION(tie_child_sibling);
 OCTOPUS_REGISTER_ACTION(get_siblings);
 OCTOPUS_REGISTER_ACTION(get_offset);
+OCTOPUS_REGISTER_ACTION(get_step); // Only used by output()
 OCTOPUS_REGISTER_ACTION(receive_ghost_zones);
 OCTOPUS_REGISTER_ACTION(send_ghost_zone);
 OCTOPUS_REGISTER_ACTION(send_mapped_ghost_zone);
@@ -524,6 +591,7 @@ OCTOPUS_REGISTER_ACTION(apply);
 OCTOPUS_REGISTER_ACTION(step);
 OCTOPUS_REGISTER_ACTION(step_to_time);
 OCTOPUS_REGISTER_ACTION(clone_and_refine);
+OCTOPUS_REGISTER_ACTION(output);
 
 #undef OCTOPUS_REGISTER_ACTION
 

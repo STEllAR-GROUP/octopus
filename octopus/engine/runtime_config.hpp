@@ -26,6 +26,7 @@ namespace octopus
 // them to config_from_init().
 // NOTE: This is kept an aggregate for simplicity. Default values are set by
 // config_from_init().
+// NOTE: Users should never copy this.
 struct config_data
 {
     ///////////////////////////////////////////////////////////////////////////
