@@ -117,7 +117,7 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
             DBoptlist* optlist = DBMakeOptlist(2);
             DBObjectType type1 = DB_QUADRECT;
             DBAddOption(optlist, DBOPT_MB_BLOCK_TYPE, &type1);
-            int type2 = DB_COLMAJOR;
+            int type2 = DB_ROWMAJOR;
             DBAddOption(optlist, DBOPT_MAJORORDER, &type2);
 
             error = DBPutMultimesh(file_
@@ -132,7 +132,7 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
             DBoptlist* optlist = DBMakeOptlist(2);
             DBObjectType type1 = DB_QUADVAR;
             DBAddOption(optlist, DBOPT_MB_BLOCK_TYPE, &type1);
-            int type2 = DB_COLMAJOR;
+            int type2 = DB_ROWMAJOR;
             DBAddOption(optlist, DBOPT_MAJORORDER, &type2);
 
             error = DBPutMultivar(file_
@@ -211,7 +211,7 @@ void single_variable_silo_writer::operator()(octree_server& e)
 
     {
         DBoptlist* optlist = DBMakeOptlist(1);
-        int type = DB_COLMAJOR;
+        int type = DB_ROWMAJOR;
         DBAddOption(optlist, DBOPT_MAJORORDER, &type);
         error = DBPutQuadmesh(file_
                             , mesh_name.c_str()
@@ -225,7 +225,7 @@ void single_variable_silo_writer::operator()(octree_server& e)
 
     {
         DBoptlist* optlist = DBMakeOptlist(1);
-        int type = DB_COLMAJOR;
+        int type = DB_ROWMAJOR;
         DBAddOption(optlist, DBOPT_MAJORORDER, &type);
         error = DBPutQuadvar1(file_
                             , variable_name.c_str()
