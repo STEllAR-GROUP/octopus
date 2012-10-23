@@ -98,6 +98,9 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
             std::strcpy(&variable_names[j], tmp.c_str());
         }
 
+        // when we change directories below, "contents" will go out of scope
+        boost::uint64_t nqmesh = contents->nqmesh;
+
         error = DBSetDir(file_, "/");
         OCTOPUS_ASSERT(error == 0);
 
@@ -119,7 +122,7 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
 
             error = DBPutMultimesh(file_
                                  , multi_mesh_name.c_str()
-                                 , contents->nqmesh
+                                 , nqmesh
                                  , mesh_names.c_array()
                                  , NULL, optlist);
             OCTOPUS_ASSERT(error == 0);
@@ -134,7 +137,7 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
 
             error = DBPutMultivar(file_
                                 , multi_variable_name.c_str()
-                                , contents->nqmesh
+                                , nqmesh
                                 , variable_names.c_array()
                                 , NULL, optlist);
             OCTOPUS_ASSERT(error == 0);
