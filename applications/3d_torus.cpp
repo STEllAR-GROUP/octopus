@@ -124,7 +124,7 @@ struct initialize : octopus::trivial_serialization
                     }
 
                     // DEBUGGING
-                    std::cout << "(" << x << ", " << y << ", " << z << ") == " << rho(U(i, j, k)) << "\n";
+                    //std::cout << "(" << x << ", " << y << ", " << z << ") == " << rho(U(i, j, k)) << "\n";
 
                     sz(U(i, j, k)) = 0.0;
                 }

@@ -21,7 +21,6 @@ void single_variable_silo_writer::open_locked(
 {
     OCTOPUS_ASSERT(l.owns_lock());
 
-    merge_locked(l);
     close_locked(l);
 
     step_ = step;
@@ -47,6 +46,8 @@ void single_variable_silo_writer::close_locked(mutex_type::scoped_lock& l)
 {
     OCTOPUS_ASSERT(l.owns_lock());
 
+    merge_locked(l);
+
     if (file_)
     {
         DBClose(file_);
@@ -62,7 +63,7 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
 
     if (merged_ || !file_) return;
   
-    for (boost::uint64_t level = 0; level <= directory_names_.size(); ++level)
+    for (boost::uint64_t level = 0; level < directory_names_.size(); ++level)
     {
         int error = DBSetDir(file_, directory_names_[level].c_str());
         OCTOPUS_ASSERT(error == 0);
@@ -97,7 +98,8 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
             std::strcpy(&variable_names[j], tmp.c_str());
         }
 
-        DBSetDir(file_, "/");
+        error = DBSetDir(file_, "/");
+        OCTOPUS_ASSERT(error == 0);
 
         std::string multi_mesh_name
             = boost::str( boost::format("mesh_level_%1%")
@@ -109,28 +111,32 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
 
 
         {
-            DBoptlist* optlist = DBMakeOptlist(1);
-            DBObjectType type = DB_QUADRECT;
-            DBAddOption(optlist, DBOPT_MB_BLOCK_TYPE, &type);
+            DBoptlist* optlist = DBMakeOptlist(2);
+            DBObjectType type1 = DB_QUADRECT;
+            DBAddOption(optlist, DBOPT_MB_BLOCK_TYPE, &type1);
+            int type2 = DB_COLMAJOR;
+            DBAddOption(optlist, DBOPT_MAJORORDER, &type2);
 
-            int error = DBPutMultimesh(file_
-                                     , multi_mesh_name.c_str()
-                                     , contents->nqmesh
-                                     , mesh_names.c_array()
-                                     , NULL, optlist);
+            error = DBPutMultimesh(file_
+                                 , multi_mesh_name.c_str()
+                                 , contents->nqmesh
+                                 , mesh_names.c_array()
+                                 , NULL, optlist);
             OCTOPUS_ASSERT(error == 0);
         }
 
         {
-            DBoptlist* optlist = DBMakeOptlist(1);
-            DBObjectType type = DB_QUADVAR;
-            DBAddOption(optlist, DBOPT_MB_BLOCK_TYPE, &type);
+            DBoptlist* optlist = DBMakeOptlist(2);
+            DBObjectType type1 = DB_QUADRECT;
+            DBAddOption(optlist, DBOPT_MB_BLOCK_TYPE, &type1);
+            int type2 = DB_COLMAJOR;
+            DBAddOption(optlist, DBOPT_MAJORORDER, &type2);
 
-            int error = DBPutMultivar(file_
-                                    , multi_variable_name.c_str()
-                                    , contents->nqmesh
-                                    , variable_names.c_array()
-                                    , NULL, optlist);
+            error = DBPutMultivar(file_
+                                , multi_variable_name.c_str()
+                                , contents->nqmesh
+                                , variable_names.c_array()
+                                , NULL, optlist);
             OCTOPUS_ASSERT(error == 0);
         }
     }
@@ -159,22 +165,22 @@ void single_variable_silo_writer::operator()(octree_server& e)
       , int(gnx - 2 * bw) 
     };
 
-    char* coordinate_names[] = { (char*) "X", (char*) "Y", (char*) "Z" };
+    //char* coordinate_names[] = { (char*) "X", (char*) "Y", (char*) "Z" };
 
-    boost::ptr_vector<double> coordinates(nnodes[0] * nnodes[0] * nnodes[0]);
-    boost::scoped_array<double*> variables
-        (new double* [nzones[0] * nzones[0] * nzones[0]]);
+    boost::scoped_array<double*> coordinates(new double* [3]);
+    coordinates[0] = new double [nnodes[0]];
+    coordinates[1] = new double [nnodes[1]];
+    coordinates[2] = new double [nnodes[2]];
+
+    boost::scoped_array<double> variables
+        (new double [nzones[0] * nzones[1] * nzones[2]]);
 
     for (boost::uint64_t i = bw; i < (gnx - bw + 1); ++i) 
-        for (boost::uint64_t j = bw; j < (gnx - bw + 1); ++j) 
-            for (boost::uint64_t k = bw; k < (gnx - bw + 1); ++k) 
-            {
-                coordinates.push_back(new double[3]);
-
-                (&coordinates.back())[0] = e.xf(i); 
-                (&coordinates.back())[1] = e.yf(j); 
-                (&coordinates.back())[2] = e.zf(k); 
-            }
+    {
+        coordinates[0][i - bw] = e.xf(i); 
+        coordinates[1][i - bw] = e.yf(i); 
+        coordinates[2][i - bw] = e.zf(i); 
+    }
 
     for (boost::uint64_t i = bw; i < (gnx - bw); ++i) 
         for (boost::uint64_t j = bw; j < (gnx - bw); ++j) 
@@ -183,7 +189,7 @@ void single_variable_silo_writer::operator()(octree_server& e)
                 boost::uint64_t index = (i - bw)
                                       + (j - bw) * nzones[0]
                                       + (k - bw) * nzones[0] * nzones[1];
-                variables[index] = &e(i, j, k)[variable_index_];
+                variables[index] = e(i, j, k)[variable_index_];
             }
 
     std::string mesh_name
@@ -200,21 +206,36 @@ void single_variable_silo_writer::operator()(octree_server& e)
     int error = DBSetDir(file_, directory_names_[level].c_str());
     OCTOPUS_ASSERT(error == 0);
 
-    error = DBPutQuadmesh(file_
-                        , mesh_name.c_str()
-                        , coordinate_names
-                        , coordinates.c_array()
-                        , nnodes
-                        , 3, DB_DOUBLE, DB_COLLINEAR, NULL);
-    OCTOPUS_ASSERT(error == 0);
+    {
+        DBoptlist* optlist = DBMakeOptlist(1);
+        int type = DB_COLMAJOR;
+        DBAddOption(optlist, DBOPT_MAJORORDER, &type);
+        error = DBPutQuadmesh(file_
+                            , mesh_name.c_str()
+                            //, coordinate_names
+                            , NULL // SILO docs say this is ignored.
+                            , coordinates.get()
+                            , nnodes
+                            , 3, DB_DOUBLE, DB_COLLINEAR, optlist);
+        OCTOPUS_ASSERT(error == 0);
+    }
 
-    error = DBPutQuadvar1(file_
-                        , variable_name.c_str()
-                        , mesh_name.c_str()
-                        , variables.get()
-                        , nzones
-                        , 3, NULL, 0, DB_DOUBLE, DB_ZONECENT, NULL);
-    OCTOPUS_ASSERT(error == 0);
+    {
+        DBoptlist* optlist = DBMakeOptlist(1);
+        int type = DB_COLMAJOR;
+        DBAddOption(optlist, DBOPT_MAJORORDER, &type);
+        error = DBPutQuadvar1(file_
+                            , variable_name.c_str()
+                            , mesh_name.c_str()
+                            , variables.get()
+                            , nzones
+                            , 3, NULL, 0, DB_DOUBLE, DB_ZONECENT, optlist);
+        OCTOPUS_ASSERT(error == 0);
+    }
+
+    delete[] coordinates[0];
+    delete[] coordinates[1];
+    delete[] coordinates[2]; 
 }
 
 }
