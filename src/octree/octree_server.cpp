@@ -96,6 +96,7 @@ octree_server::octree_server(
   , level_(init.level)
   , location_(init.location)
   , dx_(init.dx)
+  , dx0_(science().initial_spacestep())
   , time_(init.time)
   , offset_(init.offset)
   , origin_(init.origin)
@@ -141,6 +142,7 @@ octree_server::octree_server(
   , level_(init.level)
   , location_(init.location)
   , dx_(init.dx)
+  , dx0_(science().initial_spacestep())
   , time_(init.time)
   , offset_(init.offset)
   , origin_(init.origin)
@@ -169,15 +171,11 @@ octree_server::octree_server(
 double octree_server::xf(boost::uint64_t i) const
 {
     boost::uint64_t const bw = science().ghost_zone_width;
-
-    // TODO: Rename these.
-    double const h0 = config().initial_spatial_step;
     double const grid_dim = config().spatial_domain;
 
-    if (config().x_reflect)
-        return double(offset_[0] + i) * dx_ - bw * h0 - origin_[0];
-    else
-        return double(offset_[0] + i) * dx_ - grid_dim - bw * h0;
+    using namespace octopus::operators;
+
+    return double(offset_[0] + i) * dx_ - grid_dim - bw * dx0_ - origin_[0];
 }
 
 
@@ -187,15 +185,11 @@ double octree_server::xf(boost::uint64_t i) const
 double octree_server::yf(boost::uint64_t i) const
 {
     boost::uint64_t const bw = science().ghost_zone_width;
-
-    // TODO: Rename these.
-    double const h0 = config().initial_spatial_step;
     double const grid_dim = config().spatial_domain;
 
-    if (config().y_reflect)
-        return double(offset_[1] + i) * dx_ - bw * h0 - origin_[1];
-    else
-        return double(offset_[1] + i) * dx_ - grid_dim - bw * h0;
+    using namespace octopus::operators;
+
+    return double(offset_[1] + i) * dx_ - grid_dim - bw * dx0_ - origin_[1];
 }
 
 // FIXME: More descriptive name.
@@ -204,17 +198,14 @@ double octree_server::yf(boost::uint64_t i) const
 double octree_server::zf(boost::uint64_t i) const
 {
     boost::uint64_t const bw = science().ghost_zone_width;
-
-    // TODO: Rename these.
-    double const h0 = config().initial_spatial_step;
     double const grid_dim = config().spatial_domain;
 
     using namespace octopus::operators;
 
     if (config().z_reflect)
-        return double(offset_[2] + i) * dx_ - bw * h0 - origin_[2];
+        return double(offset_[2] + i) * dx_ - bw * dx0_ - origin_[2];
     else
-        return double(offset_[2] + i) * dx_ - grid_dim - bw * h0;
+        return double(offset_[2] + i) * dx_ - grid_dim - bw * dx0_;
 }
 
 void octree_server::create_child(
@@ -1031,11 +1022,11 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                             switch (a)
                             {
                                 case x_axis:
-                                    science().reflect(a, zone(ii, jj, kk));
                                 case y_axis:
-                                    science().reflect(a, zone(ii, jj, kk));
+                                    OCTOPUS_ASSERT(false);
+                                    break;
                                 case z_axis:
-                                    science().reflect(a, zone(ii, jj, kk));
+                                    science().reflect_z(zone(ii, jj, kk));
                                 case invalid_axis:
                                     OCTOPUS_ASSERT(false);
                                     break;
@@ -1081,11 +1072,11 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                             switch (a)
                             {
                                 case x_axis:
-                                    science().reflect(a, zone(ii, jj, kk));
                                 case y_axis:
-                                    science().reflect(a, zone(ii, jj, kk));
+                                    OCTOPUS_ASSERT(false);
+                                    break;
                                 case z_axis:
-                                    science().reflect(a, zone(ii, jj, kk));
+                                    science().reflect_z(zone(ii, jj, kk));
                                 case invalid_axis:
                                     OCTOPUS_ASSERT(false);
                                     break;
@@ -1133,11 +1124,11 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                             switch (a)
                             {
                                 case x_axis:
-                                    science().reflect(a, zone(ii, jj, kk));
                                 case y_axis:
-                                    science().reflect(a, zone(ii, jj, kk));
+                                    OCTOPUS_ASSERT(false);
+                                    break;
                                 case z_axis:
-                                    science().reflect(a, zone(ii, jj, kk));
+                                    science().reflect_z(zone(ii, jj, kk));
                                 case invalid_axis:
                                     OCTOPUS_ASSERT(false);
                                     break;
@@ -1183,11 +1174,11 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                             switch (a)
                             {
                                 case x_axis:
-                                    science().reflect(a, zone(ii, jj, kk));
                                 case y_axis:
-                                    science().reflect(a, zone(ii, jj, kk));
+                                    OCTOPUS_ASSERT(false);
+                                    break;
                                 case z_axis:
-                                    science().reflect(a, zone(ii, jj, kk));
+                                    science().reflect_z(zone(ii, jj, kk));
                                 case invalid_axis:
                                     OCTOPUS_ASSERT(false);
                                     break;
@@ -1235,11 +1226,11 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                             switch (a)
                             {
                                 case x_axis:
-                                    science().reflect(a, zone(ii, jj, kk));
                                 case y_axis:
-                                    science().reflect(a, zone(ii, jj, kk));
+                                    OCTOPUS_ASSERT(false);
+                                    break;
                                 case z_axis:
-                                    science().reflect(a, zone(ii, jj, kk));
+                                    science().reflect_z(zone(ii, jj, kk));
                                 case invalid_axis:
                                     OCTOPUS_ASSERT(false);
                                     break;
@@ -1285,11 +1276,11 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                             switch (a)
                             {
                                 case x_axis:
-                                    science().reflect(a, zone(ii, jj, kk));
                                 case y_axis:
-                                    science().reflect(a, zone(ii, jj, kk));
+                                    OCTOPUS_ASSERT(false);
+                                    break;
                                 case z_axis:
-                                    science().reflect(a, zone(ii, jj, kk));
+                                    science().reflect_z(zone(ii, jj, kk));
                                 case invalid_axis:
                                     OCTOPUS_ASSERT(false);
                                     break;
@@ -1628,7 +1619,7 @@ void octree_server::step_to_time(double dt, double until)
     if ((level_ == 0) && (until <= time_))
     {
         // If not, keep going. 
-        double next_dt = science().next_timestep_size(*this, step_, dt, until);
+        double next_dt = science().next_timestep(*this, step_, dt, until);
 
         // Locks.
         octree_client tomorrow = clone_and_refine(); 
@@ -1999,16 +1990,10 @@ void octree_server::sum_differentials_kernel(
             if (level_ == 0)
             {
                 // i = y-axis, j = z-axis 
-                if (config().x_reflect)
-                    DFO_ += (FX_(gnx - bw, i, j)) * dx_ * dx_;
-                else
-                    DFO_ += (FX_(gnx - bw, i, j) - FX_(bw, i, j)) * dx_ * dx_;
+                DFO_ += (FX_(gnx - bw, i, j) - FX_(bw, i, j)) * dx_ * dx_;
 
                 // i = x-axis, j = z-axis 
-                if (config().y_reflect)
-                    DFO_ += (FY_(i, gnx - bw, j)) * dx_ * dx_;
-                else
-                    DFO_ += (FY_(i, gnx - bw, j) - FY_(i, bw, j)) * dx_ * dx_;
+                DFO_ += (FY_(i, gnx - bw, j) - FY_(i, bw, j)) * dx_ * dx_;
         
                 // i = x-axis, j = y-axis 
                 if (config().z_reflect)

@@ -134,7 +134,7 @@ void octree_client::set_sibling_for_physical_boundary(
         ///////////////////////////////////////////////////////////////////////
         // Y-axis.
         case XU:
-            reflect_ = config().x_reflect;
+            reflect_ = false; 
             direction_ = x_axis;
             return;
         case XL:
@@ -145,7 +145,7 @@ void octree_client::set_sibling_for_physical_boundary(
         ///////////////////////////////////////////////////////////////////////
         // Y-axis.
         case YU:
-            reflect_ = config().y_reflect;
+            reflect_ = false; 
             direction_ = y_axis;
             return;
         case YL:

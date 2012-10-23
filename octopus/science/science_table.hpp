@@ -65,8 +65,8 @@ struct science_table
     > enforce_outflow; 
 
     hpx::util::function<
-        void(axis, std::vector<double>&)
-    > reflect; 
+        void(std::vector<double>&)
+    > reflect_z; 
 
     hpx::util::function<
         double(
@@ -76,6 +76,11 @@ struct science_table
             )
     > max_eigenvalue; 
 
+    ///< The distance between zones in the root node/most coarse / refinement
+    ///  level (aka level 0). 
+    // h0, (2*GRID_DIM/double(GNX-2*BW)), TODO: validate min/max
+    hpx::util::function<double()> initial_spacestep;
+
     hpx::util::function<
         double(
             octree_server&
@@ -83,7 +88,7 @@ struct science_table
           , double ///< Current timestep.
           , double ///< Time to step to.
             )
-    > next_timestep_size;
+    > next_timestep;
 
     hpx::util::function<
         void(
@@ -134,9 +139,11 @@ struct science_table
 
         ar & initialize;
         ar & enforce_outflow;
-        ar & reflect;
+        ar & reflect_z;
         ar & max_eigenvalue;
-        ar & next_timestep_size;
+
+        ar & initial_spacestep;
+        ar & next_timestep;
 
         ar & conserved_to_primitive;
         ar & primitive_to_conserved;

@@ -172,8 +172,8 @@ void single_variable_silo_writer::operator()(octree_server& e)
                 coordinates.push_back(new double[3]);
 
                 (&coordinates.back())[0] = e.xf(i); 
-                (&coordinates.back())[1] = e.yf(i); 
-                (&coordinates.back())[2] = e.zf(i); 
+                (&coordinates.back())[1] = e.yf(j); 
+                (&coordinates.back())[2] = e.zf(k); 
             }
 
     for (boost::uint64_t i = bw; i < (gnx - bw); ++i) 

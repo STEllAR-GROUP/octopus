@@ -74,6 +74,9 @@ struct OCTOPUS_EXPORT octree_server
     // NOTE: Rename dx_;
     double dx_;   ///< The spatial size of the node (w/o ghost zones). h in the
                   ///  original code. NOTE: Confirmation needed from Dominic.  
+
+    double dx0_;
+
     double time_; ///< The current (physics?) time.
                   ///  NOTE: Confirmation needed from Dominic.
 
@@ -84,6 +87,7 @@ struct OCTOPUS_EXPORT octree_server
                                      ///  NOTE: Confirmation needed from
                                      ///  from Dominic.
 
+    // TODO: Rename step_.
     boost::uint64_t step_;
 
     // REVIEW: Consider compile-time maximum sizes for the state vector, to

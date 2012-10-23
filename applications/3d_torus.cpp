@@ -12,6 +12,8 @@
 #include <octopus/engine/engine_interface.hpp>
 #include <octopus/io/silo.hpp>
 
+#include <octopus/operators/boost_array_arithmetic.hpp>
+
 /// Mass density
 inline double&       rho(std::vector<double>& u)       { return u.at(0); }
 inline double const& rho(std::vector<double> const& u) { return u.at(0); }
@@ -80,7 +82,7 @@ struct initialize : octopus::trivial_serialization
                     double const x = U.xc(i);
                     double const y = U.yc(j);
                     double const z = U.zc(k);
-                  
+  
                     // Cylindrical R.  
                     double const r = sqrt(pow(x, 2) + pow(y, 2));
     
@@ -111,6 +113,9 @@ struct initialize : octopus::trivial_serialization
                         et(U(i, j, k))  = ei1;  
                         tau(U(i, j, k)) = tau1;
                     }
+
+                    // DEBUGGING
+                    std::cout << "(" << x << ", " << y << ", " << z << ") == " << rho(U(i, j, k)) << "\n";
 
                     sz(U(i, j, k)) = 0.0;
                 }
@@ -144,7 +149,9 @@ int octopus_main(boost::program_options::variables_map& vm)
 {
     octopus::octree_client root;
 
-    root.create_root(hpx::find_here(), octopus::octree_init_data());
+    octopus::octree_init_data root_data;
+    root_data.dx = octopus::science().initial_spacestep();
+    root.create_root(hpx::find_here(), root_data);
 
     root.apply(octopus::science().initialize);
 
