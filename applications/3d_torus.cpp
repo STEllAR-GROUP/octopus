@@ -103,6 +103,15 @@ struct initialize : octopus::trivial_serialization
                             et(U(i, j, k))  = ei0;
                             tau(U(i, j, k)) = tau0;
                         }
+
+                        else
+                        {
+                            rho(U(i, j, k)) = rho1;
+                            sx(U(i, j, k))  = 0.0; 
+                            sy(U(i, j, k))  = 0.0;
+                            et(U(i, j, k))  = ei1;  
+                            tau(U(i, j, k)) = tau1;
+                        }
                     }
                     
                     else
