@@ -113,6 +113,9 @@ int hpx_main(variables_map& vm)
 
         ///////////////////////////////////////////////////////////////////////
         // Invoke user entry point or default main.
+        std::cout << "Executing application...\n"
+                     "\n";
+
         if (main_p.first)
             result = (*main_p.first)(vm);
         else
