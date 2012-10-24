@@ -21,7 +21,7 @@ struct OCTOPUS_EXPORT writer_base
 {
     virtual ~writer_base() {}
 
-    virtual void open(boost::uint64_t step) = 0;
+    virtual void open(octree_server& e) = 0;
 
     virtual void close() = 0;
 
@@ -57,9 +57,9 @@ struct writer
         return *this;
     }
 
-    void open(boost::uint64_t step) const
+    void open(octree_server& e) const
     {
-        ptr_->open(step);
+        ptr_->open(e);
     }
 
     void close() const

@@ -16,7 +16,7 @@ namespace octopus
 {
 
 void single_variable_silo_writer::open_locked(
-    boost::uint64_t step
+    octree_server& e 
   , mutex_type::scoped_lock& l
     )
 {
@@ -24,7 +24,8 @@ void single_variable_silo_writer::open_locked(
 
     close_locked(l);
 
-    step_ = step;
+    step_ = e.get_step();
+    time_ = e.get_time();
 
     file_ = DBCreate(boost::str( boost::format(file_name_)
                                % hpx::get_locality_id() % step_).c_str() 
@@ -116,12 +117,12 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
 
 
         {
-            DBoptlist* optlist = DBMakeOptlist(2);
+            DBoptlist* optlist = DBMakeOptlist(4);
             DBObjectType type1 = DB_QUADRECT;
             DBAddOption(optlist, DBOPT_MB_BLOCK_TYPE, &type1);
+            DBAddOption(optlist, DBOPT_CYCLE, e.get_step());
+            DBAddOption(optlist, DBOPT_TIME, e.get_time());
             int type2 = DB_ROWMAJOR;
-            DBAddOption(optlist, DBOPT_MAJORORDER, &type2);
-
             error = DBPutMultimesh(file_
                                  , multi_mesh_name.c_str()
                                  , nqmesh
@@ -131,9 +132,11 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
         }
 
         {
-            DBoptlist* optlist = DBMakeOptlist(2);
+            DBoptlist* optlist = DBMakeOptlist(4);
             DBObjectType type1 = DB_QUADVAR;
             DBAddOption(optlist, DBOPT_MB_BLOCK_TYPE, &type1);
+            DBAddOption(optlist, DBOPT_CYCLE, e.get_step());
+            DBAddOption(optlist, DBOPT_TIME, e.get_time());
             int type2 = DB_ROWMAJOR;
             DBAddOption(optlist, DBOPT_MAJORORDER, &type2);
 
@@ -227,7 +230,7 @@ void single_variable_silo_writer::operator()(octree_server& e)
     }
 
     {
-        DBoptlist* optlist = DBMakeOptlist(1);
+        DBoptlist* optlist = DBMakeOptlist(3);
         // REVIEW: Verify this.
         int type = DB_ROWMAJOR;
         DBAddOption(optlist, DBOPT_MAJORORDER, &type);

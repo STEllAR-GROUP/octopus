@@ -256,6 +256,11 @@ struct OCTOPUS_EXPORT octree_server
         return level_;
     }
 
+    double get_time() const
+    {
+        return time_;
+    }
+
     boost::uint64_t get_step() const
     {
         return step_;

@@ -34,12 +34,13 @@ struct OCTOPUS_EXPORT single_variable_silo_writer : writer_base
 
     std::vector<std::string> directory_names_;
     boost::uint64_t step_;
+    double time_;
     boost::uint64_t variable_index_;
     std::string variable_name_;
     std::string file_name_;
     bool merged_;
 
-    void open_locked(boost::uint64_t step, mutex_type::scoped_lock& l);
+    void open_locked(octree_server& e, mutex_type::scoped_lock& l);
 
     void close_locked(mutex_type::scoped_lock& l);
 
@@ -51,6 +52,7 @@ struct OCTOPUS_EXPORT single_variable_silo_writer : writer_base
       , file_()
       , directory_names_()
       , step_(0)
+      , time_(0.0)
       , variable_index_()
       , variable_name_()
       , file_name_()
@@ -64,6 +66,7 @@ struct OCTOPUS_EXPORT single_variable_silo_writer : writer_base
       , file_()
       , directory_names_(other.directory_names_)
       , step_(other.step_)
+      , time_(other.time_)
       , variable_index_(other.variable_index_)
       , variable_name_(other.variable_name_)
       , file_name_(other.file_name_)
@@ -81,6 +84,7 @@ struct OCTOPUS_EXPORT single_variable_silo_writer : writer_base
       , file_(0)
       , directory_names_()
       , step_(0)
+      , time_(0.0)
       , variable_index_(variable_index)
       , variable_name_(variable_name)
       , file_name_(file_name)
@@ -94,7 +98,7 @@ struct OCTOPUS_EXPORT single_variable_silo_writer : writer_base
         close_locked(l);
     }
 
-    void open(boost::uint64_t step)
+    void open(octree_server& e)
     {
         mutex_type::scoped_lock l(mtx_);
         open_locked(step, l);
