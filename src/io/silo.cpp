@@ -56,6 +56,7 @@ void single_variable_silo_writer::close_locked(mutex_type::scoped_lock& l)
     }
 
     directory_names_.clear(); 
+    merged_ = false;
 }
 
 void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
