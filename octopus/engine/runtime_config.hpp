@@ -18,6 +18,7 @@
 #define OCTOPUS_CONFIG_DATA_VERSION 0x01
 
 // TODO: This is specific to the euler code, make it more general after SC.
+// TODO: Rename.
 
 namespace octopus
 {

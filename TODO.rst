@@ -29,7 +29,7 @@ Short-term todo list
 Long-term todo list
 ===================
 
-* Application INI helpers.
+* Application INI helpers. A paradigm is needed here to make this not suck.
 * More descriptive names (this is a problem both internally and at the interface level).
 * --help should show INI options (maybe).
 

@@ -106,7 +106,7 @@ struct science_table
 
     hpx::util::function<
         std::vector<double>(
-            std::vector<double>& 
+            std::vector<double> const& 
           , boost::array<double, 3> const&
             )
     > source; 

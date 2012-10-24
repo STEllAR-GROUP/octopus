@@ -211,6 +211,7 @@ void single_variable_silo_writer::operator()(octree_server& e)
 
     {
         DBoptlist* optlist = DBMakeOptlist(1);
+        // REVIEW: Verify this.
         int type = DB_ROWMAJOR;
         DBAddOption(optlist, DBOPT_MAJORORDER, &type);
         error = DBPutQuadmesh(file_
@@ -225,6 +226,7 @@ void single_variable_silo_writer::operator()(octree_server& e)
 
     {
         DBoptlist* optlist = DBMakeOptlist(1);
+        // REVIEW: Verify this.
         int type = DB_ROWMAJOR;
         DBAddOption(optlist, DBOPT_MAJORORDER, &type);
         error = DBPutQuadvar1(file_
