@@ -15,9 +15,10 @@
 
 #include <octopus/operators/boost_array_arithmetic.hpp>
 
-// FIXME: Proper configuration
+// FIXME: Names.
+// FIXME: Proper configuration.
 
-// NOTE: Zach, explain what this is.    
+// Gravitation constant.
 double const G = 1.0; // BIG_G
 
 // Mass of the central object.
@@ -85,7 +86,7 @@ inline double gravity(double x, double y, double z)
 }
 
 template <octopus::axis Axis>
-inline double gravity(boost::array<double, 3> v)
+inline double gravity(boost::array<double, 3> const& v)
 {
     return gravity<Axis>(v[0], v[1], v[2]); 
 }
@@ -199,7 +200,6 @@ struct initialize : octopus::trivial_serialization
         }
     }
 };
-
 struct enforce_outflow : octopus::trivial_serialization
 {
     void operator()(octopus::face f, boost::array<double, 3> x) const
@@ -222,7 +222,7 @@ struct max_eigenvalue : octopus::trivial_serialization
     double operator()(
         octopus::axis a
       , std::vector<double> const& state
-      , boost::array<double, 3> const& v
+      , boost::array<double, 3> const& 
         ) const
     {
         using std::abs;
@@ -247,6 +247,54 @@ struct max_eigenvalue : octopus::trivial_serialization
         return 0.0;
     }
 };
+
+template <octopus::axis Axis>
+double max_eigenvalue(std::vector<double> const& state)
+{
+    boost::array<double, 3> coords;
+    coords[0] = 0.0;
+    coords[1] = 0.0;
+    coords[2] = 0.0;
+    return max_eigenvalue()(Axis, state, coords);
+}
+
+struct cfl_timestep : octopus::trivial_serialization
+{
+    double operator()(octopus::octree_server& U) const
+    {
+        // REVIEW: I need to initialize this to some value higher than any
+        // possible dt, I think...
+        double min_dt = 100.0;
+
+        for (boost::uint64_t i = 0; i < gnx; ++i)
+        {
+            for (boost::uint64_t j = 0; j < gnx; ++j)
+            {
+                for (boost::uint64_t k = 0; k < gnx; ++k)
+                {
+                  double const dx = U.get_dx(); 
+
+                  double const v_x = momentum_x(state) / rho(state);
+                  double const v_y = momentum_y(state) / rho(state);
+                  double const v_z = momentum_z(state) / rho(state);
+
+                  double const dt_here_x = 0.4*dx/(max_eigenvalue<octopus::x_axis>(U(i, j, k)));
+                  double const dt_here_y = 0.4*dx/(max_eigenvalue<octopus::y_axis>(U(i, j, k)));
+                  double const dt_here_z = 0.4*dx/(max_eigenvalue<octopus::z_axis>(U(i, j, k)));
+
+                  min_dt = (std::min)(min_dt,dt_here_x);
+                  min_dt = (std::min)(min_dt,dt_here_y);
+                  min_dt = (std::min)(min_dt,dt_here_z);
+                  
+                }
+            }
+        }
+      
+
+      
+    }
+};
+
 
 struct conserved_to_primitive : octopus::trivial_serialization
 {
@@ -411,6 +459,7 @@ int octopus_main(boost::program_options::variables_map& vm)
 
     // FIXME: Proper support for adding commandline options.     
     double dt = 0.0; 
+    double dt_last =0.0;
     double temporal_domain = 0.0;
     boost::uint64_t output_frequency = 100;
 
@@ -435,10 +484,13 @@ int octopus_main(boost::program_options::variables_map& vm)
     boost::uint64_t step = 0;
     boost::uint64_t next_output_step = output_frequency;
 
+
     while (time < temporal_domain)
     {
         std::cout << (boost::format("STEP %06u @ %.6e\n") % step % time);
 
+        dt = (std::max)(dt_last*1.25,octopus::cfl_timestep());
+        
         root.step(dt);
 
         if (step == next_output_step)
@@ -450,6 +502,8 @@ int octopus_main(boost::program_options::variables_map& vm)
 
         time += dt;
         ++step;
+
+        dt_last = dt;
     } 
     
     return 0;

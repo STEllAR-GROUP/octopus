@@ -1651,6 +1651,7 @@ void octree_server::add_differentials_kernel(
         for (boost::uint64_t j = bw; j < gnx - bw; ++j)
             for (boost::uint64_t k = bw; k < gnx - bw; ++k)
             {
+                // FIXME: Possible asymmetry.
                 boost::array<double, 3> X = { { xc(i), yc(j), zc(k) } };
 
                 D_(i, j, k) += science().source(U_(i, j, k), X);
@@ -1717,7 +1718,7 @@ void octree_server::compute_flux_kernel(
     // Wait for the local x and y fluxes to be computed.
     hpx::wait(xyz[0], xyz[1]);
 } // }}}
-
+// FIXME: Potential asymmetries in compute flux kernels.
 void octree_server::compute_x_flux_kernel()
 { // {{{
     boost::uint64_t const ss = science().state_size;
