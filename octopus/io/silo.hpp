@@ -75,7 +75,7 @@ struct OCTOPUS_EXPORT single_variable_silo_writer : writer_base
       , std::string const& variable_name 
                                      // These should be sufficient default
                                      // widths (for now).
-      , std::string const& file_name = "U_S%06u_L%06u.silo"
+      , std::string const& file_name = "U_L%06u_S%06u.silo"
         )
       : mtx_()
       , file_(0)

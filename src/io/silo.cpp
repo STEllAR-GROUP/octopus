@@ -27,7 +27,7 @@ void single_variable_silo_writer::open_locked(
     step_ = step;
 
     file_ = DBCreate(boost::str( boost::format(file_name_)
-                               % step_ % hpx::get_locality_id()).c_str() 
+                               % hpx::get_locality_id() % step_).c_str() 
                    , DB_CLOBBER, DB_LOCAL, NULL, DB_PDB);
     OCTOPUS_ASSERT(file_ != 0);
 
