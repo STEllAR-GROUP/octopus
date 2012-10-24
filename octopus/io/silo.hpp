@@ -73,7 +73,9 @@ struct OCTOPUS_EXPORT single_variable_silo_writer : writer_base
     single_variable_silo_writer(
         boost::uint64_t variable_index
       , std::string const& variable_name 
-      , std::string const& file_name = "U.S%1%.L%2%.silo"
+                                     // These should be sufficient default
+                                     // widths (for now).
+      , std::string const& file_name = "U.S%06u.L%06u.silo"
         )
       : mtx_()
       , file_(0)
