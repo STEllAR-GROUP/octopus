@@ -780,46 +780,57 @@ void octree_client::step_to_time_push(double dt, double until) const
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-struct begin_io_epoch : trivial_serialization
+struct begin_io_epoch_locally : trivial_serialization
 {
     typedef void result_type;
 
-    // octree_server::apply overload
     result_type operator()(octree_server& root) const
     {
         science().output.begin_epoch(root);
     }
 };
 
-struct output_continuation : trivial_serialization
+struct end_io_epoch_locally : trivial_serialization
 {
     typedef void result_type;
 
+    result_type operator()(octree_server& root) const
+    {
+        science().output.end_epoch(root);
+    }
+};
+
+struct output_locally : trivial_serialization
+{
+    typedef void result_type;
+
+    result_type operator()(octree_server& e) const
+    {
+        science().output(e);
+    }
+};
+
+struct output_continuation
+{
+    typedef void result_type;
+
+    octree_client const& self_;
+
     // FIXME: Workaround for a bug with future lifetimes in HPX.
-    octree_client this_;
     hpx::future<void> f_;
 
-    output_continuation() : this_(), f_() {}
-
     output_continuation(
-        octree_client const& this_
+        octree_client const& self
       , hpx::future<void> const& f
         )
-      : this_(this_)
+      : self_(self)
       , f_(f)
     {}
 
     // future continuation overload
     result_type operator()(hpx::future<void> res) const
     {
-        // Send ourselves to the target.
-        this_.apply(*this);
-    }
-
-    // octree_server::apply overload
-    result_type operator()(octree_server& e) const
-    {
-        science().output(e);
+        self_.apply(output_locally());
     }
 };
 
@@ -827,17 +838,16 @@ struct end_io_epoch_continuation : trivial_serialization
 {
     typedef void result_type;
 
+    octree_client const& self_;
+
     // FIXME: Workaround for a bug with future lifetimes in HPX.
-    octree_client this_;
     hpx::future<void> f_;
 
-    end_io_epoch_continuation() : this_(), f_() {}
-
     end_io_epoch_continuation(
-        octree_client const& this_
+        octree_client const& self
       , hpx::future<void> const& f
         )
-      : this_(this_)
+      : self_(self)
       , f_(f)
     {}
 
@@ -845,13 +855,7 @@ struct end_io_epoch_continuation : trivial_serialization
     result_type operator()(hpx::future<void> res) const
     {
         // Send ourselves to the target.
-        this_.apply(*this, 0, 0);
-    }
-
-    // octree_server::apply overload
-    result_type operator()(octree_server& root) const
-    {
-        science().output.end_epoch(root);
+        self_.apply(end_io_epoch_locally(), 0, 0);
     }
 };
 
@@ -860,11 +864,9 @@ hpx::future<void> octree_client::output_async() const
 {
     ensure_real();
 
-    hpx::future<void> 
-        begin  = apply_async(begin_io_epoch())
-      , output = begin.when(output_continuation(*this, output))
-      , end    = end.when(end_io_epoch_continuation(*this, end))
-        ;
+    hpx::future<void> begin  = apply_async(begin_io_epoch_locally());
+    hpx::future<void> out    = begin.when(output_continuation(*this, begin));
+    hpx::future<void> end    = out.when(end_io_epoch_continuation(*this, out));
  
     return end;
 }
