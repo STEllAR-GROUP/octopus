@@ -1,4 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
+//  Copyright (c) 2012 Zach Byerly
 //  Copyright (c) 2012 Bryce Adelstein-Lelbach
 //
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying
@@ -196,12 +197,12 @@ void single_variable_silo_writer::operator()(octree_server& e)
             }
 
     std::string mesh_name
-        = boost::str( boost::format("mesh_%1%_%2%")
+        = boost::str( boost::format("mesh_%016x%016x")
                     % e.get_gid().get_msb()
                     % e.get_gid().get_lsb());
 
     std::string variable_name
-        = boost::str( boost::format("%1%_%2%_%3%")
+        = boost::str( boost::format("%s_%016x%016x")
                     % variable_name_
                     % e.get_gid().get_msb()
                     % e.get_gid().get_lsb());

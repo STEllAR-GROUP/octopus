@@ -472,8 +472,6 @@ struct OCTOPUS_EXPORT octree_server
     // IMPLEMENT: Push don't pull.
     vector3d<std::vector<double> > send_mapped_ghost_zone(
         face f ///< Our direction, relative to the caller.
-      , bool reflect
-      , axis direction
         );
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,

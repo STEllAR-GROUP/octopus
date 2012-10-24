@@ -10,6 +10,7 @@
 #include <octopus/driver.hpp>
 #include <octopus/science.hpp>
 #include <octopus/engine/engine_interface.hpp>
+#include <octopus/engine/ini.hpp>
 #include <octopus/io/silo.hpp>
 
 #include <octopus/operators/boost_array_arithmetic.hpp>
@@ -390,8 +391,32 @@ int octopus_main(boost::program_options::variables_map& vm)
 
     root.output();
 
-    root.step(1.0e-10);
+    ///////////////////////////////////////////////////////////////////////////
+    // Crude, temporary stepper.
 
+    // FIXME: Proper support for adding commandline options.     
+    double dt = 0.0; 
+    double temporal_domain = 0.0;
+
+    octopus::config_reader reader;
+
+    reader
+        ("3d_torus.dt", dt, 1.0e-10)
+        ("3d_torus.temporal_domain", temporal_domain, 2.0)
+    ;
+
+    double time = 0.0;
+
+    while (time <= temporal_domain)
+    {
+        std::cout << (boost::format("time = %10.3lf\n") % time);
+
+        root.step(1.0e-10);
+        root.output();
+
+        time += dt;
+    } 
+    
     return 0;
 }
 

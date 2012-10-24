@@ -305,10 +305,12 @@ vector3d<std::vector<double> > octree_client::interpolate(
     // set_sibling(f), f is the direction of the caller relative to the sibling
     // (the sibling == us). send_ghost_zone, f is our direction relative to the
     // the caller. REVIEW: I think.
+/*
     OCTOPUS_ASSERT_FMT_MSG(invert(f) == face_ 
                          , "supplied face (%1%) is not the inverse of the "
                            "stored face (%2%)"
-                         , f % face_) 
+                         , f % face_); 
+*/
 
     vector3d<std::vector<double> > input =
         hpx::async<octree_server::send_ghost_zone_action>(gid_, face_).get();
@@ -668,10 +670,12 @@ vector3d<std::vector<double> > octree_client::map(
     // set_sibling(f), f is the direction of the caller relative to the sibling
     // (the sibling == us). send_ghost_zone, f is our direction relative to the
     // the caller. REVIEW: I think.
+/*
     OCTOPUS_ASSERT_FMT_MSG(invert(f) == face_ 
                          , "supplied face (%1%) is not the inverse of the "
                            "stored face (%2%)"
-                         , f % face_) 
+                         , f % face_); 
+*/
     return hpx::async<octree_server::send_mapped_ghost_zone_action>
         (gid_, face_).get();
 }
@@ -683,10 +687,12 @@ hpx::future<vector3d<std::vector<double> > > octree_client::map_async(
     // set_sibling(f), f is the direction of the caller relative to the sibling
     // (the sibling == us). send_ghost_zone, f is our direction relative to the
     // the caller. REVIEW: I think.
+/*
     OCTOPUS_ASSERT_FMT_MSG(invert(f) == face_ 
                          , "supplied face (%1%) is not the inverse of the "
                            "stored face (%2%)"
-                         , f % face_) 
+                         , f % face_); 
+*/
     return hpx::async<octree_server::send_mapped_ghost_zone_action>
         (gid_, face_);
 }
