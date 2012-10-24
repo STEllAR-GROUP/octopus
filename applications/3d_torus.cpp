@@ -407,9 +407,13 @@ int octopus_main(boost::program_options::variables_map& vm)
 
     double time = 0.0;
 
+    std::cout << (boost::format("dt = %.6e\n") % dt)
+              << (boost::format("stepping to %.6e\n") % temporal_domain)
+              << "\n";  
+
     while (time <= temporal_domain)
     {
-        std::cout << (boost::format("time = %10.3lf\n") % time);
+        std::cout << (boost::format("time = %.6e\n") % time);
 
         root.step(1.0e-10);
         root.output();
