@@ -1027,6 +1027,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                                     break;
                                 case z_axis:
                                     science().reflect_z(zone(ii, jj, kk));
+                                    break;
                                 case invalid_axis:
                                     OCTOPUS_ASSERT(false);
                                     break;
@@ -1077,6 +1078,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                                     break;
                                 case z_axis:
                                     science().reflect_z(zone(ii, jj, kk));
+                                    break;
                                 case invalid_axis:
                                     OCTOPUS_ASSERT(false);
                                     break;
@@ -1129,6 +1131,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                                     break;
                                 case z_axis:
                                     science().reflect_z(zone(ii, jj, kk));
+                                    break;
                                 case invalid_axis:
                                     OCTOPUS_ASSERT(false);
                                     break;
@@ -1179,6 +1182,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                                     break;
                                 case z_axis:
                                     science().reflect_z(zone(ii, jj, kk));
+                                    break;
                                 case invalid_axis:
                                     OCTOPUS_ASSERT(false);
                                     break;
@@ -1231,6 +1235,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                                     break;
                                 case z_axis:
                                     science().reflect_z(zone(ii, jj, kk));
+                                    break;
                                 case invalid_axis:
                                     OCTOPUS_ASSERT(false);
                                     break;
@@ -1281,6 +1286,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                                     break;
                                 case z_axis:
                                     science().reflect_z(zone(ii, jj, kk));
+                                    break;
                                 case invalid_axis:
                                     OCTOPUS_ASSERT(false);
                                     break;
