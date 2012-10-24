@@ -202,7 +202,7 @@ double octree_server::zf(boost::uint64_t i) const
 
     using namespace octopus::operators;
 
-    if (config().z_reflect)
+    if (config().reflect_on_z)
         return double(offset_[2] + i) * dx_ - bw * dx0_ - origin_[2];
     else
         return double(offset_[2] + i) * dx_ - grid_dim - bw * dx0_;
@@ -898,8 +898,8 @@ vector3d<std::vector<double> > octree_server::send_ghost_zone(
             vector3d<std::vector<double> > zone
                 (
                 /* [BW, GNX - BW) */  gnx - 2 * bw
-              , /* [GNX - BW, GNX) */ bw
               , /* [BW, GNX - BW) */  gnx - 2 * bw
+              , /* [GNX - BW, GNX) */ bw
                 );
 
             for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
@@ -931,7 +931,6 @@ vector3d<std::vector<double> > octree_server::send_ghost_zone(
 // FIXME: Range checking.
 boost::array<boost::uint64_t, 3> map_location(
     face f ///< Our direction, relative to the caller.
-  , bool reflect 
   , boost::uint64_t i
   , boost::uint64_t j
   , boost::uint64_t k
@@ -939,30 +938,35 @@ boost::array<boost::uint64_t, 3> map_location(
 { // {{{
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
+    bool const reflect_on_z = config().reflect_on_z;
 
-    boost::array<boost::uint64_t, 3> v = { { i, j, k } };
+    boost::array<boost::uint64_t, 3> v;
+
+    v[0] = i;
+    v[1] = j;
+    v[2] = k;
 
     switch (f)
     {
         case XU:
-            v[0] = (reflect ? gnx - i - 1 : bw);
+            v[0] = bw;
             break;
         case XL:
-            v[0] = (reflect ? gnx - i - 1 : gnx - bw - 1);
+            v[0] = gnx - bw - 1;
             break;
     
         case YU:
-            v[1] = (reflect ? gnx - j - 1 : bw);
+            v[1] = bw;
             break;
         case YL:
-            v[1] = (reflect ? gnx - j - 1 : gnx - bw - 1);
+            v[1] = gnx - j - 1;
             break;
     
         case ZU:
-            v[2] = (reflect ? gnx - k - 1 : bw);
+            v[2] = (reflect_on_z ? gnx - k - 1 : bw);
             break;
         case ZL:
-            v[2] = (reflect ? gnx - k - 1 : gnx - bw - 1);
+            v[2] = (reflect_on_z ? gnx - k - 1 : gnx - bw - 1);
             break;
 
         default:
@@ -975,8 +979,6 @@ boost::array<boost::uint64_t, 3> map_location(
 
 vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
     face f ///< Our direction, relative to the caller.
-  , bool reflect
-  , axis a 
     )
 { // {{{ 
     boost::uint64_t const bw = science().ghost_zone_width;
@@ -986,6 +988,8 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
     initialized_.wait();
 
     mutex_type::scoped_lock l(mtx_);
+
+    std::cout << "face " << f << "\n";
 
     switch (f)
     {
@@ -1008,7 +1012,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
                     {
                         boost::array<boost::uint64_t, 3> v =
-                            map_location(f, reflect, gnx - 2 * bw + i, j, k);
+                            map_location(f, gnx - 2 * bw + i, j, k);
 
                         // Adjusted indices (for output ghost zone). 
                         boost::uint64_t const ii = i;
@@ -1017,23 +1021,8 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
 
                         zone(ii, jj, kk) = U_(v);
 
-                        if (reflect)
-                        {
-                            switch (a)
-                            {
-                                case x_axis:
-                                case y_axis:
-                                    OCTOPUS_ASSERT(false);
-                                    break;
-                                case z_axis:
-                                    science().reflect_z(zone(ii, jj, kk));
-                                    break;
-                                case invalid_axis:
-                                    OCTOPUS_ASSERT(false);
-                                    break;
-                            };
-                        }
-
+                        if (config().reflect_on_z)
+                            science().reflect_z(zone(ii, jj, kk));
                         else
                             science().enforce_outflow
                                 (f, xfx(v[0] + 1, v[1], v[2]));
@@ -1059,7 +1048,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
                     {
                         boost::array<boost::uint64_t, 3> v =
-                            map_location(f, reflect, -gnx - 2 * bw + i, j, k);
+                            map_location(f, -gnx - 2 * bw + i, j, k);
 
                         // Adjusted indices (for output ghost zone). 
                         boost::uint64_t const ii = i - (gnx - bw);
@@ -1068,23 +1057,8 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
 
                         zone(ii, jj, kk) = U_(v);
 
-                        if (reflect)
-                        {
-                            switch (a)
-                            {
-                                case x_axis:
-                                case y_axis:
-                                    OCTOPUS_ASSERT(false);
-                                    break;
-                                case z_axis:
-                                    science().reflect_z(zone(ii, jj, kk));
-                                    break;
-                                case invalid_axis:
-                                    OCTOPUS_ASSERT(false);
-                                    break;
-                            };
-                        }
-
+                        if (config().reflect_on_z)
+                            science().reflect_z(zone(ii, jj, kk));
                         else
                             science().enforce_outflow
                                 (f, xfx(v[0], v[1], v[2]));
@@ -1112,7 +1086,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
                     {
                         boost::array<boost::uint64_t, 3> v =
-                            map_location(f, reflect, i, gnx - 2 * bw + j, k);
+                            map_location(f, i, gnx - 2 * bw + j, k);
 
                         // Adjusted indices (for output ghost zone). 
                         boost::uint64_t const ii = i - bw;
@@ -1121,23 +1095,8 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
 
                         zone(ii, jj, kk) = U_(v);
 
-                        if (reflect)
-                        {
-                            switch (a)
-                            {
-                                case x_axis:
-                                case y_axis:
-                                    OCTOPUS_ASSERT(false);
-                                    break;
-                                case z_axis:
-                                    science().reflect_z(zone(ii, jj, kk));
-                                    break;
-                                case invalid_axis:
-                                    OCTOPUS_ASSERT(false);
-                                    break;
-                            };
-                        }
-
+                        if (config().reflect_on_z)
+                            science().reflect_z(zone(ii, jj, kk));
                         else
                             science().enforce_outflow
                                 (f, xfy(v[0], v[1] + 1, v[2]));
@@ -1163,7 +1122,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
                     {
                         boost::array<boost::uint64_t, 3> v =
-                            map_location(f, reflect, i, -gnx - 2 * bw + j, k);
+                            map_location(f, i, -gnx - 2 * bw + j, k);
 
                         // Adjusted indices (for output ghost zone). 
                         boost::uint64_t const ii = i - bw;
@@ -1172,23 +1131,8 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
 
                         zone(ii, jj, kk) = U_(v);
 
-                        if (reflect)
-                        {
-                            switch (a)
-                            {
-                                case x_axis:
-                                case y_axis:
-                                    OCTOPUS_ASSERT(false);
-                                    break;
-                                case z_axis:
-                                    science().reflect_z(zone(ii, jj, kk));
-                                    break;
-                                case invalid_axis:
-                                    OCTOPUS_ASSERT(false);
-                                    break;
-                            };
-                        }
-
+                        if (config().reflect_on_z)
+                            science().reflect_z(zone(ii, jj, kk));
                         else
                             science().enforce_outflow
                                 (f, xfy(v[0], v[1], v[2]));
@@ -1216,7 +1160,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                     for (boost::uint64_t k = 0; k < bw; ++k)
                     {
                         boost::array<boost::uint64_t, 3> v =
-                            map_location(f, reflect, i, j, gnx - 2 * bw + k);
+                            map_location(f, i, j, gnx - 2 * bw + k);
 
                         // Adjusted indices (for output ghost zone). 
                         boost::uint64_t const ii = i - bw;
@@ -1225,23 +1169,8 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
 
                         zone(ii, jj, kk) = U_(v);
 
-                        if (reflect)
-                        {
-                            switch (a)
-                            {
-                                case x_axis:
-                                case y_axis:
-                                    OCTOPUS_ASSERT(false);
-                                    break;
-                                case z_axis:
-                                    science().reflect_z(zone(ii, jj, kk));
-                                    break;
-                                case invalid_axis:
-                                    OCTOPUS_ASSERT(false);
-                                    break;
-                            };
-                        }
-
+                        if (config().reflect_on_z)
+                            science().reflect_z(zone(ii, jj, kk));
                         else
                             science().enforce_outflow
                                 (f, xfz(v[0], v[1], v[2] + 1));
@@ -1258,8 +1187,8 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
             vector3d<std::vector<double> > zone
                 (
                 /* [BW, GNX - BW) */  gnx - 2 * bw
-              , /* [GNX - BW, GNX) */ bw
               , /* [BW, GNX - BW) */  gnx - 2 * bw
+              , /* [GNX - BW, GNX) */ bw
                 );
 
             for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
@@ -1267,7 +1196,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                     for (boost::uint64_t k = gnx - bw; k < gnx; ++k)
                     {
                         boost::array<boost::uint64_t, 3> v =  
-                            map_location(f, reflect, i, j, -gnx - 2 * bw + k);
+                            map_location(f, i, j, -gnx - 2 * bw + k);
 
                         // Adjusted indices (for output ghost zone). 
                         boost::uint64_t const ii = i - bw;
@@ -1276,23 +1205,8 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
 
                         zone(ii, jj, kk) = U_(v);
 
-                        if (reflect)
-                        {
-                            switch (a)
-                            {
-                                case x_axis:
-                                case y_axis:
-                                    OCTOPUS_ASSERT(false);
-                                    break;
-                                case z_axis:
-                                    science().reflect_z(zone(ii, jj, kk));
-                                    break;
-                                case invalid_axis:
-                                    OCTOPUS_ASSERT(false);
-                                    break;
-                            };
-                        }
-
+                        if (config().reflect_on_z)
+                            science().reflect_z(zone(ii, jj, kk));
                         else
                             science().enforce_outflow
                                 (f, xfz(v[0], v[1], v[2]));
@@ -1323,8 +1237,13 @@ void octree_server::integrate_ghost_zone(
     // First, we need to re-acquire a lock on the mutex.
     mutex_type::scoped_lock l(mtx_);
 
+    std::cout << "(" << zone.x_length() 
+              << ", " << zone.y_length() 
+              << ", " << zone.z_length() << "), "
+              << face(f) << "\n";
+
     // The index of the futures in the vector is the face.
-    switch (f)
+    switch (face(f))
     {
         ///////////////////////////////////////////////////////////////////////
         // X-axis.
@@ -2002,7 +1921,7 @@ void octree_server::sum_differentials_kernel(
                 DFO_ += (FY_(i, gnx - bw, j) - FY_(i, bw, j)) * dx_ * dx_;
         
                 // i = x-axis, j = y-axis 
-                if (config().z_reflect)
+                if (config().reflect_on_z)
                     DFO_ += (FZ_(i, j, gnx - bw)) * dx_ * dx_;
                 else
                     DFO_ += (FZ_(i, j, gnx - bw) - FZ_(i, j, bw)) * dx_ * dx_;

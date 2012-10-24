@@ -52,7 +52,7 @@ struct config_data
 
     ///< Reflection control for the Z-axis. TODO: error handling if no
     ///  reflection function is found.
-    bool z_reflect;
+    bool reflect_on_z;
  
     ///////////////////////////////////////////////////////////////////////////
     // "My" parameters (stuff not in Dominic's code).
@@ -71,7 +71,7 @@ struct config_data
         ar & grid_node_length;
         ar & spatial_domain;
         ar & runge_kutta_order;
-        ar & z_reflect;
+        ar & reflect_on_z;
         ar & temporal_prediction_gap;
     }
 };

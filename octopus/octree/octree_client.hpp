@@ -87,10 +87,6 @@ struct OCTOPUS_EXPORT octree_client
     // FIXME: This is only used by non-real boundaries, optimize.
     mutable face face_;
 
-    // FIXME: This is only used for physical boundaries, optimize.
-    mutable bool reflect_;
-    mutable axis direction_; 
-
     // FIXME: This is only used for AMR boundaries, optimize.
     mutable boost::array<boost::int64_t, 3> offset_; ///< Relative offset.
     
@@ -108,8 +104,6 @@ struct OCTOPUS_EXPORT octree_client
         if (!real())
         {
             ar & face_;
-            ar & reflect_;
-            ar & direction_;
             ar & offset_;
         }
     }
@@ -121,8 +115,6 @@ struct OCTOPUS_EXPORT octree_client
       : gid_(gid)
       , kind_(real_boundary)
       , face_()
-      , reflect_()
-      , direction_(invalid_axis)
       , offset_()
     {}
 
@@ -133,8 +125,6 @@ struct OCTOPUS_EXPORT octree_client
       : gid_(gid)
       , kind_(real_boundary)
       , face_()
-      , reflect_()
-      , direction_(invalid_axis)
       , offset_()
     {}
 
@@ -142,8 +132,6 @@ struct OCTOPUS_EXPORT octree_client
       : gid_(hpx::invalid_id) // Set by set_sibling.
       , kind_(kind)
       , face_()
-      , reflect_()
-      , direction_(invalid_axis)
       , offset_()
     {
         OCTOPUS_ASSERT(kind != real_boundary);
@@ -157,8 +145,6 @@ struct OCTOPUS_EXPORT octree_client
         gid_ = gid;
         kind_ = real_boundary;
         face_ = face();
-        reflect_ = false;
-        direction_ = invalid_axis;
         offset_[0] = 0;
         offset_[1] = 0;
         offset_[2] = 0;
@@ -173,8 +159,6 @@ struct OCTOPUS_EXPORT octree_client
         gid_ = gid;
         kind_ = real_boundary;
         face_ = face();
-        reflect_ = false;
-        direction_ = invalid_axis;
         offset_[0] = 0;
         offset_[1] = 0;
         offset_[2] = 0;
@@ -201,8 +185,6 @@ struct OCTOPUS_EXPORT octree_client
       : gid_(hpx::naming::invalid_id)
       , kind_(invalid_boundary)
       , face_()
-      , reflect_()
-      , direction_(invalid_axis)
       , offset_()
     {}
 
@@ -210,8 +192,6 @@ struct OCTOPUS_EXPORT octree_client
       : gid_(other.gid_)
       , kind_(other.kind_)
       , face_(other.face_)
-      , reflect_(other.reflect_)
-      , direction_(other.direction_)
       , offset_(other.offset_)
     {}
 
@@ -219,8 +199,6 @@ struct OCTOPUS_EXPORT octree_client
       : gid_(other.gid_)
       , kind_(other.kind_)
       , face_(other.face_)
-      , reflect_(other.reflect_)
-      , direction_(other.direction_)
       , offset_(other.offset_)
     {}
 
@@ -229,8 +207,6 @@ struct OCTOPUS_EXPORT octree_client
       : gid_(parent.gid_)
       , kind_(kind)
       , face_()
-      , reflect_()
-      , direction_(invalid_axis)
       , offset_()
     {
         OCTOPUS_ASSERT(kind != real_boundary);
@@ -240,8 +216,6 @@ struct OCTOPUS_EXPORT octree_client
       : gid_(parent.gid_)
       , kind_(kind)
       , face_()
-      , reflect_()
-      , direction_(invalid_axis)
       , offset_()
     {
         OCTOPUS_ASSERT(kind != real_boundary);
@@ -253,8 +227,6 @@ struct OCTOPUS_EXPORT octree_client
         gid_ = other.gid_;
         kind_ = other.kind_;        
         face_ = other.face_;
-        reflect_ = other.reflect_;
-        direction_ = other.direction_;
         offset_ = other.offset_;
         return *this;
     }
@@ -264,8 +236,6 @@ struct OCTOPUS_EXPORT octree_client
         gid_ = other.gid_;
         kind_ = other.kind_;        
         face_ = other.face_;
-        reflect_ = other.reflect_;
-        direction_ = other.direction_;
         offset_ = other.offset_;
         return *this;
     }

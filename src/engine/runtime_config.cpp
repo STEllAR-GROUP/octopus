@@ -115,7 +115,7 @@ std::ostream& operator<<(
         << OCTOPUS_FORMAT_OPTION(grid_node_length) << "\n"
         << OCTOPUS_FORMAT_OPTION(spatial_domain) << "\n"
         << OCTOPUS_FORMAT_OPTION(runge_kutta_order) << "\n"
-        << OCTOPUS_FORMAT_OPTION(z_reflect) << "\n"
+        << OCTOPUS_FORMAT_OPTION(reflect_on_z) << "\n"
         << OCTOPUS_FORMAT_OPTION(temporal_prediction_gap)
     ;
 
@@ -137,7 +137,7 @@ config_data config_from_ini()
         ("grid_node_length", cfg.grid_node_length, 12) 
         ("spatial_domain", cfg.spatial_domain, 1.5e-4) 
         ("runge_kutta_order", cfg.runge_kutta_order, 1) 
-        ("z_reflect", cfg.z_reflect, true) 
+        ("reflect_on_z", cfg.reflect_on_z, true) 
         ("temporal_prediction_gap", cfg.temporal_prediction_gap, 10) 
     ;
 

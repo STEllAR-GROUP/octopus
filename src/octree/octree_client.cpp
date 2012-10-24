@@ -72,6 +72,7 @@ void octree_client::set_sibling_for_amr_boundary(
     ) const
 { // {{{
     gid_ = sib.gid_;
+    face_ = f;
 
     // FIXME: Non-optimal.
     hpx::future<boost::array<boost::int64_t, 3> > sib_offset
@@ -80,8 +81,6 @@ void octree_client::set_sibling_for_amr_boundary(
     // FIXME: Non-optimal.
     hpx::future<boost::array<boost::int64_t, 3> > sib_parent_offset
         = sib_parent.get_offset_async(); 
-
-    face_ = f;
 
     boost::array<boost::int64_t, 3> v = { { 0, 0, 0 } };
 
@@ -128,46 +127,7 @@ void octree_client::set_sibling_for_physical_boundary(
     ) const
 { // {{{
     gid_ = sib.gid_;
-
-    switch (f)
-    {
-        ///////////////////////////////////////////////////////////////////////
-        // Y-axis.
-        case XU:
-            reflect_ = false; 
-            direction_ = x_axis;
-            return;
-        case XL:
-            reflect_ = false; 
-            direction_ = x_axis;
-            return;
-
-        ///////////////////////////////////////////////////////////////////////
-        // Y-axis.
-        case YU:
-            reflect_ = false; 
-            direction_ = y_axis;
-            return;
-        case YL:
-            reflect_ = false; 
-            direction_ = y_axis;
-            return;
-
-        ///////////////////////////////////////////////////////////////////////
-        // Z-axis.
-        case ZU:
-            reflect_ = config().z_reflect;
-            direction_ = z_axis;
-            return;
-        case ZL:
-            reflect_ = false;
-            direction_ = z_axis;
-            return;
-        default:
-            break;
-    }
-
-    OCTOPUS_ASSERT(false);
+    face_ = f;
 } // }}}
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -345,7 +305,10 @@ vector3d<std::vector<double> > octree_client::interpolate(
     // set_sibling(f), f is the direction of the caller relative to the sibling
     // (the sibling == us). send_ghost_zone, f is our direction relative to the
     // the caller. REVIEW: I think.
-    //OCTOPUS_ASSERT(face_ == invert(f));
+    OCTOPUS_ASSERT_FMT_MSG(invert(f) == face_ 
+                         , "supplied face (%1%) is not the inverse of the "
+                           "stored face (%2%)"
+                         , f % face_) 
 
     vector3d<std::vector<double> > input =
         hpx::async<octree_server::send_ghost_zone_action>(gid_, face_).get();
@@ -705,9 +668,12 @@ vector3d<std::vector<double> > octree_client::map(
     // set_sibling(f), f is the direction of the caller relative to the sibling
     // (the sibling == us). send_ghost_zone, f is our direction relative to the
     // the caller. REVIEW: I think.
-    //OCTOPUS_ASSERT(face_ == invert(f));
+    OCTOPUS_ASSERT_FMT_MSG(invert(f) == face_ 
+                         , "supplied face (%1%) is not the inverse of the "
+                           "stored face (%2%)"
+                         , f % face_) 
     return hpx::async<octree_server::send_mapped_ghost_zone_action>
-        (gid_, face_, reflect_, direction_).get();
+        (gid_, face_).get();
 }
 
 hpx::future<vector3d<std::vector<double> > > octree_client::map_async(
@@ -717,9 +683,12 @@ hpx::future<vector3d<std::vector<double> > > octree_client::map_async(
     // set_sibling(f), f is the direction of the caller relative to the sibling
     // (the sibling == us). send_ghost_zone, f is our direction relative to the
     // the caller. REVIEW: I think.
-    //OCTOPUS_ASSERT(face_ == invert(f));
+    OCTOPUS_ASSERT_FMT_MSG(invert(f) == face_ 
+                         , "supplied face (%1%) is not the inverse of the "
+                           "stored face (%2%)"
+                         , f % face_) 
     return hpx::async<octree_server::send_mapped_ghost_zone_action>
-        (gid_, face_, reflect_, direction_);
+        (gid_, face_);
 }
 
 vector3d<std::vector<double> > octree_client::send_ghost_zone(
