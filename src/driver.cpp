@@ -51,7 +51,9 @@ int hpx_main(variables_map& vm)
         OCTOPUS_ASSERT_MSG(!localities.empty(),
                            "no localities supporting Octopus available"); 
     
-        std::cout << "Found " << localities.size() << " usable localities\n";
+        std::cout << "Found " << localities.size()
+                  << " usable localities, deploying infrastructure...\n"
+                  << "\n";
 
         // FIXME: Sadly, distributing factory doesn't support constructor args
         // yet, so we have to do this by hand.

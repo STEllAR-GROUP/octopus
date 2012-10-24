@@ -33,7 +33,7 @@ double const internal_energy_floor = 1.0e-20;
 double const GAMMA = 2.0; // EULER_GAMMA
 
 // Polytropic constant.
-double const KAPPA = 1.0;
+double KAPPA = 1.0;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Mass density
@@ -112,6 +112,8 @@ struct initialize : octopus::trivial_serialization
         using std::pow;
         using std::sqrt;
 
+        double const kappa0 = 1.0;
+
         double const ei0 = 1.0;
         double const tau0 = pow(ei0, 1.0 / GAMMA);
         double const rho1 = 1.0e-10;
@@ -140,16 +142,25 @@ struct initialize : octopus::trivial_serialization
   
                     // Cylindrical R.  
                     double const r = sqrt(pow(x, 2) + pow(y, 2));
+
+                    // DEBUGGING
+                    //std::cout << "r       = " << r       << "\n"
+                    //          << "R_inner = " << R_inner << "\n"
+                    //          << "R_outer = " << R_outer << "\n";
     
                     if ((R_inner <= r) && (R_outer >= r))
                     {
                         double const z_max =
                             sqrt(pow(G*M_C/(0.5*pow(h/r, 2) - C), 2) - r*r);
 
+                        // DEBUGGING
+                        //std::cout << "z     = " << z     << "\n"
+                        //          << "z_max = " << z_max << "\n";
+
                         if (z <= z_max)
                         {
                             double const rho_here =
-                                  (0.5/KAPPA)
+                                  (0.5/kappa0)
                                 * (C + G*M_C/sqrt(r*r + z*z) - 0.5*pow(h/r, 2));
 
                             rho(U(i, j, k))          = rho_here;
@@ -177,6 +188,10 @@ struct initialize : octopus::trivial_serialization
                         total_energy(U(i, j, k)) = ei1;  
                         tau(U(i, j, k))          = tau1;
                     }
+
+                    // DEBUGGING
+                    //std::cout << "(" << x << ", " << y << ", " << z << ") == "
+                    //          << rho(U(i, j, k)) << "\n";
 
                     momentum_z(U(i, j, k)) = 0.0;
                 }
@@ -397,29 +412,44 @@ int octopus_main(boost::program_options::variables_map& vm)
     // FIXME: Proper support for adding commandline options.     
     double dt = 0.0; 
     double temporal_domain = 0.0;
+    boost::uint64_t output_frequency = 100;
 
     octopus::config_reader reader;
 
     reader
         ("3d_torus.dt", dt, 1.0e-10)
-        ("3d_torus.temporal_domain", temporal_domain, 2.0)
+        ("3d_torus.temporal_domain", temporal_domain, 1.0e-6)
+        ("3d_torus.kappa", KAPPA, 1.0)
+        ("3d_torus.output_frequency", output_frequency, 100)
     ;
+
+    std::cout
+        << (boost::format("kappa = %.6e\n") % KAPPA)
+        << (boost::format("dt    = %.6e\n") % dt)
+        << "\n"
+        << (boost::format("Stepping to %.6e...\n") % temporal_domain)
+        << "\n"; 
 
     double time = 0.0;
 
-    std::cout << (boost::format("dt = %.6e\n") % dt)
-              << (boost::format("stepping to %.6e\n") % temporal_domain)
-              << "\n";  
+    boost::uint64_t step = 0;
+    boost::uint64_t next_output_step = output_frequency;
 
-    while (time <= temporal_domain)
+    while (time < temporal_domain)
     {
-        std::cout << (boost::format("time = %.6e\n") % time);
+        std::cout << (boost::format("STEP %06u @ %.6e\n") % step % time);
 
-        root.step(1.0e-10);
+        root.step(dt);
 
-        root.output();
+        if (step == next_output_step)
+        {   
+            std::cout << "OUTPUT\n";
+            root.output();
+            next_output_step += output_frequency; 
+        }
 
         time += dt;
+        ++step;
     } 
     
     return 0;
