@@ -240,17 +240,6 @@ struct OCTOPUS_EXPORT octree_server
       , vector3d<std::vector<double> > const& parent_U
         );
 
-    // FIXME: More descriptive name.
-    boost::array<double, 3> xfx(
-        boost::uint64_t i
-      , boost::uint64_t j
-      , boost::uint64_t k
-        ) const
-    {
-    	boost::array<double, 3> x = { { xf(i), yc(j), zc(k) } };
-    	return x;
-    }
-
     boost::uint64_t get_level() const
     {
         return level_;
@@ -265,11 +254,6 @@ struct OCTOPUS_EXPORT octree_server
     {
         return step_;
     }
-
-    // Only used as an action by output().
-    HPX_DEFINE_COMPONENT_CONST_DIRECT_ACTION(octree_server,
-                                             get_step,
-                                             get_step_action);  
 
     std::vector<double>& operator()(
         boost::uint64_t i
@@ -296,14 +280,31 @@ struct OCTOPUS_EXPORT octree_server
     }
 
     // FIXME: More descriptive name.
+    boost::array<double, 3> xfx(
+        boost::uint64_t i
+      , boost::uint64_t j
+      , boost::uint64_t k
+        ) const
+    {
+    	boost::array<double, 3> coords;
+        coords[0] = xf(i);
+        coords[1] = yc(j);
+        coords[2] = zc(k);
+    	return coords;
+    }
+
+    // FIXME: More descriptive name.
     boost::array<double, 3> xfy(
         boost::uint64_t i
       , boost::uint64_t j
       , boost::uint64_t k
         ) const
     {
-    	boost::array<double, 3> x = { { xc(i), yf(j), zc(k) } };
-    	return x;
+    	boost::array<double, 3> coords;
+        coords[0] = xc(i);
+        coords[1] = yf(j);
+        coords[2] = zc(k);
+    	return coords;
     }
     
     // FIXME: More descriptive name.
@@ -313,8 +314,11 @@ struct OCTOPUS_EXPORT octree_server
       , boost::uint64_t k
         ) const
     {
-    	boost::array<double, 3> x = { { xc(i), yc(j), zf(k) } };
-    	return x;
+    	boost::array<double, 3> coords;
+        coords[0] = xc(i);
+        coords[1] = yc(j);
+        coords[2] = zf(k);
+    	return coords;
     }
 
     // FIXME: More descriptive name.
@@ -496,6 +500,7 @@ struct OCTOPUS_EXPORT octree_server
     void apply(
         hpx::util::function<void(octree_server&)> const& f
       , boost::uint64_t minimum_level = 0
+      , boost::uint64_t maximum_level = 0
         );
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
@@ -590,7 +595,6 @@ OCTOPUS_REGISTER_ACTION(set_child_sibling);
 OCTOPUS_REGISTER_ACTION(tie_child_sibling);
 OCTOPUS_REGISTER_ACTION(get_siblings);
 OCTOPUS_REGISTER_ACTION(get_offset);
-OCTOPUS_REGISTER_ACTION(get_step); // Only used by output()
 OCTOPUS_REGISTER_ACTION(receive_ghost_zones);
 OCTOPUS_REGISTER_ACTION(send_ghost_zone);
 OCTOPUS_REGISTER_ACTION(send_mapped_ghost_zone);

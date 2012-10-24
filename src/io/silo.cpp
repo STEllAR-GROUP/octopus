@@ -6,6 +6,9 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <hpx/include/actions.hpp>
+#include <hpx/lcos/future_wait.hpp>
+
 #include <octopus/io/silo.hpp>
 #include <octopus/engine/engine_interface.hpp>
 
@@ -15,17 +18,19 @@
 namespace octopus
 {
 
-void single_variable_silo_writer::open_locked(
-    octree_server& e 
+void single_variable_silo_writer::start_write_locked(
+    boost::uint64_t step
+  , double time
   , mutex_type::scoped_lock& l
     )
 {
     OCTOPUS_ASSERT(l.owns_lock());
 
-    close_locked(l);
+    // Make sure we closed the last epoch.
+    stop_write_locked(l);
 
-    step_ = e.get_step();
-    time_ = e.get_time();
+    step_ = step;
+    time_ = time; 
 
     file_ = DBCreate(boost::str( boost::format(file_name_)
                                % hpx::get_locality_id() % step_).c_str() 
@@ -44,7 +49,7 @@ void single_variable_silo_writer::open_locked(
     }
 }
 
-void single_variable_silo_writer::close_locked(mutex_type::scoped_lock& l)
+void single_variable_silo_writer::stop_write_locked(mutex_type::scoped_lock& l)
 {
     OCTOPUS_ASSERT(l.owns_lock());
 
@@ -58,6 +63,56 @@ void single_variable_silo_writer::close_locked(mutex_type::scoped_lock& l)
 
     directory_names_.clear(); 
     merged_ = false;
+}
+
+void start_write_locally(boost::uint64_t step, double time)
+{
+    science().output.cast<single_variable_silo_writer>()->start_write
+        (step, time);
+}
+
+void stop_write_locally()
+{
+    science().output.cast<single_variable_silo_writer>()->stop_write();
+}
+
+}
+
+HPX_PLAIN_ACTION(octopus::start_write_locally, start_write_locally_action);
+HPX_PLAIN_ACTION(octopus::stop_write_locally, stop_write_locally_action);
+
+namespace octopus
+{
+
+void single_variable_silo_writer::begin_epoch(octree_server& e)
+{
+    std::vector<hpx::id_type> const& targets = localities();
+
+    std::vector<hpx::future<void> > futures;
+    futures.reserve(targets.size());
+
+    start_write_locally_action act;
+
+    for (boost::uint64_t i = 0; i < targets.size(); ++i)
+        futures.push_back(hpx::async
+            (act, targets[i], e.get_step(), e.get_time()));
+
+    hpx::wait(futures);
+}
+
+void single_variable_silo_writer::end_epoch(octree_server& e)
+{
+    std::vector<hpx::id_type> const& targets = localities();
+
+    std::vector<hpx::future<void> > futures;
+    futures.reserve(targets.size());
+
+    stop_write_locally_action act;
+
+    for (boost::uint64_t i = 0; i < targets.size(); ++i)
+        futures.push_back(hpx::async(act, targets[i]));
+
+    hpx::wait(futures);
 }
 
 void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
@@ -120,9 +175,9 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
             DBoptlist* optlist = DBMakeOptlist(4);
             DBObjectType type1 = DB_QUADRECT;
             DBAddOption(optlist, DBOPT_MB_BLOCK_TYPE, &type1);
-            DBAddOption(optlist, DBOPT_CYCLE, e.get_step());
-            DBAddOption(optlist, DBOPT_TIME, e.get_time());
-            int type2 = DB_ROWMAJOR;
+            DBAddOption(optlist, DBOPT_CYCLE, &step_);
+            DBAddOption(optlist, DBOPT_TIME, &time_);
+
             error = DBPutMultimesh(file_
                                  , multi_mesh_name.c_str()
                                  , nqmesh
@@ -135,8 +190,8 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
             DBoptlist* optlist = DBMakeOptlist(4);
             DBObjectType type1 = DB_QUADVAR;
             DBAddOption(optlist, DBOPT_MB_BLOCK_TYPE, &type1);
-            DBAddOption(optlist, DBOPT_CYCLE, e.get_step());
-            DBAddOption(optlist, DBOPT_TIME, e.get_time());
+            DBAddOption(optlist, DBOPT_CYCLE, &step_);
+            DBAddOption(optlist, DBOPT_TIME, &time_);
             int type2 = DB_ROWMAJOR;
             DBAddOption(optlist, DBOPT_MAJORORDER, &type2);
 

@@ -21,6 +21,8 @@
 
 #include <silo.h>
 
+// FIXME: If copied with an open file, this should probably assert.
+
 namespace octopus
 { 
 
@@ -40,9 +42,13 @@ struct OCTOPUS_EXPORT single_variable_silo_writer : writer_base
     std::string file_name_;
     bool merged_;
 
-    void open_locked(octree_server& e, mutex_type::scoped_lock& l);
+    void start_write_locked(
+        boost::uint64_t step
+      , double time
+      , mutex_type::scoped_lock& l
+        );
 
-    void close_locked(mutex_type::scoped_lock& l);
+    void stop_write_locked(mutex_type::scoped_lock& l);
 
     void merge_locked(mutex_type::scoped_lock& l);
 
@@ -95,20 +101,24 @@ struct OCTOPUS_EXPORT single_variable_silo_writer : writer_base
     {
         mutex_type::scoped_lock l(mtx_);
         merge_locked(l);
-        close_locked(l);
+        stop_write_locked(l);
     }
 
-    void open(octree_server& e)
+    void start_write(boost::uint64_t step, double time)
     {
         mutex_type::scoped_lock l(mtx_);
-        open_locked(step, l);
+        start_write_locked(step, time, l);
     }
 
-    void close()
+    void stop_write()
     {
         mutex_type::scoped_lock l(mtx_);
-        close_locked(l);
+        stop_write_locked(l);
     }
+
+    void begin_epoch(octree_server& e);
+
+    void end_epoch(octree_server& e);
 
     void merge()
     {

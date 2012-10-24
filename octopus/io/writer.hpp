@@ -12,7 +12,6 @@
 
 #include <boost/cstdint.hpp>
 #include <boost/serialization/shared_ptr.hpp>
-#include <boost/serialization/shared_ptr.hpp>
 
 namespace octopus
 {
@@ -21,9 +20,9 @@ struct OCTOPUS_EXPORT writer_base
 {
     virtual ~writer_base() {}
 
-    virtual void open(octree_server& e) = 0;
+    virtual void begin_epoch(octree_server& e) { }
 
-    virtual void close() = 0;
+    virtual void end_epoch(octree_server& e) { }
 
     virtual void operator()(octree_server& e) = 0;
 
@@ -57,14 +56,20 @@ struct writer
         return *this;
     }
 
-    void open(octree_server& e) const
+    void begin_epoch(octree_server& e) const
     {
-        ptr_->open(e);
+        ptr_->begin_epoch(e);
     }
 
-    void close() const
+    void end_epoch(octree_server& e) const
     {
-        ptr_->close();
+        ptr_->end_epoch(e);
+    }
+
+    template <typename Derived>
+    Derived* cast() const
+    {
+        return dynamic_cast<Derived*>(ptr_.get());
     }
 
     void operator()(octree_server& e) const

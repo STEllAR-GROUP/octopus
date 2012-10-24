@@ -471,19 +471,22 @@ struct OCTOPUS_EXPORT octree_client
     void apply(
         hpx::util::function<void(octree_server&)> const& f
       , boost::uint64_t minimum_level = 0
+      , boost::uint64_t maximum_level = 0
         ) const
     {
-        return apply_async(f, minimum_level).get();
+        return apply_async(f, minimum_level, maximum_level).get();
     }
 
     hpx::future<void> apply_async(
         hpx::util::function<void(octree_server&)> const& f
       , boost::uint64_t minimum_level = 0
+      , boost::uint64_t maximum_level = 0
         ) const;
 
     void apply_push(
         hpx::util::function<void(octree_server&)> const& f
       , boost::uint64_t minimum_level = 0
+      , boost::uint64_t maximum_level = 0
         ) const;
     // }}} 
 
@@ -503,11 +506,13 @@ struct OCTOPUS_EXPORT octree_client
 
     ///////////////////////////////////////////////////////////////////////////
     // {{{ output - FIXME: I am not safe to do concurrently.
+    // TODO: Make sure we are only called on the root node.
     void output() const
     {
         return output_async().get();
     }
 
+    // TODO: Make sure we are only called on the root node.
     hpx::future<void> output_async() const;
     // }}}
 

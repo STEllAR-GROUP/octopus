@@ -10,13 +10,13 @@
 #include <hpx/lcos/local/packaged_continuation.hpp>
 #include <hpx/async.hpp>
 #include <hpx/apply.hpp>
-#include <hpx/include/actions.hpp>
 #include <hpx/runtime/components/runtime_support.hpp>
 
 #include <octopus/octree/octree_server.hpp>
 #include <octopus/engine/engine_interface.hpp>
 #include <octopus/operators/std_vector_arithmetic.hpp>
 #include <octopus/operators/boost_array_arithmetic.hpp>
+#include <octopus/trivial_serialization.hpp>
 #include <octopus/math.hpp>
 
 namespace octopus
@@ -742,20 +742,23 @@ octree_client::send_ghost_zone_async(
 hpx::future<void> octree_client::apply_async(
     hpx::util::function<void(octree_server&)> const& f
   , boost::uint64_t minimum_level
+  , boost::uint64_t maximum_level
     ) const
 {
     ensure_real();
     return hpx::async<octree_server::apply_action>
-        (gid_, f, minimum_level);
+        (gid_, f, minimum_level, maximum_level);
 }
 
 void octree_client::apply_push(
     hpx::util::function<void(octree_server&)> const& f
   , boost::uint64_t minimum_level
+  , boost::uint64_t maximum_level
     ) const
 {
     ensure_real();
-    hpx::apply<octree_server::apply_action>(gid_, f, minimum_level);
+    hpx::apply<octree_server::apply_action>
+        (gid_, f, minimum_level, maximum_level);
 }
 
 hpx::future<void> octree_client::step_async(double dt) const
@@ -776,79 +779,94 @@ void octree_client::step_to_time_push(double dt, double until) const
     hpx::apply<octree_server::step_to_time_action>(gid_, dt, until);
 }
 
-void begin_io_epoch(boost::uint64_t step)
-{
-    science().output.open(step);
-}
-
-void end_io_epoch()
-{
-    science().output.close();
-}
-
-}
-
-HPX_PLAIN_ACTION(octopus::begin_io_epoch, begin_io_epoch_action);
-HPX_PLAIN_ACTION(octopus::end_io_epoch, end_io_epoch_action);
-
-namespace octopus
-{
-
-struct end_io_epoch_continuation
+///////////////////////////////////////////////////////////////////////////////
+struct begin_io_epoch : trivial_serialization
 {
     typedef void result_type;
 
-    hpx::future<void> f_;
-
-    end_io_epoch_continuation(hpx::future<void> const& f)
-      : f_(f)
-    {}
-
-    result_type operator()(hpx::future<void> res) const
+    // octree_server::apply overload
+    result_type operator()(octree_server& root) const
     {
-        std::vector<hpx::id_type> const& targets = localities();
-
-        std::vector<hpx::future<void> > futures;
-        futures.reserve(targets.size());
-
-        end_io_epoch_action act;
-
-        for (boost::uint64_t i = 0; i < targets.size(); ++i)
-            futures.push_back(hpx::async(act, targets[i]));
-
-        hpx::wait(futures);
+        science().output.begin_epoch(root);
     }
 };
 
+struct output_continuation : trivial_serialization
+{
+    typedef void result_type;
+
+    // FIXME: Workaround for a bug with future lifetimes in HPX.
+    octree_client this_;
+    hpx::future<void> f_;
+
+    output_continuation() : this_(), f_() {}
+
+    output_continuation(
+        octree_client const& this_
+      , hpx::future<void> const& f
+        )
+      : this_(this_)
+      , f_(f)
+    {}
+
+    // future continuation overload
+    result_type operator()(hpx::future<void> res) const
+    {
+        // Send ourselves to the target.
+        this_.apply(*this);
+    }
+
+    // octree_server::apply overload
+    result_type operator()(octree_server& e) const
+    {
+        science().output(e);
+    }
+};
+
+struct end_io_epoch_continuation : trivial_serialization
+{
+    typedef void result_type;
+
+    // FIXME: Workaround for a bug with future lifetimes in HPX.
+    octree_client this_;
+    hpx::future<void> f_;
+
+    end_io_epoch_continuation() : this_(), f_() {}
+
+    end_io_epoch_continuation(
+        octree_client const& this_
+      , hpx::future<void> const& f
+        )
+      : this_(this_)
+      , f_(f)
+    {}
+
+    // future continuation overload
+    result_type operator()(hpx::future<void> res) const
+    {
+        // Send ourselves to the target.
+        this_.apply(*this, 0, 0);
+    }
+
+    // octree_server::apply overload
+    result_type operator()(octree_server& root) const
+    {
+        science().output.end_epoch(root);
+    }
+};
+
+// TODO: Make sure we are only called on the root node.
 hpx::future<void> octree_client::output_async() const
 {
     ensure_real();
 
-    ///////////////////////////////////////////////////////////////////////////
-    // Begin I/O epoch.
-    // FIXME: Sub-optimal.
-    hpx::future<boost::uint64_t> step_ 
-        = hpx::async<octree_server::get_step_action>(gid_);
-
-    std::vector<hpx::id_type> const& targets = localities();
-
-    std::vector<hpx::future<void> > futures;
-    futures.reserve(targets.size());
-
-    begin_io_epoch_action act;
-
-    for (boost::uint64_t i = 0; i < targets.size(); ++i)
-        futures.push_back(hpx::async(act, targets[i], step_.get()));
-
-    hpx::wait(futures);
-
-    ///////////////////////////////////////////////////////////////////////////
-    // FIXME: This is broken.
-    //return hpx::async<octree_server::output_action>(gid_).when
-    //    (end_io_epoch_continuation());
-
-    hpx::future<void> f = hpx::async<octree_server::output_action>(gid_);
-    return f.when(end_io_epoch_continuation(f));
+    hpx::future<void> 
+        begin  = apply_async(begin_io_epoch())
+      , output = begin.when(output_continuation(*this, output))
+      , end    = end.when(end_io_epoch_continuation(*this, end))
+        ;
+ 
+    return end;
 }
 
 }

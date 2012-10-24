@@ -1462,6 +1462,7 @@ void octree_server::receive_ghost_zones_kernel(
 void octree_server::apply(
     hpx::util::function<void(octree_server&)> const& f
   , boost::uint64_t minimum_level
+  , boost::uint64_t maximum_level
     )
 { // {{{
     std::vector<hpx::future<void> > recursion_is_parallelism;
@@ -1474,10 +1475,10 @@ void octree_server::apply(
     for (boost::uint64_t i = 0; i < 8; ++i)
         if (hpx::invalid_id != children_[i])
             recursion_is_parallelism.push_back(
-                children_[i].apply_async(f, minimum_level)); 
+                children_[i].apply_async(f, minimum_level, maximum_level)); 
     
     // Invoke the kernel on ourselves ...
-    if (level_ >= minimum_level)
+    if ((level_ >= minimum_level) && (level_ <= maximum_level))
         f(*this);
 
     // ... and block while our children compute.
