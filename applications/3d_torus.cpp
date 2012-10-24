@@ -29,10 +29,10 @@ double const rho_floor = 1.0e-20;
 double const internal_energy_floor = 1.0e-20;  
 
 // Polytropic index.
-double const gamma = 2.0; // EULER_GAMMA
+double const GAMMA = 2.0; // EULER_GAMMA
 
 // Polytropic constant.
-double const kappa = 1.0;
+double const KAPPA = 1.0;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Mass density
@@ -74,7 +74,7 @@ inline double gravity(double x, double y, double z)
     double const r = sqrt(x*x + y*y + z*z);
     double const F = -G*M_C/(r*r);
 
-    if (Axis == z_axis)
+    if (Axis == octopus::z_axis)
     {
         double const r_cyl = sqrt(x*x + y*y); 
         return F*(z/r_cyl);
@@ -92,14 +92,14 @@ inline double gravity(boost::array<double, 3> v)
 /// Gas pressure - polytropic equation of state.
 double pressure(std::vector<double> const& state)
 {
-    return kappa * std::pow(rho(state), gamma);
+    return KAPPA * std::pow(rho(state), GAMMA);
 }
 
 double speed_of_sound(std::vector<double> const& state)
 {
     OCTOPUS_ASSERT(rho(state) > 0.0);
     OCTOPUS_ASSERT(pressure(state) >= 0.0);
-    return std::sqrt(gamma * pressure(state) / rho(state)); 
+    return std::sqrt(GAMMA * pressure(state) / rho(state)); 
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -112,10 +112,10 @@ struct initialize : octopus::trivial_serialization
         using std::sqrt;
 
         double const ei0 = 1.0;
-        double const tau0 = pow(ei0, 1.0 / gamma);
+        double const tau0 = pow(ei0, 1.0 / GAMMA);
         double const rho1 = 1.0e-10;
         double const ei1 = 1.0e-10;
-        double const tau1 = pow(ei1, 1.0 / gamma);
+        double const tau1 = pow(ei1, 1.0 / GAMMA);
     
         double const eps = 0.4;
         double const R_outer = 1.0747e-4;
@@ -148,7 +148,7 @@ struct initialize : octopus::trivial_serialization
                         if (z <= z_max)
                         {
                             double const rho_here =
-                                  (0.5/kappa)
+                                  (0.5/KAPPA)
                                 * (C + G*M_C/sqrt(r*r + z*z) - 0.5*pow(h/r, 2));
 
                             rho(U(i, j, k))          = rho_here;
@@ -227,7 +227,8 @@ struct max_eigenvalue : octopus::trivial_serialization
 
             default: { OCTOPUS_ASSERT(false); break; }
         }
-        
+
+        return 0.0;
     }
 };
 
@@ -262,7 +263,7 @@ struct primitive_to_conserved : octopus::trivial_serialization
 struct source : octopus::trivial_serialization
 {
     std::vector<double> operator()(
-        std::vector<double>& state
+        std::vector<double> const& state
       , boost::array<double, 3> const& v
         ) const
     {
@@ -276,7 +277,7 @@ struct source : octopus::trivial_serialization
     }
 };
 
-struct floor : octopus::trivial_serialization
+struct floor_state : octopus::trivial_serialization
 {
     void operator()(
         std::vector<double>& state
@@ -292,7 +293,7 @@ struct floor : octopus::trivial_serialization
         {
             using std::pow;
             tau(state) = pow((std::max)(internal_energy, internal_energy_floor)
-                                      , 1.0 / gamma); 
+                                      , 1.0 / GAMMA); 
         }
     }
 };
@@ -305,7 +306,7 @@ struct flux : octopus::trivial_serialization
       , boost::array<double, 3> const& v
         ) const
     {
-        double p = gas_pressure(state);
+        double p = pressure(state);
  
         std::vector<double> fl(state);
 
@@ -371,7 +372,7 @@ void octopus_define_problem(octopus::science_table& sci)
     sci.conserved_to_primitive = conserved_to_primitive(); 
     sci.primitive_to_conserved = primitive_to_conserved();
     sci.source = source();
-    sci.floor = floor();
+    sci.floor = floor_state();
     sci.flux = flux();  
 
     sci.output = octopus::single_variable_silo_writer(0, "rho");
