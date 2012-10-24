@@ -173,7 +173,7 @@ struct initialize : octopus::trivial_serialization
                     {
                         rho(U(i, j, k))          = rho1;
                         momentum_x(U(i, j, k))   = 0.0; 
-                        momentum_x(U(i, j, k))   = 0.0;
+                        momentum_y(U(i, j, k))   = 0.0;
                         total_energy(U(i, j, k)) = ei1;  
                         tau(U(i, j, k))          = tau1;
                     }
@@ -416,6 +416,7 @@ int octopus_main(boost::program_options::variables_map& vm)
         std::cout << (boost::format("time = %.6e\n") % time);
 
         root.step(1.0e-10);
+
         root.output();
 
         time += dt;
