@@ -741,26 +741,37 @@ octree_client::send_ghost_zone_async(
 ///////////////////////////////////////////////////////////////////////////////
 hpx::future<void> octree_client::apply_async(
     hpx::util::function<void(octree_server&)> const& f
-  , boost::uint64_t minimum_level
-  , boost::uint64_t maximum_level
     ) const
 {
     ensure_real();
-    return hpx::async<octree_server::apply_action>
-        (gid_, f, minimum_level, maximum_level);
+    return hpx::async<octree_server::apply_action>(gid_, f);
 }
 
 void octree_client::apply_push(
     hpx::util::function<void(octree_server&)> const& f
-  , boost::uint64_t minimum_level
-  , boost::uint64_t maximum_level
     ) const
 {
     ensure_real();
-    hpx::apply<octree_server::apply_action>
-        (gid_, f, minimum_level, maximum_level);
+    hpx::apply<octree_server::apply_action>(gid_, f);
 }
 
+hpx::future<void> octree_client::apply_leaf_async(
+    hpx::util::function<void(octree_server&)> const& f
+    ) const
+{
+    ensure_real();
+    return hpx::async<octree_server::apply_leaf_action>(gid_, f);
+}
+
+void octree_client::apply_leaf_push(
+    hpx::util::function<void(octree_server&)> const& f
+    ) const
+{
+    ensure_real();
+    hpx::apply<octree_server::apply_leaf_action>(gid_, f);
+}
+
+///////////////////////////////////////////////////////////////////////////////
 hpx::future<void> octree_client::step_async(double dt) const
 {
     ensure_real();
@@ -855,7 +866,7 @@ struct end_io_epoch_continuation : trivial_serialization
     result_type operator()(hpx::future<void> res) const
     {
         // Send ourselves to the target.
-        self_.apply(end_io_epoch_locally(), 0, 0);
+        self_.apply_leaf(end_io_epoch_locally());
     }
 };
 

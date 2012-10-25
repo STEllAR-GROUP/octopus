@@ -470,23 +470,32 @@ struct OCTOPUS_EXPORT octree_client
     // {{{ apply
     void apply(
         hpx::util::function<void(octree_server&)> const& f
-      , boost::uint64_t minimum_level = 0
-      , boost::uint64_t maximum_level = 0
         ) const
     {
-        return apply_async(f, minimum_level, maximum_level).get();
+        return apply_async(f).get();
     }
 
     hpx::future<void> apply_async(
         hpx::util::function<void(octree_server&)> const& f
-      , boost::uint64_t minimum_level = 0
-      , boost::uint64_t maximum_level = 0
         ) const;
 
     void apply_push(
         hpx::util::function<void(octree_server&)> const& f
-      , boost::uint64_t minimum_level = 0
-      , boost::uint64_t maximum_level = 0
+        ) const;
+
+    void apply_leaf(
+        hpx::util::function<void(octree_server&)> const& f
+        ) const
+    {
+        return apply_leaf_async(f).get();
+    }
+
+    hpx::future<void> apply_leaf_async(
+        hpx::util::function<void(octree_server&)> const& f
+        ) const;
+
+    void apply_leaf_push(
+        hpx::util::function<void(octree_server&)> const& f
         ) const;
     // }}} 
 
@@ -514,6 +523,35 @@ struct OCTOPUS_EXPORT octree_client
 
     // TODO: Make sure we are only called on the root node.
     hpx::future<void> output_async() const;
+    // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
+    // {{{ reduce - definitions are out-of-line in octree_reduce.hpp.
+    template <typename T>
+    T reduce(
+        hpx::util::function<T(octree_server&)> const& f
+      , hpx::util::function<T(T const&, T const&)> const& reducer
+        );
+
+    template <typename T>
+    hpx::future<T> reduce_async(
+        hpx::util::function<T(octree_server&)> const& f
+      , hpx::util::function<T(T const&, T const&)> const& reducer
+        );
+
+    template <typename T>
+    T reduce_zonal(
+        hpx::util::function<T(std::vector<double>&)> const& f
+      , hpx::util::function<T(T const&, T const&)> const& reducer
+      , T const& initial = T()
+        );
+
+    template <typename T>
+    hpx::future<T> reduce_zonal_async(
+        hpx::util::function<T(std::vector<double>&)> const& f
+      , hpx::util::function<T(T const&, T const&)> const& reducer
+      , T const& initial = T()
+        );
     // }}}
 
     // NOTE: (to self) Keep the order the same as octree_server please.

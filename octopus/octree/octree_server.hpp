@@ -17,7 +17,8 @@
 #include <octopus/octree/octree_init_data.hpp>
 #include <octopus/octree/octree_client.hpp>
 
-// This is either really beautiful, really messy, or both.
+// TODO: apply_criteria, apply_zonal, apply_zonal_leaf, reduce_leaf,
+// reduce_zonal_leaf
 
 namespace octopus
 {
@@ -253,6 +254,11 @@ struct OCTOPUS_EXPORT octree_server
     boost::uint64_t get_step() const
     {
         return step_;
+    }
+
+    double get_dx() const
+    {
+        return dx_;
     }
 
     std::vector<double>& operator()(
@@ -496,16 +502,49 @@ struct OCTOPUS_EXPORT octree_server
 
   public:
     ///////////////////////////////////////////////////////////////////////////
-    // NOTE: exec_function in the original code.
     void apply(
         hpx::util::function<void(octree_server&)> const& f
-      , boost::uint64_t minimum_level = 0
-      , boost::uint64_t maximum_level = 0
         );
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                 apply,
                                 apply_action);
+
+    void apply_leaf(
+        hpx::util::function<void(octree_server&)> const& f
+        );
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                apply_leaf,
+                                apply_leaf_action);
+
+    void apply_top(
+        hpx::util::function<void(octree_server&)> const& f
+      , boost::uint64_t maximum_level
+        );
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                apply_top,
+                                apply_top_action);
+
+    void apply_bottom(
+        hpx::util::function<void(octree_server&)> const& f
+      , boost::uint64_t minimum_level
+        );
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                apply_bottom,
+                                apply_bottom_action);
+
+    void apply_at(
+        hpx::util::function<void(octree_server&)> const& f
+      , boost::uint64_t minimum_level
+      , boost::uint64_t maximum_level
+        );
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                apply_at,
+                                apply_at_action);
 
     ///////////////////////////////////////////////////////////////////////////
     void step(double dt);
@@ -577,6 +616,57 @@ struct OCTOPUS_EXPORT octree_server
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                 output,
                                 output_action);  
+
+  private:
+    template <typename T>
+    void integrate_reduce(
+        T& result
+      , hpx::util::function<T(T const&, T const&)> const& reducer
+      , std::size_t 
+      , T const& value
+        )
+    {
+        result = reducer(result, value); 
+    }
+
+  public:
+    // {{{ reduce - definitions are out-of-line in octree_reduce.hpp.
+    template <typename T>
+    T reduce(
+        hpx::util::function<T(octree_server&)> const& f
+      , hpx::util::function<T(T const&, T const&)> const& reducer
+        );
+
+    template <typename T>
+    struct reduce_action
+      : hpx::actions::make_action<
+            T (octree_server::*)
+                ( hpx::util::function<T(octree_server&)> const&
+                , hpx::util::function<T(T const&, T const&)> const&)
+          , &octree_server::template reduce<T>
+          , reduce_action<T>
+        >
+    {};
+
+    template <typename T>
+    T reduce_zonal(
+        hpx::util::function<T(std::vector<double>&)> const& f
+      , hpx::util::function<T(T const&, T const&)> const& reducer
+      , T const& initial
+        );
+
+    template <typename T>
+    struct reduce_zonal_action
+      : hpx::actions::make_action<
+            T (octree_server::*)
+                ( hpx::util::function<T(std::vector<double>&)> const&
+                , hpx::util::function<T(T const&, T const&)> const&
+                , T const&)
+          , &octree_server::template reduce_zonal<T>
+          , reduce_zonal_action<T>
+        >
+    {};
+    // }}}
 };
 
 }
@@ -599,6 +689,7 @@ OCTOPUS_REGISTER_ACTION(receive_ghost_zones);
 OCTOPUS_REGISTER_ACTION(send_ghost_zone);
 OCTOPUS_REGISTER_ACTION(send_mapped_ghost_zone);
 OCTOPUS_REGISTER_ACTION(apply);
+OCTOPUS_REGISTER_ACTION(apply_leaf);
 OCTOPUS_REGISTER_ACTION(step);
 OCTOPUS_REGISTER_ACTION(step_to_time);
 OCTOPUS_REGISTER_ACTION(clone_and_refine);
