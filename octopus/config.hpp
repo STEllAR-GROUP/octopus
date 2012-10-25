@@ -27,6 +27,10 @@
     #define OCTOPUS_EXPORT OCTOPUS_SYMBOL_IMPORT
 #endif
 
+#if defined(__GNUC__)
+    #define OCTOPUS_WEAK __attribute__((weak))
+#endif
+
 #if defined(_DEBUG) && !defined(DEBUG)
     #define DEBUG
 #endif

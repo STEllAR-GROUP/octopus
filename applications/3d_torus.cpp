@@ -273,6 +273,7 @@ struct cfl_timestep : octopus::trivial_serialization
 
         boost::uint64_t const gnx = octopus::config().grid_node_length;
 
+        // REVIEW: Should we be including the ghost zones?
         for (boost::uint64_t i = 0; i < gnx; ++i)
         {
             for (boost::uint64_t j = 0; j < gnx; ++j)
@@ -290,8 +291,11 @@ struct cfl_timestep : octopus::trivial_serialization
                         = 0.4*dx/(max_eigenvalue()(octopus::z_axis, u));
   
                     dt_limit = (std::min)(dt_limit, dt_here_x);
+                    OCTOPUS_ASSERT(0.0 < dt_limit);
                     dt_limit = (std::min)(dt_limit, dt_here_y);
+                    OCTOPUS_ASSERT(0.0 < dt_limit);
                     dt_limit = (std::min)(dt_limit, dt_here_z);
+                    OCTOPUS_ASSERT(0.0 < dt_limit);
                 }
             }
         }
@@ -475,7 +479,7 @@ int octopus_main(boost::program_options::variables_map& vm)
     double dt = 0.0; 
     double max_dt_growth = 0.0; 
     double temporal_domain = 0.0;
-    boost::uint64_t output_frequency = 100;
+    double output_frequency = 0.0;
 
     octopus::config_reader reader;
 
@@ -484,7 +488,7 @@ int octopus_main(boost::program_options::variables_map& vm)
         ("3d_torus.max_dt_growth", max_dt_growth, 1.25)
         ("3d_torus.temporal_domain", temporal_domain, 1.0e-6)
         ("3d_torus.kappa", KAPPA, 1.0)
-        ("3d_torus.output_frequency", output_frequency, 100)
+        ("3d_torus.output_frequency", output_frequency, 1.0e-6)
     ;
 
     std::cout
@@ -500,30 +504,31 @@ int octopus_main(boost::program_options::variables_map& vm)
     double dt_last = 0.1*root.reduce<double>(cfl_timestep(), minimum());
 
     boost::uint64_t step = 0;
-    boost::uint64_t next_output_step = output_frequency;
+    double next_output_time = output_frequency;
 
     while (time < temporal_domain)
     {
         //dt = (std::max)(dt_last*1.25,octopus::cfl_timestep());
-        dt = (std::max)(dt_last*max_dt_growth
+        dt = (std::min)(dt_last*max_dt_growth
                       , root.reduce<double>(cfl_timestep(), minimum()));
+
+        OCTOPUS_ASSERT(0.0 < dt);
 
         std::cout << ( boost::format("STEP %06u : %.6e += %.6e\n")
                      % step % time % dt);
 
         root.step(dt);
 
-        if (step < next_output_step)
+        time += dt;
+        ++step;
+        dt_last = dt;
+
+        if ((time + dt) >= next_output_time)
         {   
             std::cout << "OUTPUT\n";
             root.output();
-            next_output_step += output_frequency; 
+            next_output_time += output_frequency; 
         }
-
-        time += dt;
-        ++step;
-
-        dt_last = dt;
     } 
     
     return 0;

@@ -17,7 +17,7 @@ add_hpx_component(octopus
           io/silo.cpp
           component_module.cpp
           driver.cpp
-          default_main.cpp
+          default_driver.cpp
           child_index.cpp
   DEPENDENCIES ${SILO_LIBRARY}
   FOLDER "Core"

@@ -14,6 +14,7 @@
 #include <boost/serialization/export.hpp>
 
 #include <octopus/octree/octree_server.hpp>
+#include <octopus/octree/octree_reduce.hpp>
 #include <octopus/engine/engine_server.hpp>
 
 HPX_REGISTER_COMPONENT_MODULE();

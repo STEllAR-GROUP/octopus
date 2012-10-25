@@ -12,6 +12,7 @@
 #include <hpx/lcos/future.hpp>
 #include <hpx/lcos/future_wait.hpp>
 
+#include <octopus/driver.hpp>
 #include <octopus/engine/engine_server.hpp>
 
 using boost::program_options::options_description;
@@ -20,7 +21,7 @@ using boost::program_options::value;
 
 using hpx::components::stubs::runtime_support;
 
-namespace octopus { extern OCTOPUS_EXPORT int default_main(variables_map& vm); }
+// namespace octopus { extern OCTOPUS_EXPORT int default_main(variables_map& vm); }
 
 OCTOPUS_EXPORT int main(int argc, char** argv);
 
@@ -62,6 +63,7 @@ int hpx_main(variables_map& vm)
 
         ///////////////////////////////////////////////////////////////////////
         // Define the problem. 
+/*
         typedef void (*define_function)(octopus::science_table&);
         typedef int (*main_function)(variables_map&);
 
@@ -96,13 +98,17 @@ int hpx_main(variables_map& vm)
 
         OCTOPUS_ASSERT_MSG(define_p.first || main_p.first,
             "either octopus_define_problem or octopus_main must be defined");
+*/
 
         ///////////////////////////////////////////////////////////////////////
         // Initialize the science table.
         octopus::science_table sci = octopus::default_science_table(); 
 
+        octopus_define_problem(sci);
+/*
         if (define_p.first)
             (*define_p.first)(sci);
+*/
 
         for (std::size_t i = 0; i < localities.size(); ++i)
         {
@@ -118,10 +124,14 @@ int hpx_main(variables_map& vm)
         std::cout << "Executing application...\n"
                      "\n";
 
+        result = octopus_main(vm);
+
+/*
         if (main_p.first)
             result = (*main_p.first)(vm);
         else
             result = octopus::default_main(vm);
+*/
     }
 
     hpx::finalize();

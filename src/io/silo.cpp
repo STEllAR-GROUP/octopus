@@ -176,7 +176,7 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
             DBObjectType type1 = DB_QUADRECT;
             DBAddOption(optlist, DBOPT_MB_BLOCK_TYPE, &type1);
             DBAddOption(optlist, DBOPT_CYCLE, &step_);
-            DBAddOption(optlist, DBOPT_TIME, &time_);
+            DBAddOption(optlist, DBOPT_DTIME, &time_);
 
             error = DBPutMultimesh(file_
                                  , multi_mesh_name.c_str()
@@ -191,7 +191,7 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
             DBObjectType type1 = DB_QUADVAR;
             DBAddOption(optlist, DBOPT_MB_BLOCK_TYPE, &type1);
             DBAddOption(optlist, DBOPT_CYCLE, &step_);
-            DBAddOption(optlist, DBOPT_TIME, &time_);
+            DBAddOption(optlist, DBOPT_DTIME, &time_);
             int type2 = DB_ROWMAJOR;
             DBAddOption(optlist, DBOPT_MAJORORDER, &type2);
 
