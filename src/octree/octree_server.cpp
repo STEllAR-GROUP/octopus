@@ -956,7 +956,7 @@ boost::array<boost::uint64_t, 3> map_location(
             v[1] = bw;
             break;
         case YL:
-            v[1] = gnx - j - 1;
+            v[1] = gnx - bw - 1;
             break;
     
         case ZU:
@@ -1016,11 +1016,8 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
 
                         zone(ii, jj, kk) = U_(v);
 
-                        if (config().reflect_on_z)
-                            science().reflect_z(zone(ii, jj, kk));
-                        else
-                            science().enforce_outflow
-                                (f, x_face_coords(v[0] + 1, v[1], v[2]));
+                        science().enforce_outflow
+                            (f, x_face_coords(v[0] + 1, v[1], v[2]));
                     }
 
             return zone;
@@ -1052,11 +1049,8 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
 
                         zone(ii, jj, kk) = U_(v);
 
-                        if (config().reflect_on_z)
-                            science().reflect_z(zone(ii, jj, kk));
-                        else
-                            science().enforce_outflow
-                                (f, x_face_coords(v[0], v[1], v[2]));
+                        science().enforce_outflow
+                            (f, x_face_coords(v[0], v[1], v[2]));
                     }
 
             return zone;
@@ -1090,11 +1084,8 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
 
                         zone(ii, jj, kk) = U_(v);
 
-                        if (config().reflect_on_z)
-                            science().reflect_z(zone(ii, jj, kk));
-                        else
-                            science().enforce_outflow
-                                (f, y_face_coords(v[0], v[1] + 1, v[2]));
+                        science().enforce_outflow
+                            (f, y_face_coords(v[0], v[1] + 1, v[2]));
                     }
 
             return zone;
@@ -1126,11 +1117,8 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
 
                         zone(ii, jj, kk) = U_(v);
 
-                        if (config().reflect_on_z)
-                            science().reflect_z(zone(ii, jj, kk));
-                        else
-                            science().enforce_outflow
-                                (f, y_face_coords(v[0], v[1], v[2]));
+                        science().enforce_outflow
+                            (f, y_face_coords(v[0], v[1], v[2]));
                     }
 
             return zone;

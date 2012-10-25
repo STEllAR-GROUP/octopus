@@ -491,7 +491,7 @@ int octopus_main(boost::program_options::variables_map& vm)
         ("3d_torus.max_dt_growth", max_dt_growth, 1.25)
         ("3d_torus.temporal_domain", temporal_domain, 1.0e-6)
         ("3d_torus.kappa", KAPPA, 1.0)
-        ("3d_torus.output_frequency", output_frequency, 1.0e-6)
+        ("3d_torus.output_frequency", output_frequency, 1.0e-7)
     ;
 
     std::cout
@@ -500,15 +500,10 @@ int octopus_main(boost::program_options::variables_map& vm)
         << (boost::format("max_dt_growth = %.6e\n") % max_dt_growth)
         << "\n"
         << (boost::format("Stepping to %.6e...\n") % temporal_domain)
-        << "\n"; 
 
     double time = 0.0;
 
     double dt_last = 0.01*root.reduce<double>(cfl_timestep(), minimum());
-
-    std::cout << ( boost::format("Initial dt_last: %.6e\n")
-                   % dt_last);
-
 
     boost::uint64_t step = 0;
     double next_output_time = output_frequency;
