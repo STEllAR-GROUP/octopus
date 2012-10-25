@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //  Copyright (c) 2012 Dominic Marcello
 //  Copyright (c) 2012 Zach Byerly
-//  Copyright (c) 2012 Bryce Adelstein-Lelbach
+//  Copyright (c) 2012 Bry_centere Adelstein-Lelbach
 //
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -184,7 +184,7 @@ struct OCTOPUS_EXPORT octree_server
     ///////////////////////////////////////////////////////////////////////////
     /// \brief Get a reference to this node that is safe to pass to our
     ///        children. Said reference must be uncounted to prevent reference
-    ///        cycles.
+    ///        cy_centerles.
     /// 
     /// Remote Operations:   No.
     /// Concurrency Control: No.
@@ -202,7 +202,7 @@ struct OCTOPUS_EXPORT octree_server
     ///////////////////////////////////////////////////////////////////////////
     /// \brief Get a client referencing this node that is safe to pass to our
     ///        children. The reference the child holds must be uncounted to
-    ///        prevent reference cycles.
+    ///        prevent reference cy_centerles.
     /// 
     /// Remote Operations:   No.
     /// Concurrency Control: No.
@@ -285,71 +285,79 @@ struct OCTOPUS_EXPORT octree_server
         return mtx_;
     }
 
-    // FIXME: More descriptive name.
-    boost::array<double, 3> xfx(
+    boost::array<double, 3> center_coords(
         boost::uint64_t i
       , boost::uint64_t j
       , boost::uint64_t k
         ) const
     {
-    	boost::array<double, 3> coords;
-        coords[0] = xf(i);
-        coords[1] = yc(j);
-        coords[2] = zc(k);
-    	return coords;
+        boost::array<double, 3> coords;
+        coords[0] = x_center(i);
+        coords[1] = y_center(j);
+        coords[2] = z_center(k);
+        return coords;
     }
 
     // FIXME: More descriptive name.
-    boost::array<double, 3> xfy(
+    boost::array<double, 3> x_face_coords(
         boost::uint64_t i
       , boost::uint64_t j
       , boost::uint64_t k
         ) const
     {
     	boost::array<double, 3> coords;
-        coords[0] = xc(i);
-        coords[1] = yf(j);
-        coords[2] = zc(k);
+        coords[0] = x_face(i);
+        coords[1] = y_center(j);
+        coords[2] = z_center(k);
+    	return coords;
+    }
+
+    boost::array<double, 3> y_face_coords(
+        boost::uint64_t i
+      , boost::uint64_t j
+      , boost::uint64_t k
+        ) const
+    {
+    	boost::array<double, 3> coords;
+        coords[0] = x_center(i);
+        coords[1] = y_face(j);
+        coords[2] = z_center(k);
     	return coords;
     }
     
-    // FIXME: More descriptive name.
-    boost::array<double, 3> xfz(
+    boost::array<double, 3> z_face_coords(
         boost::uint64_t i
       , boost::uint64_t j
       , boost::uint64_t k
         ) const
     {
     	boost::array<double, 3> coords;
-        coords[0] = xc(i);
-        coords[1] = yc(j);
-        coords[2] = zf(k);
+        coords[0] = x_center(i);
+        coords[1] = y_center(j);
+        coords[2] = z_face(k);
     	return coords;
     }
 
-    // FIXME: More descriptive name.
-    double xc(boost::uint64_t i) const
+    double x_center(boost::uint64_t i) const
     {
-        return xf(i) + 0.5 * dx_;
+        return x_face(i) + 0.5 * dx_;
     }
 
-    // FIXME: More descriptive name.
-    double yc(boost::uint64_t j) const
+    double y_center(boost::uint64_t j) const
     {
-        return yf(j) + 0.5 * dx_;
+        return y_face(j) + 0.5 * dx_;
     }
 
-    // FIXME: More descriptive name.
-    double zc(boost::uint64_t k) const
+    double z_center(boost::uint64_t k) const
     {
-        return zf(k) + 0.5 * dx_;
+        return z_face(k) + 0.5 * dx_;
     }
 
-    double xf(boost::uint64_t i) const;
+    double x_face(boost::uint64_t i) const;
 
-    double yf(boost::uint64_t i) const;
+    double y_face(boost::uint64_t i) const;
 
-    double zf(boost::uint64_t i) const;
+    double z_face(boost::uint64_t i) const;
 
     ///////////////////////////////////////////////////////////////////////////
     /// \brief Create the \a kid child for this node.

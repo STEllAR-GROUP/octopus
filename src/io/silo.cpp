@@ -240,9 +240,9 @@ void single_variable_silo_writer::operator()(octree_server& e)
 
     for (boost::uint64_t i = bw; i < (gnx - bw + 1); ++i) 
     {
-        coordinates[0][i - bw] = e.xf(i); 
-        coordinates[1][i - bw] = e.yf(i); 
-        coordinates[2][i - bw] = e.zf(i); 
+        coordinates[0][i - bw] = e.x_face(i); 
+        coordinates[1][i - bw] = e.y_face(i); 
+        coordinates[2][i - bw] = e.z_face(i); 
     }
 
     for (boost::uint64_t i = bw; i < (gnx - bw); ++i) 

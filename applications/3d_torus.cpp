@@ -137,14 +137,14 @@ struct initialize : octopus::trivial_serialization
             {
                 for (boost::uint64_t k = 0; k < gnx; ++k)
                 {
-                    double const x = U.xc(i);
-                    double const y = U.yc(j);
-                    double const z = U.zc(k);
+                    double const x = U.x_center(i);
+                    double const y = U.y_center(j);
+                    double const z = U.z_center(k);
   
                     // Cylindrical R.  
                     double const r = sqrt(pow(x, 2) + pow(y, 2));
 
-                    // DEBuGGING
+                    // DEBUGGING
                     //std::cout << "r       = " << r       << "\n"
                     //          << "R_inner = " << R_inner << "\n"
                     //          << "R_outer = " << R_outer << "\n";
@@ -154,7 +154,7 @@ struct initialize : octopus::trivial_serialization
                         double const z_max =
                             sqrt(pow(G*M_C/(0.5*pow(h/r, 2) - C), 2) - r*r);
 
-                        // DEBuGGING
+                        // DEBUGGING
                         //std::cout << "z     = " << z     << "\n"
                         //          << "z_max = " << z_max << "\n";
 
@@ -190,9 +190,9 @@ struct initialize : octopus::trivial_serialization
                         tau(U(i, j, k))          = tau1;
                     }
 
-                    // DEBuGGING
-                    //std::cout << "(" << x << ", " << y << ", " << z << ") == "
-                    //          << rho(U(i, j, k)) << "\n";
+                    // DEBUGGING
+                    std::cout << "(" << x << ", " << y << ", " << z << ") == "
+                              << rho(U(i, j, k)) << "\n";
 
                     momentum_z(U(i, j, k)) = 0.0;
                 }

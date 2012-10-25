@@ -165,10 +165,9 @@ octree_server::octree_server(
     inject_state_from_parent(parent_U);
 }
 
-// FIXME: More descriptive name.
 // NOTE: Should be thread-safe, offset_ and origin_ are only read, and never
 // written to.
-double octree_server::xf(boost::uint64_t i) const
+double octree_server::x_face(boost::uint64_t i) const
 {
     boost::uint64_t const bw = science().ghost_zone_width;
     double const grid_dim = config().spatial_domain;
@@ -179,10 +178,9 @@ double octree_server::xf(boost::uint64_t i) const
 }
 
 
-// FIXME: More descriptive name.
 // NOTE: Should be thread-safe, offset_ and origin_ are only read, and never
 // written to.
-double octree_server::yf(boost::uint64_t i) const
+double octree_server::y_face(boost::uint64_t i) const
 {
     boost::uint64_t const bw = science().ghost_zone_width;
     double const grid_dim = config().spatial_domain;
@@ -192,10 +190,9 @@ double octree_server::yf(boost::uint64_t i) const
     return double(offset_[1] + i) * dx_ - grid_dim - bw * dx0_ - origin_[1];
 }
 
-// FIXME: More descriptive name.
 // NOTE: Should be thread-safe, offset_ and origin_ are only read, and never
 // written to.
-double octree_server::zf(boost::uint64_t i) const
+double octree_server::z_face(boost::uint64_t i) const
 {
     boost::uint64_t const bw = science().ghost_zone_width;
     double const grid_dim = config().spatial_domain;
@@ -1023,7 +1020,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                             science().reflect_z(zone(ii, jj, kk));
                         else
                             science().enforce_outflow
-                                (f, xfx(v[0] + 1, v[1], v[2]));
+                                (f, x_face_coords(v[0] + 1, v[1], v[2]));
                     }
 
             return zone;
@@ -1059,7 +1056,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                             science().reflect_z(zone(ii, jj, kk));
                         else
                             science().enforce_outflow
-                                (f, xfx(v[0], v[1], v[2]));
+                                (f, x_face_coords(v[0], v[1], v[2]));
                     }
 
             return zone;
@@ -1097,7 +1094,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                             science().reflect_z(zone(ii, jj, kk));
                         else
                             science().enforce_outflow
-                                (f, xfy(v[0], v[1] + 1, v[2]));
+                                (f, y_face_coords(v[0], v[1] + 1, v[2]));
                     }
 
             return zone;
@@ -1133,7 +1130,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                             science().reflect_z(zone(ii, jj, kk));
                         else
                             science().enforce_outflow
-                                (f, xfy(v[0], v[1], v[2]));
+                                (f, y_face_coords(v[0], v[1], v[2]));
                     }
 
             return zone;
@@ -1171,7 +1168,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                             science().reflect_z(zone(ii, jj, kk));
                         else
                             science().enforce_outflow
-                                (f, xfz(v[0], v[1], v[2] + 1));
+                                (f, z_face_coords(v[0], v[1], v[2] + 1));
                     }
 
             return zone;
@@ -1207,7 +1204,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                             science().reflect_z(zone(ii, jj, kk));
                         else
                             science().enforce_outflow
-                                (f, xfz(v[0], v[1], v[2]));
+                                (f, z_face_coords(v[0], v[1], v[2]));
                     }
 
             return zone;
@@ -1659,16 +1656,15 @@ void octree_server::add_differentials_kernel(
         for (boost::uint64_t j = bw; j < gnx - bw; ++j)
             for (boost::uint64_t k = bw; k < gnx - bw; ++k)
             {
-                // FIXME: Possible asymmetry.
-                boost::array<double, 3> X = { { xc(i), yc(j), zc(k) } };
+                boost::array<double, 3> coords = center_coords(i, j, k);
 
-                D_(i, j, k) += science().source(U_(i, j, k), X);
+                D_(i, j, k) += science().source(U_(i, j, k), coords);
 
                 // Here, you can see the temporal dependency.
                 U_(i, j, k) = (U_(i, j, k) + D_(i, j, k) * dt) * beta
                             + U0_(i, j, k) * (1.0 - beta); 
 
-                science().floor(U_(i, j, k), X);
+                science().floor(U_(i, j, k), coords);
             }
 
     FO_ = (FO_ + DFO_ * dt) * beta + FO0_ * (1.0 - beta);
@@ -1726,54 +1722,52 @@ void octree_server::compute_flux_kernel(
     // Wait for the local x and y fluxes to be computed.
     hpx::wait(xyz[0], xyz[1]);
 } // }}}
-// FIXME: Potential asymmetries in compute flux kernels.
+
 void octree_server::compute_x_flux_kernel()
 { // {{{
     boost::uint64_t const ss = science().state_size;
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
 
-    indexer2d<2> const indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
-
     std::vector<std::vector<double> > q0(gnx, std::vector<double>(ss));
     std::vector<std::vector<double> > ql(gnx, std::vector<double>(ss));
     std::vector<std::vector<double> > qr(gnx, std::vector<double>(ss));
 
-    for (boost::uint64_t index = 0; index <= indexer.maximum; ++index)
-    {
-        boost::uint64_t k = indexer.x(index);
-        boost::uint64_t j = indexer.y(index);
-
-        for (boost::uint64_t i = 0; i < gnx; ++i)
+    for (boost::uint64_t k = bw; k < (gnx - bw); ++k)
+        for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
         {
-            q0[i] = U_(i, j, k);
-
-            boost::array<double, 3> X = { { xc(i), yc(j), zc(k) } };
-
-            science().conserved_to_primitive(q0[i], X);
+            for (boost::uint64_t i = 0; i < gnx; ++i)
+            {
+                q0[i] = U_(i, j, k);
+    
+                boost::array<double, 3> coords = center_coords(i, j, k);
+    
+                science().conserved_to_primitive(q0[i], coords);
+            }
+    
+            science().reconstruct(q0, ql, qr);
+    
+            for (boost::uint64_t i = bw; i < gnx - bw + 1; ++i)
+            {
+                boost::array<double, 3> coords = x_face_coords(i, j, k);
+    
+                science().primitive_to_conserved(ql[i], coords);
+                science().primitive_to_conserved(qr[i], coords);
+    
+                double const a =
+                    (std::max)(science().max_eigenvalue(x_axis, ql[i], coords)
+                             , science().max_eigenvalue(x_axis, qr[i], coords));
+    
+                std::vector<double>
+                    ql_flux = science().flux(x_axis, ql[i], coords),
+                    qr_flux = science().flux(x_axis, qr[i], coords);
+    
+                using namespace octopus::operators;
+     
+                FX_(i, j, k) = ((ql_flux + qr_flux) - (qr[i] - ql[i]) * a)
+                             * 0.5;
+            }
         }
-
-        science().reconstruct(q0, ql, qr);
-
-        for (boost::uint64_t i = bw; i < gnx - bw + 1; ++i)
-        {
-            boost::array<double, 3> X = xfx(i, j, k);
-
-            science().primitive_to_conserved(ql[i], X);
-            science().primitive_to_conserved(qr[i], X);
-
-            double const a =
-                (std::max)(science().max_eigenvalue(x_axis, ql[i], X)
-                         , science().max_eigenvalue(x_axis, qr[i], X));
-
-            std::vector<double> ql_flux = science().flux(x_axis, ql[i], X);
-            std::vector<double> qr_flux = science().flux(x_axis, qr[i], X);
-
-            using namespace octopus::operators;
- 
-            FX_(i, j, k) = ((ql_flux + qr_flux) - (qr[i] - ql[i]) * a) * 0.5;
-        }
-    }
 } // }}}
 
 void octree_server::compute_y_flux_kernel()
@@ -1782,48 +1776,45 @@ void octree_server::compute_y_flux_kernel()
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
 
-    indexer2d<2> const indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
-
     std::vector<std::vector<double> > q0(gnx, std::vector<double>(ss));
     std::vector<std::vector<double> > ql(gnx, std::vector<double>(ss));
     std::vector<std::vector<double> > qr(gnx, std::vector<double>(ss));
 
-    for (boost::uint64_t index = 0; index <= indexer.maximum; ++index)
-    {
-        boost::uint64_t i = indexer.y(index);
-        boost::uint64_t k = indexer.x(index);
-
-        for (boost::uint64_t j = 0; j < gnx; ++j)
+    for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
+        for (boost::uint64_t k = bw; k < (gnx - bw); ++k)
         {
-            q0[j] = U_(i, j, k);
-
-            boost::array<double, 3> X = { { xc(i), yc(j), zc(k) } };
-
-            science().conserved_to_primitive(q0[j], X);
+            for (boost::uint64_t j = 0; j < gnx; ++j)
+            {
+                q0[j] = U_(i, j, k);
+    
+                boost::array<double, 3> coords = center_coords(i, j, k);
+    
+                science().conserved_to_primitive(q0[j], coords);
+            }
+    
+            science().reconstruct(q0, ql, qr);
+    
+            for (boost::uint64_t j = bw; j < gnx - bw + 1; ++j)
+            {
+                boost::array<double, 3> coords = y_face_coords(i, j, k);
+    
+                science().primitive_to_conserved(ql[j], coords);
+                science().primitive_to_conserved(qr[j], coords);
+    
+                double const a =
+                    (std::max)(science().max_eigenvalue(y_axis, ql[j], coords)
+                             , science().max_eigenvalue(y_axis, qr[j], coords));
+    
+                std::vector<double>
+                    ql_flux = science().flux(y_axis, ql[j], coords)
+                  , qr_flux = science().flux(y_axis, qr[j], coords);
+     
+                using namespace octopus::operators;
+    
+                FY_(i, j, k) = ((ql_flux + qr_flux) - (qr[j] - ql[j]) * a)
+                             * 0.5;
+            }
         }
-
-        science().reconstruct(q0, ql, qr);
-
-        for (boost::uint64_t j = bw; j < gnx - bw + 1; ++j)
-        {
-            boost::array<double, 3> X = xfy(i, j, k);
-
-            science().primitive_to_conserved(ql[j], X);
-            science().primitive_to_conserved(qr[j], X);
-
-            double const a =
-                (std::max)(science().max_eigenvalue(y_axis, ql[j], X)
-                         , science().max_eigenvalue(y_axis, qr[j], X));
-
-            std::vector<double> ql_flux = science().flux(y_axis, ql[j], X);
-            std::vector<double> qr_flux = science().flux(y_axis, qr[j], X);
- 
-            using namespace octopus::operators;
-
-            FY_(i, j, k) = ((ql_flux + qr_flux) - (qr[j] - ql[j]) * a) * 0.5;
-        }
-    }
-
 } // }}}
 
 void octree_server::compute_z_flux_kernel()
@@ -1838,42 +1829,41 @@ void octree_server::compute_z_flux_kernel()
     std::vector<std::vector<double> > ql(gnx, std::vector<double>(ss));
     std::vector<std::vector<double> > qr(gnx, std::vector<double>(ss));
 
-    for (boost::uint64_t index = 0; index <= indexer.maximum; ++index)
-    {
-        boost::uint64_t i = indexer.x(index);
-        boost::uint64_t j = indexer.y(index);
-
-        for (boost::uint64_t k = 0; k < gnx; ++k)
+    for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
+        for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
         {
-            q0[k] = U_(i, j, k);
+            for (boost::uint64_t k = 0; k < gnx; ++k)
+            {
+                q0[k] = U_(i, j, k);
+    
+                boost::array<double, 3> coords = center_coords(i, j, k);
 
-            boost::array<double, 3> X = { { xc(i), yc(j), zc(k) } };
-
-            science().conserved_to_primitive(q0[k], X);
+                science().conserved_to_primitive(q0[k], coords);
+            }
+    
+            science().reconstruct(q0, ql, qr);
+    
+            for (boost::uint64_t k = bw; k < gnx - bw + 1; ++k)
+            {
+                boost::array<double, 3> coords = z_face_coords(i, j, k);
+    
+                science().primitive_to_conserved(ql[k], coords);
+                science().primitive_to_conserved(qr[k], coords);
+    
+                double const a =
+                    (std::max)(science().max_eigenvalue(z_axis, ql[k], coords)
+                             , science().max_eigenvalue(z_axis, qr[k], coords));
+    
+                std::vector<double>
+                    ql_flux = science().flux(z_axis, ql[k], coords)
+                  , qr_flux = science().flux(z_axis, qr[k], coords)
+                    ;
+     
+                using namespace octopus::operators;
+    
+                FZ_(i, j, k) = ((ql_flux + qr_flux) - (qr[k] - ql[k]) * a) * 0.5;
+            }
         }
-
-        science().reconstruct(q0, ql, qr);
-
-        for (boost::uint64_t k = bw; k < gnx - bw + 1; ++k)
-        {
-            boost::array<double, 3> X = xfz(i, j, k);
-
-            science().primitive_to_conserved(ql[k], X);
-            science().primitive_to_conserved(qr[k], X);
-
-            double const a =
-                (std::max)(science().max_eigenvalue(z_axis, ql[k], X)
-                         , science().max_eigenvalue(z_axis, qr[k], X));
-
-            std::vector<double> ql_flux = science().flux(z_axis, ql[k], X);
-            std::vector<double> qr_flux = science().flux(z_axis, qr[k], X);
- 
-            using namespace octopus::operators;
-
-            FZ_(i, j, k) = ((ql_flux + qr_flux) - (qr[k] - ql[k]) * a) * 0.5;
-        }
-    }
-
 } // }}}
 
 void octree_server::adjust_flux_kernel(
