@@ -76,13 +76,20 @@ inline double gravity(double x, double y, double z)
     double const r = sqrt(x*x + y*y + z*z);
     double const F = -G*M_C/(r*r);
 
-    if (Axis == octopus::z_axis)
+    switch (Axis)
     {
-        double const r_cyl = sqrt(x*x + y*y); 
-        return F*(z/r_cyl);
+        case octopus::x_axis:
+            return F*(x/r);
+        case octopus::y_axis:
+            return F*(y/r);
+        case octopus::z_axis:
+            double const r_cyl = sqrt(x*x + y*y); 
+            return F*(z/r_cyl);
+        default: break;
     }
 
-    return F*(y/r);
+    OCTOPUS_ASSERT(false);
+    return 0.0; 
 }
 
 template <octopus::axis Axis>
