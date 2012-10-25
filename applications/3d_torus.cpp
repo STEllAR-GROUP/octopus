@@ -272,13 +272,16 @@ struct cfl_timestep : octopus::trivial_serialization
         double dt_limit = 100.0;
 
         boost::uint64_t const gnx = octopus::config().grid_node_length;
+        boost::uint64_t const bw = octopus::science().ghost_zone_width;
 
         // REVIEW: Should we be including the ghost zones?
-        for (boost::uint64_t i = 0; i < gnx; ++i)
+        // No, I don't think we should be including ghost zones here.
+        // But I don't think this will solve the problem with the CFL dts.
+        for (boost::uint64_t i = bw; i < (gnx-bw); ++i)
         {
-            for (boost::uint64_t j = 0; j < gnx; ++j)
+          for (boost::uint64_t j = bw; j < (gnx-bw); ++j)
             {
-                for (boost::uint64_t k = 0; k < gnx; ++k)
+              for (boost::uint64_t k = bw; k < (gnx-bw); ++k)
                 {
                     std::vector<double> const& u = U(i, j, k);
                     double const dx = U.get_dx(); 
@@ -501,7 +504,11 @@ int octopus_main(boost::program_options::variables_map& vm)
 
     double time = 0.0;
 
-    double dt_last = 0.1*root.reduce<double>(cfl_timestep(), minimum());
+    double dt_last = 0.01*root.reduce<double>(cfl_timestep(), minimum());
+
+    std::cout << ( boost::format("Initial dt_last: %.6e\n")
+                   % dt_last);
+
 
     boost::uint64_t step = 0;
     double next_output_time = output_frequency;
