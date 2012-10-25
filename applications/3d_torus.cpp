@@ -83,8 +83,10 @@ inline double gravity(double x, double y, double z)
         case octopus::y_axis:
             return F*(y/r);
         case octopus::z_axis:
+        {
             double const r_cyl = sqrt(x*x + y*y); 
             return F*(z/r_cyl);
+        }
         default: break;
     }
 
