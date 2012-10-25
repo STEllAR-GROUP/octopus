@@ -196,7 +196,7 @@ struct initialize : octopus::trivial_serialization
 
                     momentum_z(U(i, j, k)) = 0.0;
 
-                    rho(U(i, j, k) = (std::max)(rho(U(i, j, k)), rho_floor); 
+                    rho(U(i, j, k)) = (std::max)(rho(U(i, j, k)), rho_floor); 
                 }
             }
         }
