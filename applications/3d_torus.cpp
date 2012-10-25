@@ -283,9 +283,6 @@ struct cfl_timestep : octopus::trivial_serialization
         boost::uint64_t const gnx = octopus::config().grid_node_length;
         boost::uint64_t const bw = octopus::science().ghost_zone_width;
 
-        // REVIEW: Should we be including the ghost zones?
-        // No, I don't think we should be including ghost zones here.
-        // But I don't think this will solve the problem with the CFL dts.
         for (boost::uint64_t i = bw; i < (gnx-bw); ++i)
         {
           for (boost::uint64_t j = bw; j < (gnx-bw); ++j)
@@ -504,9 +501,10 @@ int octopus_main(boost::program_options::variables_map& vm)
     ;
 
     std::cout
-        << (boost::format("kappa         = %.6e\n") % KAPPA)
-        << (boost::format("dt            = %.6e\n") % dt)
-        << (boost::format("max_dt_growth = %.6e\n") % max_dt_growth)
+        << (boost::format("kappa            = %.6e\n") % KAPPA)
+        << (boost::format("dt               = %.6e\n") % dt)
+        << (boost::format("max_dt_growth    = %.6e\n") % max_dt_growth)
+        << (boost::format("output frequency = %.6e\n") % output_frequency)
         << "\n"
         << (boost::format("Stepping to %.6e...\n") % temporal_domain);
 
