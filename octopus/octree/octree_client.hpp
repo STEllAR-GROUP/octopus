@@ -64,7 +64,7 @@ namespace boost { namespace serialization
     {
         boost::uint8_t tmp;
         ar & tmp; 
-        OCTOPUS_ASSERT_FMT_MSG(octopus::invalid_boundary > k,
+        OCTOPUS_ASSERT_FMT_MSG(octopus::invalid_boundary > tmp,
                                "invalid face deserialized, face(%1%)",
                                boost::uint16_t(tmp));
         k = tmp; 
@@ -447,15 +447,6 @@ struct OCTOPUS_EXPORT octree_client
     // }}}
 
   public:
-    // {{{ receive_ghost_zones
-    void receive_ghost_zones() const
-    {
-        receive_ghost_zones_async().get();
-    }
-
-    hpx::future<void> receive_ghost_zones_async() const;
-    // }}}
-
     // {{{ send_ghost_zone
     vector3d<std::vector<double> > send_ghost_zone(
         face f

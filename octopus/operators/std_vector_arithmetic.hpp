@@ -12,6 +12,7 @@
 #include <octopus/assert.hpp>
 
 #include <boost/preprocessor/cat.hpp>
+#include <boost/move/move.hpp>
 
 #include <vector>
 
@@ -62,9 +63,29 @@ OCTOPUS_DEFINE_ARITHMETIC_ASSIGNMENT_OPERATOR(/=)
         return (tmp BOOST_PP_CAT(OP, =) b);                 \
     }                                                       \
                                                             \
+    template <typename T0, typename T1>                     \
+    std::vector<T0> operator OP(                            \
+        BOOST_RV_REF(std::vector<T0>) a                     \
+      , T1 b                                                \
+        )                                                   \
+    {                                                       \
+        std::vector<T0> tmp(a);                             \
+        return (tmp BOOST_PP_CAT(OP, =) b);                 \
+    }                                                       \
+                                                            \
     template <typename T>                                   \
     std::vector<T> operator OP(                             \
         std::vector<T> const& a                             \
+      , std::vector<T> const& b                             \
+        )                                                   \
+    {                                                       \
+        std::vector<T> tmp(a);                              \
+        return (tmp BOOST_PP_CAT(OP, =) b);                 \
+    }                                                       \
+                                                            \
+    template <typename T>                                   \
+    std::vector<T> operator OP(                             \
+        BOOST_RV_REF(std::vector<T>) a                      \
       , std::vector<T> const& b                             \
         )                                                   \
     {                                                       \
@@ -92,12 +113,32 @@ std::vector<T> operator-(
 }
 
 template <typename T>
+std::vector<T> operator-(
+    BOOST_RV_REF(std::vector<T>) a
+    ) 
+{
+    std::vector<T> tmp(a); 
+    for (std::size_t i = 0; i < a.size(); ++i)
+        tmp[i] = T(0) - tmp[i];
+    return tmp; 
+}
+
+template <typename T>
 std::vector<T> operator+(
     std::vector<T> const& a
     ) 
 {
     return a;
 }
+
+template <typename T>
+std::vector<T> operator+(
+    BOOST_RV_REF(std::vector<T>) a
+    ) 
+{
+    return a;
+}
+
 
 }}
 

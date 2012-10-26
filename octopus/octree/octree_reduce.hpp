@@ -39,7 +39,7 @@ inline T octree_server::reduce(
 
     // Reduce the results from our children.
     hpx::wait(recursion_is_parallelism,
-        boost::bind(&octree_server::template integrate_reduce<T>
+        boost::bind(&octree_server::template add_reduce<T>
                   , this, boost::ref(result), reducer, _1, _2)); 
 
     return result;
@@ -77,7 +77,7 @@ inline T octree_server::reduce_zonal(
 
     // Reduce the results from our children.
     hpx::wait(recursion_is_parallelism,
-        boost::bind(&octree_server::template integrate_reduce<T>
+        boost::bind(&octree_server::template add_reduce<T>
                   , this, boost::ref(result), reducer, _1, _2)); 
 
     return result;

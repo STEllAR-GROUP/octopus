@@ -288,13 +288,6 @@ octree_client::get_offset_async() const
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-hpx::future<void> octree_client::receive_ghost_zones_async() const
-{
-    ensure_real();
-    return hpx::async<octree_server::receive_ghost_zones_action>(gid_);
-}
-
-///////////////////////////////////////////////////////////////////////////////
 // FIXME: This could use .when() continuations to be more asynchronous, maybe.
 // FIXME: Only get the data we need from the parent.
 // FIXME: Interpolate in place? Is this possible?

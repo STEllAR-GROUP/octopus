@@ -25,12 +25,18 @@ struct child_index
 {
     child_index() : packed_() {}
 
-    child_index(std::size_t x_, std::size_t y_, std::size_t z_)
-      : packed_(x_ | (y_ << 1) | (z_ << 2))
+    child_index(boost::uint64_t packed)
+      : packed_(packed)
     {
-        OCTOPUS_ASSERT_MSG(1 >= x_, "x-index is out of range"); 
-        OCTOPUS_ASSERT_MSG(1 >= y_, "y-index is out of range"); 
-        OCTOPUS_ASSERT_MSG(1 >= z_, "z-index is out of range"); 
+        OCTOPUS_ASSERT_MSG(7 >= packed, "packed index is out of range"); 
+    }
+
+    child_index(boost::uint64_t x, boost::uint64_t y, boost::uint64_t z)
+      : packed_(x | (y << 1) | (z << 2))
+    {
+        OCTOPUS_ASSERT_MSG(1 >= x, "x-index is out of range"); 
+        OCTOPUS_ASSERT_MSG(1 >= y, "y-index is out of range"); 
+        OCTOPUS_ASSERT_MSG(1 >= z, "z-index is out of range"); 
     }
 
     child_index(child_index const& other)
@@ -44,7 +50,7 @@ struct child_index
         return *this;
     }
 
-    operator std::size_t() const
+    operator boost::uint64_t() const
     {
         return packed_;
     }
@@ -64,7 +70,7 @@ struct child_index
         return (packed_ >> 2) & 0x1;
     }
 
-    void set_x(std::size_t x_)
+    void set_x(boost::uint64_t x_)
     {
         OCTOPUS_ASSERT_MSG(1 >= x_, "x-index is out of range"); 
         if (0 == x_)
@@ -73,7 +79,7 @@ struct child_index
             packed_ |= 1;
     }
 
-    void set_y(std::size_t y_)
+    void set_y(boost::uint64_t y_)
     {
         OCTOPUS_ASSERT_MSG(1 >= y_, "y-indey is out of range"); 
         if (0 == y_)
@@ -82,7 +88,7 @@ struct child_index
             packed_ |= 2;
     }
 
-    void set_z(std::size_t z_)
+    void set_z(boost::uint64_t z_)
     {
         OCTOPUS_ASSERT_MSG(1 >= z_, "z-indez is out of range"); 
         if (0 == z_)
@@ -93,7 +99,10 @@ struct child_index
 
     boost::array<boost::int64_t, 3> array()
     {
-        boost::array<boost::int64_t, 3> a = { { x(), y(), z() } };  
+        boost::array<boost::int64_t, 3> a;
+        a[0] = x();
+        a[1] = y();
+        a[2] = z();
         return a; 
     }  
 

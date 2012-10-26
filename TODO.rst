@@ -25,6 +25,7 @@ Short-term todo list
 * *DONE* A lot of recursive functions need to be called from within step/sub-step to break the global barriers.
 * An off switch would be nice.
 * Visit control component.
+* Switch to std::array.
 
 Long-term todo list
 ===================
@@ -33,4 +34,5 @@ Long-term todo list
 * More descriptive names (this is a problem both internally and at the interface level).
 * --help should show INI options (maybe).
 * Investigate using DBShowErrors to silence the error dumps that SILO does (their error messages get mangled by something).
-
+* Timestep refinement.
+* Place grid nodes based on where the corresponding grid node from the previous timestep is located.

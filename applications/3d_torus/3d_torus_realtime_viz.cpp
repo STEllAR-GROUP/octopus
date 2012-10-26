@@ -535,7 +535,8 @@ int octopus_main(boost::program_options::variables_map& vm)
         << (boost::format("max_dt_growth    = %.6e\n") % max_dt_growth)
         << (boost::format("kappa            = %.6e\n") % KAPPA)
         << "\n"
-        << (boost::format("Stepping to %.6e...\n") % temporal_domain);
+        << (boost::format("Stepping to %.6e...\n") % temporal_domain)
+        << "\n";
 
     double time = 0.0;
 

@@ -18,6 +18,9 @@
 
 #include <vector>
 
+// NOTE: We should make this a vector4d, instead of allocating a separate
+// std::vector for each state variable.
+
 namespace octopus
 {
 
@@ -47,7 +50,7 @@ struct vector3d
 
     vector3d(
         size_type length
-      , T dflt = T()
+      , T const& dflt = T()
         )
       : x_length_(length)
       , y_length_(length)
@@ -59,7 +62,7 @@ struct vector3d
         size_type x_length
       , size_type y_length
       , size_type z_length
-      , T dflt = T()
+      , T const& dflt = T()
         )
       : x_length_(x_length)
       , y_length_(y_length)
@@ -78,8 +81,10 @@ struct vector3d
       : x_length_(other.x_length_)
       , y_length_(other.y_length_)
       , z_length_(other.z_length_) 
-      , data_(other.data_)
-    {}
+      , data_(boost::move(other.data_))
+    {
+        other.clear();
+    }
 
     vector3d& operator=(BOOST_COPY_ASSIGN_REF(vector3d) other)
     {
@@ -95,7 +100,10 @@ struct vector3d
         x_length_ = other.x_length_;
         y_length_ = other.y_length_;
         z_length_ = other.z_length_;
-        data_ = other.data_;
+        data_ = boost::move(other.data_);
+
+        other.clear();
+
         return *this;
     }
 
@@ -128,7 +136,7 @@ struct vector3d
 
     void resize(
         size_type length
-      , T dflt = T()
+      , T const& dflt = T()
         )
     {
         x_length_ = length;
@@ -141,7 +149,7 @@ struct vector3d
         size_type x_length
       , size_type y_length
       , size_type z_length
-      , T dflt = T()
+      , T const& dflt = T()
         )
     {
         x_length_ = x_length;
@@ -233,7 +241,6 @@ bool same_dimensions(
       , T1 b                                                                  \
         )                                                                     \
     {                                                                         \
-        using namespace octopus::operators;                                   \
         a.data_ OP b;                                                         \
         return a;                                                             \
     }                                                                         \
@@ -244,7 +251,6 @@ bool same_dimensions(
       , vector3d<T> const& b                                                  \
         )                                                                     \
     {                                                                         \
-        using namespace octopus::operators;                                   \
         OCTOPUS_ASSERT(same_dimensions(a, b));                                \
         a.data_ OP b;                                                         \
         return a;                                                             \
@@ -269,9 +275,29 @@ OCTOPUS_DEFINE_ARITHMETIC_ASSIGNMENT_OPERATOR(/=)
         return (tmp BOOST_PP_CAT(OP, =) b);                 \
     }                                                       \
                                                             \
+    template <typename T0, typename T1>                     \
+    vector3d<T0> operator OP(                               \
+        BOOST_RV_REF(vector3d<T0>) a                        \
+      , T1 b                                                \
+        )                                                   \
+    {                                                       \
+        vector3d<T0> tmp(a);                                \
+        return (tmp BOOST_PP_CAT(OP, =) b);                 \
+    }                                                       \
+                                                            \
     template <typename T>                                   \
     vector3d<T> operator OP(                                \
         vector3d<T> const& a                                \
+      , vector3d<T> const& b                                \
+        )                                                   \
+    {                                                       \
+        vector3d<T> tmp(a);                                 \
+        return (tmp BOOST_PP_CAT(OP, =) b);                 \
+    }                                                       \
+                                                            \
+    template <typename T>                                   \
+    vector3d<T> operator OP(                                \
+        BOOST_RV_REF(vector3d<T>) a                         \
       , vector3d<T> const& b                                \
         )                                                   \
     {                                                       \

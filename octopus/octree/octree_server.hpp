@@ -2,6 +2,7 @@
 //  Copyright (c) 2012 Dominic Marcello
 //  Copyright (c) 2012 Zach Byerly
 //  Copyright (c) 2012 Bry_centere Adelstein-Lelbach
+//                        ^^^^^^^ Gotta love search and replace.
 //
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -14,12 +15,15 @@
 #include <hpx/lcos/local/mutex.hpp>
 #include <hpx/lcos/local/event.hpp>
 
+#include <octopus/array1d.hpp>
+#include <octopus/channel.hpp>
 #include <octopus/octree/octree_init_data.hpp>
 #include <octopus/octree/octree_client.hpp>
 
 // TODO: apply_criteria, apply_zonal, apply_zonal_leaf, reduce_leaf,
 // reduce_zonal_leaf
-
+// TODO: Get rid of unnecessary _kernel and _locked suffixes.
+ 
 namespace octopus
 {
 
@@ -45,8 +49,6 @@ struct OCTOPUS_EXPORT octree_server
   : hpx::components::managed_component_base<octree_server>
 {
   private:
-    friend struct checkout_state;
-
     typedef hpx::components::managed_component_base<octree_server> base_type;
 
     typedef hpx::components::managed_component<octree_server>*
@@ -60,6 +62,50 @@ struct OCTOPUS_EXPORT octree_server
     mutable mutex_type mtx_; 
     boost::uint8_t siblings_set_;
     bool state_received_;
+
+    // Circular doubly-linked list; size == temporal prediction gap.
+    octree_client future_self_;
+    octree_client past_self_;
+  
+    typedef array1d<channel<vector3d<std::vector<double> > >, 6>
+        sibling_dependencies;
+  
+    typedef array1d<channel<vector3d<std::vector<double> > >, 8>
+        children_dependencies;
+
+    // IMPLEMENT: This should totally be in the science table, along with like
+    // 3k other lines of stuff in octree_server.
+    /// Bryce's math for the size of the queues (for TVD RK):
+    ///
+    ///     * 1 ghost zone communication at the end of each step.
+    ///     * 1 ghost zone communication, 1 flux adjustment and 1 child ->
+    ///       parent injection during each sub step.
+    ///
+    /// RK1, 2 GZ comms + 1 flux adjust + 1 c -> p injections = 4 comms
+    /// RK2, 3 GZ comms + 2 flux adjust + 2 c -> p injections = 7 comms 
+    /// RK3, 4 GZ comms + 3 flux adjust + 3 c -> p injections = 10 comms 
+
+    // Queue for incoming ghost zones.
+    // NOTE: Elements of this queue should be cleared but not removed until the
+    // end of each timestep. This is necessary to ensure that indices into this
+    // vector remain the same throughout the entire step. 
+    std::vector<sibling_dependencies> ghost_zone_queue_;
+
+    // Queue for incoming state from our children.
+    // NOTE: Elements of this queue should be cleared but not removed until the
+    // end of each timestep. This is necessary to ensure that indices into this
+    // vector remain the same throughout the entire step. 
+    // NOTE: Some of these may be empty; if they are, these indicates that
+    // we don't have that child.
+    std::vector<children_dependencies> children_state_queue_;
+
+    // Queue for flux adjustment.
+    // NOTE: Elements of this queue should be cleared but not removed until the
+    // end of each timestep. This is necessary to ensure that indices into this
+    // vector remain the same throughout the entire step. 
+    // NOTE: Some of these may be empty; if they are, these indicates that
+    // we don't have that child.
+    std::vector<children_dependencies> adjust_flux_queue_;
 
     ///////////////////////////////////////////////////////////////////////////
     // From OctNode
@@ -181,6 +227,8 @@ struct OCTOPUS_EXPORT octree_server
         vector3d<std::vector<double> > const& pU
         );
 
+    void prepare_queues();
+
     ///////////////////////////////////////////////////////////////////////////
     /// \brief Get a reference to this node that is safe to pass to our
     ///        children. Said reference must be uncounted to prevent reference
@@ -298,7 +346,6 @@ struct OCTOPUS_EXPORT octree_server
         return coords;
     }
 
-    // FIXME: More descriptive name.
     boost::array<double, 3> x_face_coords(
         boost::uint64_t i
       , boost::uint64_t j
@@ -457,6 +504,7 @@ struct OCTOPUS_EXPORT octree_server
                                 get_siblings_action);
 
     ///////////////////////////////////////////////////////////////////////////
+    // FIXME: Remove the need for this.
     boost::array<boost::int64_t, 3> get_offset() const
     {
         return offset_;
@@ -467,23 +515,58 @@ struct OCTOPUS_EXPORT octree_server
                                              get_offset_action);
 
     ///////////////////////////////////////////////////////////////////////////
-    // NOTE: enforce_boundaries in the original code.
-    // IMPLEMENT: Push don't pull.
-    /// \brief Requests ghost zone data from all siblings. 
-    void receive_ghost_zones();
+    // Ghost zone communication
+    // NOTE: This was contained in enforce_boundaries in the original code.
 
   private:
-    void receive_ghost_zones_kernel(
-        mutex_type::scoped_lock& l
+    /// 1.) Send out ghost zone data to our siblings. 
+    /// 2.) Unlock \a l.
+    /// 3.) Block until out ghost zones for \a phase are ready.
+    /// 4.) Relock \a l.
+    /// 
+    /// Remote Operations:   Possibly.
+    /// Concurrency Control: Unlocks mtx_, relocks mtx_ before returning.
+    /// Synchrony Gurantee:  Fire-and-Forget.
+    // IMPLEMENT
+    void talk_to_siblings(
+        boost::uint64_t phase
+      , mutex_type::scoped_lock& l
+        );
+
+    /// Wait for ghost zone data from the queue, using index \a phase.
+    /// Add the data to our state when it comes in. 
+    // IMPLEMENT
+    void add_ghost_zones_kernel(
+        boost::uint64_t phase
+      , mutex_type::scoped_lock& l
+        );
+
+    // FIXME: Rvalue reference kung-fo must be applied here.
+    /// Callback used to wait for a particular ghost zone. 
+    void add_ghost_zone_locked(
+        face f ///< Bound parameter.
+      , hpx::future<vector3d<std::vector<double> > > zone
+      , mutex_type::scoped_lock& l ///< Bound parameter.
         );
 
   public:
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                receive_ghost_zones,
-                                receive_ghost_zones_action);
+    // FIXME: Rvalue reference kung-fo must be applied here.
+    /// Called by our siblings.
+    // IMPLEMENT
+    void receive_ghost_zone(
+        boost::uint64_t step ///< For debugging purposes.
+      , boost::uint64_t phase 
+      , face f ///< Relative to caller.
+      , vector3d<std::vector<double> > const& zone_f
+        );
 
-    // IMPLEMENT: Push don't pull.
-    /// \brief Produces ghost zone data for a sibling.
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                receive_ghost_zone,
+                                receive_ghost_zone_action);
+
+    // NOTE: Pulls, this may not be necessary. Currently this is done to
+    // rectify interpolation and physical boundaries. 
+    /// Produces ghost zone data for a sibling.
     vector3d<std::vector<double> > send_ghost_zone(
         face f ///< Our direction, relative to the caller.
         );
@@ -492,7 +575,8 @@ struct OCTOPUS_EXPORT octree_server
                                 send_ghost_zone,
                                 send_ghost_zone_action);
 
-    // IMPLEMENT: Push don't pull.
+    // NOTE: Pulls, this may not be necessary. Currently this is done to
+    // rectify interpolation and physical boundaries. 
     vector3d<std::vector<double> > send_mapped_ghost_zone(
         face f ///< Our direction, relative to the caller.
         );
@@ -501,15 +585,55 @@ struct OCTOPUS_EXPORT octree_server
                                 send_mapped_ghost_zone,
                                 send_mapped_ghost_zone_action);
 
+    ///////////////////////////////////////////////////////////////////////////
+    // Child -> parent injection of state.
+
   private:
-    // FIXME: Rvalue reference kung-fo must be applied here
-    void integrate_ghost_zone(
-        std::size_t i
-      , vector3d<std::vector<double> > const& zone
+    /// 1.) Unlock \a l.
+    /// 2.) Blocksuntil the child -> parent injection that is at \a phase in 
+    ///     the queue is ready.
+    /// 3.) Relock \a l.
+    /// 4.) Send a child -> parent injection up to our parent. 
+    // IMPLEMENT
+    void talk_to_kids_and_parents(
+        boost::uint64_t phase
+      , mutex_type::scoped_lock& l
+        );
+
+    /// Wait for ghost zone data from the queue, using index \a phase.
+    /// Add the data to our state when it comes in. 
+    // IMPLEMENT
+    void add_child_states_kernel(
+        boost::uint64_t phase
+      , mutex_type::scoped_lock& l
+        );
+
+    // FIXME: Rvalue reference kung-fo must be applied here.
+    /// Callback used to wait for a particular child state. 
+    // IMPLEMENT
+    void add_child_state_locked(
+        child_index idx ///< Bound parameter.
+      , hpx::future<vector3d<std::vector<double> > > state_f
+      , mutex_type::scoped_lock& l ///< Bound parameter.
         );
 
   public:
+    // FIXME: Rvalue reference kung-fo must be applied here.
+    /// Called by our siblings.
+    // IMPLEMENT
+    void receive_child_state(
+        boost::uint64_t step ///< For debugging purposes.
+      , boost::uint64_t phase 
+      , child_index idx ///< Relative to caller.
+      , vector3d<std::vector<double> > const& state
+        );
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                receive_child_state,
+                                receive_child_state_action);
+
     ///////////////////////////////////////////////////////////////////////////
+    // Tree traversal.
     void apply(
         hpx::util::function<void(octree_server&)> const& f
         );
@@ -525,34 +649,6 @@ struct OCTOPUS_EXPORT octree_server
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                 apply_leaf,
                                 apply_leaf_action);
-
-    void apply_top(
-        hpx::util::function<void(octree_server&)> const& f
-      , boost::uint64_t maximum_level
-        );
-
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                apply_top,
-                                apply_top_action);
-
-    void apply_bottom(
-        hpx::util::function<void(octree_server&)> const& f
-      , boost::uint64_t minimum_level
-        );
-
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                apply_bottom,
-                                apply_bottom_action);
-
-    void apply_at(
-        hpx::util::function<void(octree_server&)> const& f
-      , boost::uint64_t minimum_level
-      , boost::uint64_t maximum_level
-        );
-
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                apply_at,
-                                apply_at_action);
 
     ///////////////////////////////////////////////////////////////////////////
     void step(double dt);
@@ -576,13 +672,11 @@ struct OCTOPUS_EXPORT octree_server
         );
 
     void sub_step_kernel(
-        double dt
+        boost::uint64_t phase
+      , double dt
       , double beta
       , mutex_type::scoped_lock& l
         );
-
-    // IMPLEMENT
-    void receive_state_from_children_kernel(mutex_type::scoped_lock& l);
 
     void add_differentials_kernel(
         double dt
@@ -596,13 +690,13 @@ struct OCTOPUS_EXPORT octree_server
     void compute_flux_kernel(mutex_type::scoped_lock& l);
 
     // NOTE: Reads from U_, writes to FX_.
-    void compute_x_flux_kernel();
+    void compute_x_flux_kernel(mutex_type::scoped_lock& l);
 
     // NOTE: Reads from U_, writes to FY_.
-    void compute_y_flux_kernel();
+    void compute_y_flux_kernel(mutex_type::scoped_lock& l);
 
     // NOTE: Reads from U_, writes to FZ_.
-    void compute_z_flux_kernel();
+    void compute_z_flux_kernel(mutex_type::scoped_lock& l);
 
     // IMPLEMENT 
     void adjust_flux_kernel(mutex_type::scoped_lock& l);
@@ -612,11 +706,11 @@ struct OCTOPUS_EXPORT octree_server
   public:
     ///////////////////////////////////////////////////////////////////////////
     // IMPLEMENT
-    octree_client clone_and_refine();
+    void copy_and_regrid();
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                clone_and_refine,
-                                clone_and_refine_action);  
+                                copy_and_regrid,
+                                copy_and_regrid_action);  
 
     ///////////////////////////////////////////////////////////////////////////
     void output();
@@ -627,7 +721,7 @@ struct OCTOPUS_EXPORT octree_server
 
   private:
     template <typename T>
-    void integrate_reduce(
+    void add_reduce(
         T& result
       , hpx::util::function<T(T const&, T const&)> const& reducer
       , std::size_t 
@@ -691,16 +785,24 @@ OCTOPUS_REGISTER_ACTION(set_sibling);
 OCTOPUS_REGISTER_ACTION(tie_sibling);
 OCTOPUS_REGISTER_ACTION(set_child_sibling);
 OCTOPUS_REGISTER_ACTION(tie_child_sibling);
+
 OCTOPUS_REGISTER_ACTION(get_siblings);
 OCTOPUS_REGISTER_ACTION(get_offset);
-OCTOPUS_REGISTER_ACTION(receive_ghost_zones);
+
+OCTOPUS_REGISTER_ACTION(receive_ghost_zone);
 OCTOPUS_REGISTER_ACTION(send_ghost_zone);
 OCTOPUS_REGISTER_ACTION(send_mapped_ghost_zone);
+
+OCTOPUS_REGISTER_ACTION(receive_child_state);
+
 OCTOPUS_REGISTER_ACTION(apply);
 OCTOPUS_REGISTER_ACTION(apply_leaf);
+
 OCTOPUS_REGISTER_ACTION(step);
 OCTOPUS_REGISTER_ACTION(step_to_time);
-OCTOPUS_REGISTER_ACTION(clone_and_refine);
+
+OCTOPUS_REGISTER_ACTION(copy_and_regrid);
+
 OCTOPUS_REGISTER_ACTION(output);
 
 #undef OCTOPUS_REGISTER_ACTION
