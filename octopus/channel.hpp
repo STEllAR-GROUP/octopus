@@ -74,6 +74,7 @@ struct channel
 
         if (this != &other)
         {
+/*
             if (data_->is_ready())
             {
                 data_->set_error(hpx::broken_promise,
@@ -82,7 +83,7 @@ struct channel
             }
 
             data_->deleting_owner();
-
+*/
             data_ = other.data_;
         }
 
@@ -95,6 +96,7 @@ struct channel
 
         if (this != &other)
         {
+/*
             if (data_->is_ready())
             {
                 data_->set_error(hpx::broken_promise,
@@ -103,9 +105,8 @@ struct channel
             }
 
             data_->deleting_owner();
-
+*/
             data_ = boost::move(other.data_);
-
             other.data_.reset();
         }
 
@@ -121,6 +122,7 @@ struct channel
     {
         OCTOPUS_ASSERT(data_);
 
+/*
         if (data_->is_ready())
         {
             data_->set_error(hpx::broken_promise,
@@ -129,9 +131,10 @@ struct channel
         }
 
         data_->deleting_owner();
+*/ 
 
         data_->reset();
-    }
+   }
 
     T take(hpx::error_code& ec = hpx::throws) 
     {
@@ -158,6 +161,7 @@ struct channel
     hpx::future<typename boost::result_of<F(hpx::future<T>)>::type>
     then(BOOST_FWD_REF(F) f)
     {
+        /*
         typedef typename boost::result_of<F(hpx::future<T>)>::type result_type;
 
         // Create a continuation.
@@ -178,9 +182,12 @@ struct channel
                           , p, hpx::util::placeholders::_1));
 
         // The continuation will keep the future alive. We'll need a new one.
-        data_ = new future_data();
+        //data_ = new future_data();
 
         return p->get_future();
+        */
+        return hpx::future<T>(data_).when
+            (boost::forward<completed_callback_type>(f));
     }
 
     bool ready() const

@@ -227,6 +227,8 @@ struct OCTOPUS_EXPORT octree_server
         vector3d<std::vector<double> > const& pU
         );
 
+    void initialize_queues();
+
     void prepare_queues();
 
     ///////////////////////////////////////////////////////////////////////////

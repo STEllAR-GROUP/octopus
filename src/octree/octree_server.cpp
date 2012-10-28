@@ -87,13 +87,14 @@ void octree_server::inject_state_from_parent(
     state_received_locked(l);
 } // }}}
 
-void octree_server::prepare_queues()
+void octree_server::initialize_queues()
 {
     OCTOPUS_ASSERT(1 <= config().runge_kutta_order);
     OCTOPUS_ASSERT(3 >= config().runge_kutta_order);
 
     // NOTE: See the math in the header (right before the declaration of
     // ghost_zone_queue_) to see where these numbers come from. 
+
     ghost_zone_queue_.resize(
         config().runge_kutta_order + 1
       , sibling_dependencies());
@@ -111,6 +112,23 @@ void octree_server::prepare_queues()
         );
 }
 
+void octree_server::prepare_queues()
+{
+    for (boost::uint64_t i = 0; i < ghost_zone_queue_.size(); ++i)
+        for (boost::uint64_t j = 0; j < 6; ++j)
+            ghost_zone_queue_.at(i)(j).reset();
+
+    if (config().max_refinement_level == level_)
+        return;
+
+    for (boost::uint64_t i = 0; i < children_state_queue_.size(); ++i)
+        for (boost::uint64_t j = 0; j < 6; ++j)
+            children_state_queue_.at(i)(j).reset();
+
+    for (boost::uint64_t i = 0; i < adjust_flux_queue_.size(); ++i)
+        for (boost::uint64_t j = 0; j < 6; ++j)
+            adjust_flux_queue_.at(i)(j).reset();
+}
 
 /// \brief Construct a root node. 
 octree_server::octree_server(
@@ -149,7 +167,7 @@ octree_server::octree_server(
 {
     OCTOPUS_ASSERT(parent_ == hpx::invalid_id);
 
-    prepare_queues();
+    initialize_queues();
 
     initialized_.set();
 
@@ -205,7 +223,7 @@ octree_server::octree_server(
         init.parent.get_management_type() == hpx::id_type::unmanaged,
         "reference cycle detected in child");
 
-    prepare_queues();
+    initialize_queues();
 
     inject_state_from_parent(parent_U);
 }
@@ -788,29 +806,37 @@ void octree_server::communicate_ghost_zones(
         phase % ghost_zone_queue_.size());
 
 
-    boost::array<hpx::future<void>, 6> dependencies;
+    // FIXME: After HPX update, switch to a boost array here.
+    //boost::array<hpx::future<void>, 6> dependencies;
+
+    std::vector<hpx::future<vector3d<std::vector<double> > > > keep_alive;
+    keep_alive.reserve(6);
+
+    std::vector<hpx::future<void> > dependencies;
+    dependencies.reserve(6);
 
     for (boost::uint64_t i = 0; i < 6; ++i)
     {
-        if (siblings_[i].real()
+        if (siblings_[i].real())
         {
             // 0.) Send out ghost zone data to our siblings. 
             // NOTE: send_ghost_zone_locked is somewhat compute intensive.
-            parent.receive_ghost_zone_push(step_, phase, face(i),
-                send_ghost_zone_locked(l));
+            parent_.receive_ghost_zone_push(step_, phase, face(i),
+                send_ghost_zone_locked(invert(face(i)), l));
 
-            dependencies.emplace_back(
-                ghost_zone_queue_[phase][i].then(
+            dependencies.emplace_back( 
+                ghost_zone_queue_.at(phase)(i).then(
                     boost::bind(&octree_server::add_ghost_zone,
                         this, face(i), _1))); 
         }
 
         // A boundary, so we pull.
         else
-            dependencies.emplace_back(
-                siblings_[i].send_ghost_zone_async(face(i)).then(
-                    boost::bind(&octree_server::add_ghost_zone,
-                        this, face(i), _1))); 
+        {
+            keep_alive.push_back(siblings_[i].send_ghost_zone_async(face(i)));
+            dependencies.emplace_back(keep_alive.back().when(boost::bind
+                (&octree_server::add_ghost_zone, this, face(i), _1))); 
+        }
     }
 
     {
@@ -1031,7 +1057,7 @@ void octree_server::receive_ghost_zone(
     // NOTE (wash): boost::move should be safe here, zone is a temporary, even
     // if we're local to the caller. Plus, ATM set_value requires the value to
     // be moved to it.
-    ghost_zone_queue_[phase][invert(f)].post(zone);
+    ghost_zone_queue_.at(phase)(invert(f)).post(zone);
 } // }}} 
 
 vector3d<std::vector<double> > octree_server::send_ghost_zone(
@@ -1043,7 +1069,7 @@ vector3d<std::vector<double> > octree_server::send_ghost_zone(
 
     mutex_type::scoped_lock l(mtx_);
 
-    send_ghost_zone_locked(f, l);
+    return send_ghost_zone_locked(f, l);
 } // }}}
 
 // Who ya gonna call? Ghostbusters!
@@ -1052,13 +1078,10 @@ vector3d<std::vector<double> > octree_server::send_ghost_zone_locked(
   , mutex_type::scoped_lock& l
     )
 { // {{{
+    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
+    
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
-
-    // Make sure that we are initialized.
-    initialized_.wait();
-
-    mutex_type::scoped_lock l(mtx_);
 
     switch (f)
     {
@@ -1547,32 +1570,41 @@ void octree_server::child_to_parent_injection(
     )
 { // {{{
     OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
-    
-    OCTOPUS_ASSERT_FMT_MSG(
-        phase < children_state_queue_.size(),
-        "phase (%1%) is greater than the children state queue length (%2%)",
-        phase % children_state_queue_.size());
 
     std::vector<hpx::future<void> > dependencies;
-    dependencies.reserve(8);
-
+    
     bool has_children = false;
 
-    for (boost::uint64_t i = 0; i < 8; ++i)
-        if (children_[i] != hpx::invalid_id())
-        {
-            has_children = true;
-            break;
-        }
+    if (config().max_refinement_level == level_)
+        has_children = false;
+
+    else
+    {
+        // children_state_queue is only allocated if the max refinement level
+        // isn't the current level.
+        OCTOPUS_ASSERT_FMT_MSG(
+            phase < children_state_queue_.size(),
+            "phase (%1%) is greater than the children state queue length (%2%)",
+            phase % children_state_queue_.size());
+
+        dependencies.reserve(8);
+
+        for (boost::uint64_t i = 0; i < 8; ++i)
+            if (children_[i] != hpx::invalid_id)
+            {
+                has_children = true;
+                break;
+            }
+    }
 
     if (has_children)
     {
-        OCTOPUS_ASSERT(config().max_refinement_level != level_)
+        OCTOPUS_ASSERT(config().max_refinement_level != level_);
 
         for (boost::uint64_t i = 0; i < 8; ++i)
-            if (children_[i] != hpx::invalid_id())
+            if (children_[i] != hpx::invalid_id)
                 dependencies.emplace_back(
-                    children_state_queue_[phase][i].then(
+                    children_state_queue_.at(phase)(i).then(
                         boost::bind(&octree_server::add_child_state,
                             this, child_index(i), _1))); 
     }
@@ -1587,14 +1619,14 @@ void octree_server::child_to_parent_injection(
 
     } // 2.) Relock l.
 
-    if (parent != hpx::invalid_id)
+    if (parent_ != hpx::invalid_id)
     {
         OCTOPUS_ASSERT(level_ != 0);
 
         // 3.) Send a child -> parent injection up to our parent. 
         // NOTE: send_child_state_locked is somewhat compute intensive.
-        parent.receive_child_state_push(step_, phase, get_child_index_locked(l),
-            send_child_state_locked(l));
+        parent_.receive_child_state_push(step_, phase,
+            get_child_index_locked(l), send_child_state_locked(l));
     }
 } // }}}
 
@@ -1663,13 +1695,13 @@ void octree_server::receive_child_state(
     // NOTE (wash): boost::move should be safe here, zone is a temporary, even
     // if we're local to the caller. Plus, ATM set_value requires the value to
     // be moved to it.
-    children_state_queue_[phase][idx].post(state);
+    children_state_queue_.at(phase)(idx).post(state);
 } // }}}
 
-vector3d<std::vector<double> > send_child_state_locked(
+vector3d<std::vector<double> > octree_server::send_child_state_locked(
     mutex_type::scoped_lock &l
     )
-{
+{ // {{{
     OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
 
     boost::uint64_t const bw = science().ghost_zone_width;
@@ -1694,6 +1726,8 @@ vector3d<std::vector<double> > send_child_state_locked(
                 boost::uint64_t const jj = ((j + bw) / 2) - bw; 
                 boost::uint64_t const kk = ((k + bw) / 2) - bw; 
 
+                using namespace octopus::operators;
+
                 state(ii, jj, kk) += U_(i + 0, j + 0, k + 0);
                 state(ii, jj, kk) += U_(i + 1, j + 0, k + 0);
                 state(ii, jj, kk) += U_(i + 0, j + 1, k + 0);
@@ -1706,7 +1740,7 @@ vector3d<std::vector<double> > send_child_state_locked(
             }
 
     return state; 
-}
+} // }}}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Tree traversal.
@@ -1821,27 +1855,35 @@ void octree_server::step_kernel(
     U0_ = U_;
     FO0_ = FO_;
 
+    prepare_queues(); 
+
     // NOTE (to self): I have no good place to put this, so I'm putting it
     // here: we do TVD RK3 (google is your friend).
     switch (config().runge_kutta_order)
     {
         case 1:
         {
+            std::cout << "RK1\n";
             sub_step_kernel(0, dt, 1.0, l);
             break;
         }
 
         case 2:
         {
+            std::cout << "RK1\n";
             sub_step_kernel(0, dt, 1.0, l);
+            std::cout << "RK2\n";
             sub_step_kernel(1, dt, 0.5, l);
             break; 
         }
 
         case 3:
         {
+            std::cout << "RK1\n";
             sub_step_kernel(0, dt, 1.0, l);
+            std::cout << "RK2\n";
             sub_step_kernel(1, dt, 0.25, l);
+            std::cout << "RK3\n";
             sub_step_kernel(2, dt, 2.0 / 3.0, l);
             break; 
         }
