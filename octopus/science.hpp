@@ -10,8 +10,12 @@
 
 #include <octopus/science/science_table.hpp>
 
+#include <octopus/science/refinement_criteria.hpp>
+#include <octopus/science/elementwise_refinement_criteria.hpp>
+
 #include <octopus/science/physical_boundaries.hpp>
 #include <octopus/science/reconstruction.hpp>
+#include <octopus/science/initial_spacestep.hpp>
 
 #endif // OCTOPUS_6B85CEFD_F97E_42AD_91FA_FEA7261EFFCB
 

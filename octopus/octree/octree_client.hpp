@@ -600,6 +600,16 @@ struct OCTOPUS_EXPORT octree_client
         );
     // }}}
 
+    ///////////////////////////////////////////////////////////////////////////
+    // {{{ refine
+    void refine() const
+    {
+        return refine_async().get();
+    }
+
+    hpx::future<void> refine_async() const;
+    // }}}
+
     // NOTE: (to self) Keep the order the same as octree_server please.
     // (update to self) Bad self.
 };

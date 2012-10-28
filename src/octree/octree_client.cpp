@@ -925,5 +925,11 @@ hpx::future<void> octree_client::output_async() const
     return end;
 }
 
+hpx::future<void> octree_client::refine_async() const
+{
+    ensure_real();
+    return hpx::async<octree_server::refine_action>(gid_);
+}
+
 }
 

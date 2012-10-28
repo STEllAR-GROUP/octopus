@@ -9,6 +9,7 @@
 #define OCTOPUS_903E5732_EB7C_4CBC_A13E_24DF0582AF0E
 
 #include <octopus/octree/octree_server.hpp>
+#include <octopus/science/refinement_criteria.hpp>
 #include <octopus/io/writer.hpp>
 #include <octopus/face.hpp>
 
@@ -126,6 +127,8 @@ struct science_table
             )
     > flux; 
 
+    refinement_criteria refine_policy;
+
     writer output;
 
     template <typename Archive>
@@ -151,6 +154,8 @@ struct science_table
         ar & source;
         ar & floor;
         ar & flux;
+
+        ar & refine_policy;
 
         ar & output;
     }

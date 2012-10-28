@@ -704,6 +704,16 @@ struct OCTOPUS_EXPORT octree_server
                                 copy_and_regrid,
                                 copy_and_regrid_action);  
 
+    void refine();
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                refine,
+                                refine_action);  
+
+  private:
+    void refine_kernel(mutex_type::scoped_lock& l);
+
+  public:
     ///////////////////////////////////////////////////////////////////////////
     void output();
 
@@ -794,6 +804,7 @@ OCTOPUS_REGISTER_ACTION(step);
 OCTOPUS_REGISTER_ACTION(step_to_time);
 
 OCTOPUS_REGISTER_ACTION(copy_and_regrid);
+OCTOPUS_REGISTER_ACTION(refine);
 
 OCTOPUS_REGISTER_ACTION(output);
 

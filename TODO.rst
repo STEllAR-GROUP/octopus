@@ -26,6 +26,8 @@ Short-term todo list
 * An off switch would be nice.
 * Visit control component.
 * Switch to std::array.
+* Add grid "age".
+* Add refine_or_unrefine to refinement_criteria interface.
 
 Long-term todo list
 ===================

@@ -424,6 +424,8 @@ void octree_server::create_child(
 
     OCTOPUS_ASSERT(kid_client != hpx::invalid_id);
 
+    children_[kid] = kid_client;
+
     ///////////////////////////////////////////////////////////////////////////
     // Create the interior "family" links.
 
@@ -2227,6 +2229,57 @@ void octree_server::sum_differentials_kernel(
 void octree_server::copy_and_regrid()
 { // {{{ IMPLEMENT
 
+} // }}}
+
+void octree_server::refine()
+{ // {{{ IMPLEMENT
+    std::vector<hpx::future<void> > recursion_is_parallelism;
+
+    {
+        // Make sure that we are initialized.
+        initialized_.wait();
+    
+        mutex_type::scoped_lock l(mtx_);
+    
+        // Kernel.
+        refine_kernel(l);
+
+        recursion_is_parallelism.reserve(8);
+    
+        // Start recursively executing the kernel function on our children.
+        for (boost::uint64_t i = 0; i < 8; ++i)
+            if (hpx::invalid_id != children_[i])
+                recursion_is_parallelism.push_back(children_[i].refine_async()); 
+    }
+
+    // Block while our children compute.
+    hpx::wait_all(recursion_is_parallelism); 
+} // }}}
+
+// FIXME: Parallelize?
+void octree_server::refine_kernel(mutex_type::scoped_lock& l)
+{ // {{{ 
+    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
+
+    if (config().max_refinement_level == level_)
+        return;
+
+    std::vector<hpx::future<void> > new_children;
+    new_children.reserve(8);
+
+    for (boost::uint64_t i = 0; i < 8; ++i)
+    {
+        child_index kid(i);
+
+        if (children_[i] == hpx::invalid_id)
+        {
+            if (science().refine_policy.refine(*this, kid))
+                new_children.push_back
+                    (client_from_this().create_child_async(kid));
+        }
+    }
+
+    hpx::wait_all(new_children); 
 } // }}}
 
 void octree_server::output()
