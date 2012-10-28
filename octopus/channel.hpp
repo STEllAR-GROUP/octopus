@@ -74,7 +74,6 @@ struct channel
 
         if (this != &other)
         {
-/*
             if (data_->is_ready())
             {
                 data_->set_error(hpx::broken_promise,
@@ -83,7 +82,7 @@ struct channel
             }
 
             data_->deleting_owner();
-*/
+
             data_ = other.data_;
         }
 
@@ -96,7 +95,6 @@ struct channel
 
         if (this != &other)
         {
-/*
             if (data_->is_ready())
             {
                 data_->set_error(hpx::broken_promise,
@@ -105,7 +103,7 @@ struct channel
             }
 
             data_->deleting_owner();
-*/
+
             data_ = boost::move(other.data_);
             other.data_.reset();
         }
@@ -122,7 +120,6 @@ struct channel
     {
         OCTOPUS_ASSERT(data_);
 
-/*
         if (data_->is_ready())
         {
             data_->set_error(hpx::broken_promise,
@@ -131,7 +128,6 @@ struct channel
         }
 
         data_->deleting_owner();
-*/ 
 
         data_->reset();
    }
@@ -161,31 +157,6 @@ struct channel
     hpx::future<typename boost::result_of<F(hpx::future<T>)>::type>
     then(BOOST_FWD_REF(F) f)
     {
-        /*
-        typedef typename boost::result_of<F(hpx::future<T>)>::type result_type;
-
-        // Create a continuation.
-        typedef hpx::lcos::local::packaged_continuation<result_type, T, T>
-            cont_type;
-
-        boost::shared_ptr<cont_type> p(
-            boost::make_shared<cont_type>(
-                hpx::util::bind(boost::forward<F>(f)
-                              , hpx::util::placeholders::_1)
-            )
-        );
-
-        // Bind a on_completed handler to the future data which will invoke the
-        // continuation.
-        data_->set_on_completed(
-            hpx::util::bind(&cont_type::on_value_ready
-                          , p, hpx::util::placeholders::_1));
-
-        // The continuation will keep the future alive. We'll need a new one.
-        //data_ = new future_data();
-
-        return p->get_future();
-        */
         return hpx::future<T>(data_).when
             (boost::forward<completed_callback_type>(f));
     }

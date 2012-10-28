@@ -809,6 +809,7 @@ void octree_server::communicate_ghost_zones(
     // FIXME: After HPX update, switch to a boost array here.
     //boost::array<hpx::future<void>, 6> dependencies;
 
+    // FIXME: Workaround for an HPX bug.
     std::vector<hpx::future<vector3d<std::vector<double> > > > keep_alive;
     keep_alive.reserve(6);
 
@@ -1863,27 +1864,21 @@ void octree_server::step_kernel(
     {
         case 1:
         {
-            std::cout << "RK1\n";
             sub_step_kernel(0, dt, 1.0, l);
             break;
         }
 
         case 2:
         {
-            std::cout << "RK1\n";
             sub_step_kernel(0, dt, 1.0, l);
-            std::cout << "RK2\n";
             sub_step_kernel(1, dt, 0.5, l);
             break; 
         }
 
         case 3:
         {
-            std::cout << "RK1\n";
             sub_step_kernel(0, dt, 1.0, l);
-            std::cout << "RK2\n";
             sub_step_kernel(1, dt, 0.25, l);
-            std::cout << "RK3\n";
             sub_step_kernel(2, dt, 2.0 / 3.0, l);
             break; 
         }
