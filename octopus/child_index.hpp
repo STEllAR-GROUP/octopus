@@ -40,9 +40,8 @@ struct child_index
     }
 
     child_index(child_index const& other)
-    {
-        *this = other;
-    }
+      : packed_(other.packed_)
+    {}
 
     child_index operator=(child_index const& other)
     {

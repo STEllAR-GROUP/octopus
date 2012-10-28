@@ -30,18 +30,11 @@ struct channel
     typedef typename future_data::completed_callback_type
         completed_callback_type;
 
-    channel() : data_(new future_data())
-    {}
+    channel() : data_(new future_data()) {}
 
-    channel(channel const& other) : data_()
-    {
-        *this = other;
-    }
+    channel(channel const& other) : data_(othere.data_) {}
 
-    channel(BOOST_RV_REF(channel) other) : data_()
-    {
-        *this = boost::move(other);
-    }
+    channel(BOOST_RV_REF(channel) other) : data_(boost::move(other.data_)) {}
 
     explicit channel(BOOST_RV_REF(T) init) : data_(new future_data())
     {
