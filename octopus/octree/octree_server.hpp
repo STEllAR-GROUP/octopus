@@ -75,7 +75,7 @@ struct OCTOPUS_EXPORT octree_server
 
     // IMPLEMENT: This should totally be in the science table, along with like
     // 3k other lines of stuff in octree_server.
-    /// Bryce's math for the size of the queues (for TVD RK):
+    /// Bryce's math for the # of communications per step (for TVD RK):
     ///
     ///     * 1 ghost zone communication at the end of each step.
     ///     * 1 ghost zone communication, 1 flux adjustment and 1 child ->
@@ -519,50 +519,46 @@ struct OCTOPUS_EXPORT octree_server
     // NOTE: This was contained in enforce_boundaries in the original code.
 
   private:
-    /// 1.) Send out ghost zone data to our siblings. 
-    /// 2.) Unlock \a l.
-    /// 3.) Block until out ghost zones for \a phase are ready.
-    /// 4.) Relock \a l.
+    /// 0.) Send out ghost zone data to our siblings. 
+    /// 1.) Unlock \a l.
+    /// 2.) Block until out ghost zones for \a phase are ready.
+    /// 3.) Relock \a l.
     /// 
     /// Remote Operations:   Possibly.
     /// Concurrency Control: Unlocks mtx_, relocks mtx_ before returning.
     /// Synchrony Gurantee:  Fire-and-Forget.
-    // IMPLEMENT
-    void talk_to_siblings(
-        boost::uint64_t phase
-      , mutex_type::scoped_lock& l
-        );
-
-    /// Wait for ghost zone data from the queue, using index \a phase.
-    /// Add the data to our state when it comes in. 
-    // IMPLEMENT
-    void add_ghost_zones_kernel(
+    void communicate_ghost_zones(
         boost::uint64_t phase
       , mutex_type::scoped_lock& l
         );
 
     // FIXME: Rvalue reference kung-fo must be applied here.
     /// Callback used to wait for a particular ghost zone. 
-    void add_ghost_zone_locked(
+    void add_ghost_zone(
         face f ///< Bound parameter.
-      , hpx::future<vector3d<std::vector<double> > > zone
-      , mutex_type::scoped_lock& l ///< Bound parameter.
+      , hpx::future<vector3d<std::vector<double> > > zone_f
         );
 
   public:
     // FIXME: Rvalue reference kung-fo must be applied here.
     /// Called by our siblings.
-    // IMPLEMENT
     void receive_ghost_zone(
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
       , face f ///< Relative to caller.
-      , vector3d<std::vector<double> > const& zone_f
+      , vector3d<std::vector<double> > const& zone
         );
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                 receive_ghost_zone,
                                 receive_ghost_zone_action);
+
+  private:
+    vector3d<std::vector<double> > send_ghost_zone_locked(
+        face f ///< Our direction, relative to the caller.
+      , mutex_type::scoped_lock& l
+        );
+  public:
 
     // NOTE: Pulls, this may not be necessary. Currently this is done to
     // rectify interpolation and physical boundaries. 
@@ -589,48 +585,42 @@ struct OCTOPUS_EXPORT octree_server
     // Child -> parent injection of state.
 
   private:
-    /// 1.) Unlock \a l.
-    /// 2.) Blocksuntil the child -> parent injection that is at \a phase in 
+    /// 0.) Unlock \a l.
+    /// 1.) Blocks until the child -> parent injection that is at \a phase in 
     ///     the queue is ready.
-    /// 3.) Relock \a l.
-    /// 4.) Send a child -> parent injection up to our parent. 
-    // IMPLEMENT
-    void talk_to_kids_and_parents(
-        boost::uint64_t phase
-      , mutex_type::scoped_lock& l
-        );
-
-    /// Wait for ghost zone data from the queue, using index \a phase.
-    /// Add the data to our state when it comes in. 
-    // IMPLEMENT
-    void add_child_states_kernel(
+    /// 2.) Relock \a l.
+    /// 3.) Send a child -> parent injection up to our parent. 
+    void child_to_parent_injection(
         boost::uint64_t phase
       , mutex_type::scoped_lock& l
         );
 
     // FIXME: Rvalue reference kung-fo must be applied here.
     /// Callback used to wait for a particular child state. 
-    // IMPLEMENT
-    void add_child_state_locked(
+    void add_child_state(
         child_index idx ///< Bound parameter.
       , hpx::future<vector3d<std::vector<double> > > state_f
-      , mutex_type::scoped_lock& l ///< Bound parameter.
         );
 
   public:
     // FIXME: Rvalue reference kung-fo must be applied here.
     /// Called by our siblings.
-    // IMPLEMENT
     void receive_child_state(
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
-      , child_index idx ///< Relative to caller.
+      , child_index idx 
       , vector3d<std::vector<double> > const& state
         );
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                 receive_child_state,
                                 receive_child_state_action);
+
+  private:
+    vector3d<std::vector<double> > send_child_state_locked(
+        mutex_type::scoped_lock& l
+        );
+  public:
 
     ///////////////////////////////////////////////////////////////////////////
     // Tree traversal.

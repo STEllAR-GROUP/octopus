@@ -447,6 +447,7 @@ struct OCTOPUS_EXPORT octree_client
     // }}}
 
   public:
+    ///////////////////////////////////////////////////////////////////////////
     // {{{ send_ghost_zone
     vector3d<std::vector<double> > send_ghost_zone(
         face f
@@ -455,6 +456,60 @@ struct OCTOPUS_EXPORT octree_client
     hpx::future<vector3d<std::vector<double> > > send_ghost_zone_async(
         face f
         ) const;
+    // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
+    // {{{ receive_ghost_zone
+    void receive_ghost_zone(
+        boost::uint64_t step ///< For debugging purposes.
+      , boost::uint64_t phase 
+      , face f ///< Relative to caller.
+      , BOOST_RV_REF(vector3d<std::vector<double> >) zone
+        )
+    {
+        receive_ghost_zone_async(step, phase, f, boost::move(zone)).get();
+    }
+
+    hpx::future<void> receive_ghost_zone_async(
+        boost::uint64_t step ///< For debugging purposes.
+      , boost::uint64_t phase 
+      , face f ///< Relative to caller.
+      , BOOST_RV_REF(vector3d<std::vector<double> >) zone
+        );
+
+    void receive_ghost_zone_push(
+        boost::uint64_t step ///< For debugging purposes.
+      , boost::uint64_t phase 
+      , face f ///< Relative to caller.
+      , BOOST_RV_REF(vector3d<std::vector<double> >) zone
+        );
+    // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
+    // {{{ receive_child_state
+    void receive_child_state(
+        boost::uint64_t step ///< For debugging purposes.
+      , boost::uint64_t phase 
+      , child_index idx 
+      , BOOST_RV_REF(vector3d<std::vector<double> >) zone
+        )
+    {
+        receive_child_state_async(step, phase, idx, boost::move(zone)).get();
+    }
+
+    hpx::future<void> receive_child_state_async(
+        boost::uint64_t step ///< For debugging purposes.
+      , boost::uint64_t phase 
+      , child_index idx 
+      , BOOST_RV_REF(vector3d<std::vector<double> >) zone
+        );
+
+    void receive_child_state_push(
+        boost::uint64_t step ///< For debugging purposes.
+      , boost::uint64_t phase 
+      , child_index idx 
+      , BOOST_RV_REF(vector3d<std::vector<double> >) zone
+        );
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////

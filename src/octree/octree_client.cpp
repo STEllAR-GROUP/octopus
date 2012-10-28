@@ -732,6 +732,56 @@ octree_client::send_ghost_zone_async(
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+hpx::future<void> octree_client::receive_ghost_zone_async(
+    boost::uint64_t step ///< For debugging purposes.
+  , boost::uint64_t phase 
+  , face f ///< Relative to caller.
+  , BOOST_RV_REF(vector3d<std::vector<double> >) zone
+    ) const
+{
+    ensure_real();
+    return hpx::async<octree_server::receive_ghost_zone_action>
+        (gid_, step, phase, f, boost::move(zone));
+}
+
+void octree_client::receive_ghost_zone_push(
+    boost::uint64_t step ///< For debugging purposes.
+  , boost::uint64_t phase 
+  , face f ///< Relative to caller.
+  , BOOST_RV_REF(vector3d<std::vector<double> >) zone
+    ) const
+{
+    ensure_real();
+    hpx::apply<octree_server::receive_ghost_zone_action>
+        (gid_, step, phase, f, boost::move(zone));
+}
+
+///////////////////////////////////////////////////////////////////////////////
+hpx::future<void> octree_client::receive_child_state_async(
+    boost::uint64_t step ///< For debugging purposes.
+  , boost::uint64_t phase 
+  , child_index idx 
+  , BOOST_RV_REF(vector3d<std::vector<double> >) zone
+    ) const
+{
+    ensure_real();
+    return hpx::async<octree_server::receive_child_state_action>
+        (gid_, step, phase, idx, boost::move(zone));
+}
+
+void octree_client::receive_child_state_push(
+    boost::uint64_t step ///< For debugging purposes.
+  , boost::uint64_t phase 
+  , child_index idx 
+  , BOOST_RV_REF(vector3d<std::vector<double> >) zone
+    ) const
+{
+    ensure_real();
+    hpx::apply<octree_server::receive_child_state_action>
+        (gid_, step, phase, idx, boost::move(zone));
+}
+
+///////////////////////////////////////////////////////////////////////////////
 hpx::future<void> octree_client::apply_async(
     hpx::util::function<void(octree_server&)> const& f
     ) const
