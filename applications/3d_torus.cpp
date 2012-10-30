@@ -14,6 +14,9 @@
 #include <octopus/io/silo.hpp>
 #include <octopus/octree/octree_reduce.hpp>
 #include <octopus/operators/boost_array_arithmetic.hpp>
+#include <VisItControlInterface_V2.h>
+#include <VisItDataInterface_V2.h>
+#include <boost/process.hpp> 
 
 // FIXME: Names.
 // FIXME: Proper configuration.
@@ -515,6 +518,58 @@ int octopus_main(boost::program_options::variables_map& vm)
     boost::uint64_t step = 0;
     double next_output_time = output_frequency;
 
+    // Removing old sim2 file.
+    //    system("rm /home/zbyerly/SC12/octopus.sim2");
+
+    // Now launching VisIt environment.
+    std::cout << "Calling VisItSetupEnvironment()\n";
+    VisItSetupEnvironment();
+    //write out .sim file that VisIt uses to connect
+    std::cout << "Calling VisItInitializeSock...()\n";
+    VisItInitializeSocketAndDumpSimFile(
+        "octopus",
+        "fakeamr",
+        "/home/zbyerly/research/octopus/gcc-4.6.2-debug/",
+        NULL,
+        NULL,
+        "/home/zbyerly/SC12/octopus.sim2"); //Absolute Filename
+
+    // Hacky stuff to launch VisIt.
+    //system("/opt/visit/2.5.2/bin/visit -o /home/zbyerly/SC12/octopus.sim2");
+    //popen("/opt/visit/2.5.2/bin/visit -o /home/zbyerly/SC12/octopus.sim2\n");
+    // std::string exec = "/opt/visit/2.5.2/bin/visit";
+
+    // std::vector<std::string> args;
+    // //    args.push_back("-cli");
+    // args.push_back("-fullscreen");
+    // args.push_back("-o");
+    // args.push_back("/home/zbyerly/SC12/octopus.sim2");
+
+    // boost::process::context ctx;
+    // ctx.environment = boost::process::self::get_environment(); 
+    // //    ctx.stdout_behavior = boost::process::silence_stream();
+    // ctx.stdout_behavior = boost::process::capture_stream();
+    // ctx.stderr_behavior = boost::process::capture_stream();
+    
+    // boost::process::child c = boost::process::launch(exec, args, ctx);
+    
+
+    // boost::process::pistream &is = c.get_stderr(); 
+    // std::string line; 
+    // while (std::getline(is, line)) 
+    //   std::cout << line << std::endl; 
+
+    // sleep(2.0);
+
+    int visitstate = VisItDetectInput(0, -1);
+      
+    if(VisItAttemptToCompleteConnection()) {
+      fprintf(stderr, "VisIt connected\n");
+    } else {
+      fprintf(stderr, "VisIt did not connect\n");
+    }
+
+    VisItExecuteCommand("Source(\"/home/zbyerly/SC12/scripts/visitscript.py\")\n");
     while (time < temporal_domain)
     {
         //dt = (std::max)(dt_last*1.25,octopus::cfl_timestep());
@@ -532,14 +587,31 @@ int octopus_main(boost::program_options::variables_map& vm)
         ++step;
         dt_last = dt;
 
-        if ((time + dt) >= next_output_time)
-        {   
-            std::cout << "OUTPUT\n";
-            root.output();
-            next_output_time += output_frequency; 
-        }
+        // Commenting out so it will output every timestep for demo.
+        // if ((time + dt) >= next_output_time)
+        // {   
+        //     std::cout << "OUTPUT\n";
+        //     root.output();
+        //     next_output_time += output_frequency; 
+        // }
+
+        std::cout << "RELOADING\n";
+        root.output();
+        VisItExecuteCommand("Source(\"/home/zbyerly/SC12/scripts/reload.py\")\n");
+
     } 
+    std::cout << "DONE!\n";
+
+    VisItExecuteCommand("Close()");
+    VisItExecuteCommand("quit()");
+
+    //std::cout << "Deleted plots..\n";
+
+    //if(!VisItProcessEngineCommand())
+    //  VisItDisconnect();
     
+    //std::cout << "disconnected";
+
     return 0;
 }
 

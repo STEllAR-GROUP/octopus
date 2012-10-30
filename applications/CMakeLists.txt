@@ -13,7 +13,7 @@ foreach(application ${applications})
   source_group("Source Files" FILES ${sources})
 
   add_hpx_executable(${application} SOURCES ${sources} ${${application}_FLAGS}
-                     DEPENDENCIES octopus_component
+                     DEPENDENCIES octopus_component simV2
                      FOLDER "Applications")
 
   add_hpx_pseudo_target(applications.${application})

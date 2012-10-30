@@ -43,6 +43,13 @@ include_directories(${SILO_INCLUDE_DIR})
 link_directories(${SILO_LIBRARY_DIR})
 
 ################################################################################
+include_directories("/opt/boost_process")
+
+################################################################################
+include_directories("/opt/visit/2.5.2/2.5.2/linux-x86_64/libsim/V2/include")
+link_directories("/opt/visit/2.5.2/2.5.2/linux-x86_64/libsim/V2/lib")
+
+################################################################################
 hpx_option(OCTOPUS_VERIFY BOOL
            "Enable verification of Octopus (default: ON)" ON ADVANCED)
 
@@ -77,5 +84,4 @@ add_subdirectory(tests)
 ################################################################################
 add_hpx_pseudo_target(applications)
 add_subdirectory(applications)
-
 
