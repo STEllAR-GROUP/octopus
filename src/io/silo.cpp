@@ -33,11 +33,11 @@ void single_variable_silo_writer::start_write_locked(
     time_ = time; 
 
     // Bryce, I'm hacking this for the demo.
-    //file_ = DBCreate(boost::str( boost::format(file_name_)
-    //                           % hpx::get_locality_id() % step_).c_str() 
-    //               , DB_CLOBBER, DB_LOCAL, NULL, DB_PDB);
-    file_ = DBCreate("/home/wash/SC12/data.silo"
+    file_ = DBCreate(boost::str( boost::format(file_name_)
+                               % hpx::get_locality_id() % step_).c_str() 
                    , DB_CLOBBER, DB_LOCAL, NULL, DB_PDB);
+//    file_ = DBCreate("/home/wash/SC12/data.silo"
+//                   , DB_CLOBBER, DB_LOCAL, NULL, DB_PDB);
     
     OCTOPUS_ASSERT(file_ != 0);
 
