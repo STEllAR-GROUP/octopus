@@ -15,7 +15,10 @@
 
 #include <octopus/octree/octree_server.hpp>
 #include <octopus/octree/octree_reduce.hpp>
+
 #include <octopus/engine/engine_server.hpp>
+
+#include <octopus/visit/visit_simulation_server.hpp>
 
 HPX_REGISTER_COMPONENT_MODULE();
 
@@ -53,4 +56,22 @@ OCTOPUS_REGISTER_ACTION(output);
 HPX_REGISTER_MINIMAL_COMPONENT_FACTORY(
     hpx::components::simple_component<octopus::engine_server>,
     octopus_engine_server);
+
+///////////////////////////////////////////////////////////////////////////////
+HPX_REGISTER_MINIMAL_COMPONENT_FACTORY(
+    hpx::components::simple_component<octopus::visit_simulation_server>,
+    octopus_visit_simulation_server);
+
+#define OCTOPUS_REGISTER_ACTION(name)                                       \
+    HPX_REGISTER_ACTION(                                                    \
+        octopus::visit_simulation_server::BOOST_PP_CAT(name, _action),      \
+        BOOST_PP_CAT(octopus_visit_simulation_server_,                      \
+        BOOST_PP_CAT(name, _action)))                                       \
+    /**/
+
+OCTOPUS_REGISTER_ACTION(start);
+OCTOPUS_REGISTER_ACTION(evaluate);
+OCTOPUS_REGISTER_ACTION(terminate);
+
+#undef OCTOPUS_REGISTER_ACTION
 

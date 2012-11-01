@@ -32,7 +32,20 @@ int hpx_main(variables_map& vm)
     int result = 0;
 
     {
-        std::cout << "Launching Octopus AMR driver...\n"
+        // For great justice.
+        std::cout << 
+            "    ___          \n"
+            "   (   \\  \\      \n"
+            " /  \\   \\  | \\   Octopus: a scalable HPX framework for AMR\n"
+            " \\__(0  0)_/ /   \n"
+            "   _//||\\\\__/       Copyright (c) 2012 Bryce Adelstein-Lelbach\n"
+            "  / | |\\ \\___/                         Zach Byerly\n"
+            "  \\ | \\ \\__                            Dominic Marcello\n"
+            "    \\_ \\_        \n"
+            "\n"
+            ;
+         
+        std::cout << "Launching AMR driver...\n"
                      "\n";
 
         ///////////////////////////////////////////////////////////////////////
@@ -104,9 +117,12 @@ int hpx_main(variables_map& vm)
 
         ///////////////////////////////////////////////////////////////////////
         // Initialize the science table.
+        std::cout << "Initializing science table...\n"
+                     "\n";
+
         octopus::science_table sci = octopus::default_science_table(); 
 
-        octopus_define_problem(sci);
+        octopus_define_problem(vm, sci);
 /*
         if (define_p.first)
             (*define_p.first)(sci);
@@ -148,6 +164,8 @@ int main(int argc, char** argv)
     // Initialize HPX.
     int r = hpx::init(cmdline, argc, argv); 
 
+    // We call C99 _Exit to work around problems with 3rd-party libraries using
+    // atexit (HDF5 and visit).
     ::_Exit(r);
 }
 

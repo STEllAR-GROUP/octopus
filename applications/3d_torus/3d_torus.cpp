@@ -1,11 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
-//  Copyright (c) 2012 Zach Byerly 
+//  Copyright (c) 2012 Zach Byerly
+//  Copyright (c) 2012 Bryce Adelstein-Lelbach
 //
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
 // http://www.vistrails.org/index.php/User:Tohline/Apps/PapaloizouPringleTori
+
+// Once upon a time, I thought this would just have one include :P.
 
 #include <octopus/driver.hpp>
 #include <octopus/science.hpp>
@@ -14,12 +17,15 @@
 #include <octopus/io/silo.hpp>
 #include <octopus/octree/octree_reduce.hpp>
 #include <octopus/operators/boost_array_arithmetic.hpp>
+#include <octopus/join_paths.hpp>
+
+#include <boost/process.hpp> 
+#include <boost/filesystem.hpp>
+
 #include <VisItControlInterface_V2.h>
 #include <VisItDataInterface_V2.h>
-#include <boost/process.hpp> 
 
-// FIXME: Names.
-// FIXME: Proper configuration.
+// FIXME: Names, Proper configuration.
 
 // Gravitation constant.
 double const G = 1.0; // BIG_G
@@ -38,6 +44,14 @@ double const GAMMA = 2.0; // EULER_GAMMA
 
 // Polytropic constant.
 double KAPPA = 1.0;
+
+// Directory to store data in (default is set below to the current path). 
+std::string data_directory = "";
+
+// The directory containing the scripts that define the simulation
+// visualization.
+std::string visualization_directory =
+    octopus::join_paths(OCTOPUS_CURRENT_SOURCE_DIRECTORY, "sc12_visualization");
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Mass density
@@ -455,8 +469,19 @@ struct flux : octopus::trivial_serialization
     }
 };
 
-void octopus_define_problem(octopus::science_table& sci)
+void octopus_define_problem(
+    boost::program_options::variables_map& vm
+  , octopus::science_table& sci
+    )
 {
+    octopus::config_reader reader;
+
+   reader
+        ("visit.data_directory", data_directory,
+            boost::filesystem::current_path().string())
+        ("visit.visualization_directory", visualization_directory)
+    ;
+
     sci.state_size = 6;
 
     sci.initialize = initialize();
@@ -469,7 +494,9 @@ void octopus_define_problem(octopus::science_table& sci)
     sci.floor = floor_state();
     sci.flux = flux();  
 
-    sci.output = octopus::single_variable_silo_writer(0, "rho");
+    sci.output = octopus::single_variable_silo_writer(0, "rho"
+      , octopus::join_paths(data_directory, "3d_torus.silo").c_str()
+        );
 }
 
 int octopus_main(boost::program_options::variables_map& vm)
@@ -487,7 +514,7 @@ int octopus_main(boost::program_options::variables_map& vm)
     ///////////////////////////////////////////////////////////////////////////
     // Crude, temporary stepper.
 
-    // FIXME: Proper support for adding commandline options.     
+    // FIXME: Proper support for adding commandline options and INI parameters. 
     double dt = 0.0; 
     double max_dt_growth = 0.0; 
     double temporal_domain = 0.0;
@@ -496,18 +523,20 @@ int octopus_main(boost::program_options::variables_map& vm)
     octopus::config_reader reader;
 
     reader
-        ("3d_torus.dt", dt, 1.0e-10)
-        ("3d_torus.max_dt_growth", max_dt_growth, 1.25)
-        ("3d_torus.temporal_domain", temporal_domain, 1.0e-6)
+        // FIXME: Move these somewhere more generic.
+        ("dt", dt, 1.0e-10)
+        ("max_dt_growth", max_dt_growth, 1.25)
+        ("temporal_domain", temporal_domain, 1.0e-6)
+        ("output_frequency", output_frequency, 1.0e-7)
+
         ("3d_torus.kappa", KAPPA, 1.0)
-        ("3d_torus.output_frequency", output_frequency, 1.0e-7)
     ;
 
     std::cout
-        << (boost::format("kappa            = %.6e\n") % KAPPA)
         << (boost::format("dt               = %.6e\n") % dt)
         << (boost::format("max_dt_growth    = %.6e\n") % max_dt_growth)
         << (boost::format("output frequency = %.6e\n") % output_frequency)
+        << (boost::format("kappa            = %.6e\n") % KAPPA)
         << "\n"
         << (boost::format("Stepping to %.6e...\n") % temporal_domain);
 
@@ -522,57 +551,78 @@ int octopus_main(boost::program_options::variables_map& vm)
     //    system("rm /home/zbyerly/SC12/octopus.sim2");
 
     // Now launching VisIt environment.
-    std::cout << "Calling VisItSetupEnvironment()\n";
+//    std::cout << "Calling VisItSetupEnvironment()\n";
     VisItSetupEnvironment();
     //write out .sim file that VisIt uses to connect
-    std::cout << "Calling VisItInitializeSock...()\n";
+//    std::cout << "Calling VisItInitializeSock...()\n";
     VisItInitializeSocketAndDumpSimFile(
-        "octopus",
-        "fakeamr",
-        "/home/zbyerly/research/octopus/gcc-4.6.2-debug/",
+        "3d_torus",
+        "",
+        "",
+//        data_directory.c_str(),
+//        "/srv/scratch/wash/octopus/gcc-4.6.2-debug",
         NULL,
         NULL,
-        "/home/zbyerly/SC12/octopus.sim2"); //Absolute Filename
+        octopus::join_paths(data_directory, "3d_torus.sim2").c_str()); 
 
     // Hacky stuff to launch VisIt.
     //system("/opt/visit/2.5.2/bin/visit -o /home/zbyerly/SC12/octopus.sim2");
     //popen("/opt/visit/2.5.2/bin/visit -o /home/zbyerly/SC12/octopus.sim2\n");
-    // std::string exec = "/opt/visit/2.5.2/bin/visit";
+    // FIXME: Less hardcoded.
+    std::string exec = "/opt/visit/2.5.2/bin/visit";
 
-    // std::vector<std::string> args;
-    // //    args.push_back("-cli");
-    // args.push_back("-fullscreen");
-    // args.push_back("-o");
-    // args.push_back("/home/zbyerly/SC12/octopus.sim2");
+    std::vector<std::string> args;
+    //args.push_back("-fullscreen");
+    args.push_back("-cli");
+    args.push_back("-o");
+    args.push_back(octopus::join_paths(data_directory, "3d_torus.sim2"));
 
-    // boost::process::context ctx;
-    // ctx.environment = boost::process::self::get_environment(); 
+    boost::process::context ctx;
+    ctx.environment = boost::process::self::get_environment(); 
     // //    ctx.stdout_behavior = boost::process::silence_stream();
-    // ctx.stdout_behavior = boost::process::capture_stream();
-    // ctx.stderr_behavior = boost::process::capture_stream();
+//     ctx.stdout_behavior = boost::process::capture_stream();
+//     ctx.stderr_behavior = boost::process::capture_stream();
     
-    // boost::process::child c = boost::process::launch(exec, args, ctx);
+    boost::process::child c = boost::process::launch(exec, args, ctx);
     
 
-    // boost::process::pistream &is = c.get_stderr(); 
-    // std::string line; 
-    // while (std::getline(is, line)) 
-    //   std::cout << line << std::endl; 
+//     boost::process::pistream &is = c.get_stderr(); 
+//     std::string line; 
+//     while (std::getline(is, line)) 
+//       std::cout << line << std::endl; 
 
-    // sleep(2.0);
+//    sleep(10.0);
 
-    int visitstate = VisItDetectInput(0, -1);
-      
+/*    int visitstate =*/ VisItDetectInput(0, -1);
+     
+//    std::cout << visitstate << "\n";
+
+    // FIXME (wash): fprintf is a great evil. 
     if(VisItAttemptToCompleteConnection()) {
       fprintf(stderr, "VisIt connected\n");
     } else {
       fprintf(stderr, "VisIt did not connect\n");
     }
 
-    VisItExecuteCommand("Source(\"/home/zbyerly/SC12/scripts/visitscript.py\")\n");
+    std::string initialize_script =
+        octopus::join_paths(visualization_directory, "initialize.py");
+    std::string reload_script =
+        octopus::join_paths(visualization_directory, "reload.py");
+
+    OCTOPUS_ASSERT(!data_directory.empty());
+    VisItExecuteCommand(std::string(
+        "DATA_DIRECTORY = \"" + data_directory + "\"\n" 
+      + "VISUALIZATION_DIRECTORY = \"" + visualization_directory + "\"\n"
+      + "Source(\"" + initialize_script + "\")\n"
+    ).c_str());
+
+    // Visit appears to delete these.
+    // FIXME (wash): We need to use custom handlers here that will ensure that
+    // we clean up semi-gracefully if we get killed. This is super important. 
+    hpx::set_error_handlers();
+
     while (time < temporal_domain)
     {
-        //dt = (std::max)(dt_last*1.25,octopus::cfl_timestep());
         dt = (std::min)(dt_last*max_dt_growth
                       , root.reduce<double>(cfl_timestep(), minimum()));
 
@@ -597,9 +647,12 @@ int octopus_main(boost::program_options::variables_map& vm)
 
         std::cout << "RELOADING\n";
         root.output();
-        VisItExecuteCommand("Source(\"/home/zbyerly/SC12/scripts/reload.py\")\n");
-
+    
+        VisItExecuteCommand(std::string(
+            "Source(\"" + reload_script + "\")\n"
+        ).c_str());
     } 
+
     std::cout << "DONE!\n";
 
     VisItExecuteCommand("Close()");
@@ -608,8 +661,8 @@ int octopus_main(boost::program_options::variables_map& vm)
     //std::cout << "Deleted plots..\n";
 
     //if(!VisItProcessEngineCommand())
-    //  VisItDisconnect();
-    
+    //VisItDisconnect();
+
     //std::cout << "disconnected";
 
     return 0;

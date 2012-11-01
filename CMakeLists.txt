@@ -43,11 +43,15 @@ include_directories(${SILO_INCLUDE_DIR})
 link_directories(${SILO_LIBRARY_DIR})
 
 ################################################################################
+# FIXME (wash): SC12 Hacks
 include_directories("/opt/boost_process")
 
 ################################################################################
+# FIXME (wash): SC12 Hacks
 include_directories("/opt/visit/2.5.2/2.5.2/linux-x86_64/libsim/V2/include")
 link_directories("/opt/visit/2.5.2/2.5.2/linux-x86_64/libsim/V2/lib")
+
+add_definitions(-DOCTOPUS_VISIT_ROOT="/opt/visit/2.5.2")
 
 ################################################################################
 hpx_option(OCTOPUS_VERIFY BOOL

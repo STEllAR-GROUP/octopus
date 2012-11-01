@@ -60,6 +60,35 @@ struct config_reader
 
         return *this;
     }
+
+    template <typename A>
+    result_type operator()(std::string const& param, A& data) const
+    {
+        std::string key("octopus.");
+        key += param;
+
+        try
+        {
+            if (has_config_entry(key))
+            {
+                data = boost::lexical_cast<A>(hpx::get_config_entry(key, ""));
+            }
+    
+        }
+    
+        catch (boost::bad_lexical_cast&)
+        {
+            // REVIEW: This is literally the only place where we throw directly
+            // instead of asserting.
+            std::string msg = boost::str(boost::format(
+                "bad INI parameter, '%1%' is not a valid value for %2%")
+                % hpx::get_config_entry(key, "") % key);
+            HPX_THROW_EXCEPTION(hpx::bad_parameter,
+                "octopus::config_from_ini", msg);
+        }
+
+        return *this;
+    }
 };
 
 }

@@ -19,8 +19,10 @@
 /// octopus_define_problem is called after the AMR framework has been
 /// initialized. It is passed an octopus::science_table filled with default
 /// values. 
-extern "C"
-void octopus_define_problem(octopus::science_table& sci) OCTOPUS_WEAK;
+extern "C" void octopus_define_problem(
+    boost::program_options::variables_map& vm
+  , octopus::science_table& sci
+    ) OCTOPUS_WEAK;
 
 /// octopus_main is called after the AMR framework has been initialized and the
 /// problem defined.

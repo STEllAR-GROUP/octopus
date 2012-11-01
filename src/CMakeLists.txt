@@ -14,6 +14,7 @@ add_hpx_component(octopus
           octree/octree_server.cpp
           science/reconstruction.cpp
           science/science_table.cpp
+          visit/visit_simulation_server.cpp
           io/silo.cpp
           component_module.cpp
           driver.cpp

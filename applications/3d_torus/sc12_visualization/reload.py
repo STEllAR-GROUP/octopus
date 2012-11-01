@@ -1,13 +1,9 @@
-# Copyright (c) 2011-2012 Bryce Adelstein-Lelbach
+# Copyright (c) 2012 Zach Byerly 
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-set(subdirs
-    3d_torus
-   )
+from os.path import join
 
-foreach(subdir ${subdirs})
-  add_subdirectory(${subdir})
-endforeach()
+ReOpenDatabase(join(DATA_DIRECTORY, "3d_torus.silo"))
 
