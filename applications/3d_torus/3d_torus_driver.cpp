@@ -40,6 +40,8 @@ double const GAMMA = 2.0; // EULER_GAMMA
 
 // Polytropic constant.
 double KAPPA = 1.0;
+    
+std::string simulation_directory = "";
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Mass density
@@ -478,8 +480,17 @@ struct refine_by_density
     }
 };
 
-void octopus_define_problem(octopus::science_table& sci)
+void octopus_define_problem(
+    boost::program_options::variables_map& vm
+  , octopus::science_table& sci
+    )
 {
+    octopus::config_reader reader;
+
+    reader
+        ("3d_torus.simulation_directory", simulation_directory, "")
+    ;
+
     sci.state_size = 6;
 
     sci.initialize = initialize();

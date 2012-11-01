@@ -32,6 +32,7 @@ void single_variable_silo_writer::start_write_locked(
     step_ = step;
     time_ = time; 
 
+    // Bryce, I'm hacking this for the demo.
     try
     {
         file_ = DBCreate(boost::str( boost::format(file_name_)
