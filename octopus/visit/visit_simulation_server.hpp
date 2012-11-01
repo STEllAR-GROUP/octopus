@@ -15,6 +15,9 @@
 
 #include <boost/serialization/map.hpp>
 #include <boost/process.hpp>
+#include <boost/shared_ptr.hpp>
+
+// FIXME: Make shutdown cleaner. Possibly add a dtor.
 
 namespace octopus
 {
@@ -24,12 +27,12 @@ struct OCTOPUS_EXPORT visit_simulation_server
   : hpx::components::simple_component_base<visit_simulation_server>
 {
   private:
-    boost::process::child sim_;
-    bool started_;
+    boost::shared_ptr<boost::process::child> sim_;
  
   public:
-    visit_simulation_server() sim_(), started_(false) {}
+    visit_simulation_server() : sim_() {}
 
+    ///////////////////////////////////////////////////////////////////////////
     // NOTE: exec is set up by the client, as is args if none are specified.
     void start(
         std::string const& name
@@ -44,6 +47,14 @@ struct OCTOPUS_EXPORT visit_simulation_server
                                 start,
                                 start_action);
 
+    ///////////////////////////////////////////////////////////////////////////
+    void terminate(); // aka crash messily
+
+    HPX_DEFINE_COMPONENT_ACTION(visit_simulation_server,
+                                terminate,
+                                terminate_action);
+
+    ///////////////////////////////////////////////////////////////////////////
     // FIXME: Would be sweet if this could return a string with any errors from
     // the interpreter.
     void evaluate(std::string const& source); 
@@ -51,12 +62,6 @@ struct OCTOPUS_EXPORT visit_simulation_server
     HPX_DEFINE_COMPONENT_ACTION(visit_simulation_server,
                                 evaluate,
                                 evaluate_action);
-
-    void terminate(); // aka crash messily
-
-    HPX_DEFINE_COMPONENT_ACTION(visit_simulation_server,
-                                terminate,
-                                terminate_action);
 };
 
 }

@@ -6,7 +6,8 @@
 add_definitions(-DOCTOPUS_CURRENT_SOURCE_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}")
 
 set(applications
-    3d_torus
+    3d_torus_driver
+    3d_torus_realtime_viz
    )
 
 foreach(application ${applications})

@@ -17,14 +17,14 @@
 #include <octopus/io/silo.hpp>
 #include <octopus/octree/octree_reduce.hpp>
 #include <octopus/operators/boost_array_arithmetic.hpp>
-#include <octopus/join_paths.hpp>
+#include <octopus/filesystem.hpp>
 
 #include <boost/process.hpp> 
-#include <boost/filesystem.hpp>
 
 #include <VisItControlInterface_V2.h>
 #include <VisItDataInterface_V2.h>
 
+// FIXME: Move shared code from the drivers into a shared object/headers.
 // FIXME: Names, Proper configuration.
 
 // Gravitation constant.
@@ -518,7 +518,6 @@ int octopus_main(boost::program_options::variables_map& vm)
     double dt = 0.0; 
     double max_dt_growth = 0.0; 
     double temporal_domain = 0.0;
-    double output_frequency = 0.0;
 
     octopus::config_reader reader;
 
@@ -527,7 +526,6 @@ int octopus_main(boost::program_options::variables_map& vm)
         ("dt", dt, 1.0e-10)
         ("max_dt_growth", max_dt_growth, 1.25)
         ("temporal_domain", temporal_domain, 1.0e-6)
-        ("output_frequency", output_frequency, 1.0e-7)
 
         ("3d_torus.kappa", KAPPA, 1.0)
     ;
@@ -535,7 +533,6 @@ int octopus_main(boost::program_options::variables_map& vm)
     std::cout
         << (boost::format("dt               = %.6e\n") % dt)
         << (boost::format("max_dt_growth    = %.6e\n") % max_dt_growth)
-        << (boost::format("output frequency = %.6e\n") % output_frequency)
         << (boost::format("kappa            = %.6e\n") % KAPPA)
         << "\n"
         << (boost::format("Stepping to %.6e...\n") % temporal_domain);

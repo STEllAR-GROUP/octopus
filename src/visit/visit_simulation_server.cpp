@@ -23,6 +23,10 @@ void visit_simulation_server::start(
   , boost::process::environment env // by value for swap
     )
 {
+    namespace bp = boost::process;
+
+    OCTOPUS_ASSERT(!sim_);
+
     VisItSetupEnvironment();
 
     VisItInitializeSocketAndDumpSimFile(
@@ -34,36 +38,34 @@ void visit_simulation_server::start(
       , sim_file.c_str() // simulation file
         ); 
 
-    boost::process::context ctx;
- 
-    ctx.environment = boost::process::self::get_environment(); 
+    bp::context ctx;
+    ctx.environment = bp::self::get_environment(); 
 
     // Merge the current environment and the requested environment (complexity
     // ugh), overwriting variables in the current environment with variables
     // specified in the env argument.
     env.insert(ctx.environment.begin(), ctx.environment.end());
-    env.swap(ctx.environment)
-    
-    sim_ = boost::process::launch(exec, args, ctx);
+    env.swap(ctx.environment);
+
+    sim_.reset(new bp::child(bp::launch(exec, args, ctx)));
 
     VisItDetectInput(0, -1);
      
     if (!VisItAttemptToCompleteConnection()) 
         OCTOPUS_ASSERT_MSG(false, "visit did not connect");
-    
-    started_ = true;
 }
 
 void visit_simulation_server::evaluate(std::string const& source)
 {
-    OCTOPUS_ASSERT(started_);
+    OCTOPUS_ASSERT(sim_);
+
     VisItExecuteCommand(source.c_str());    
 }
 
 // FIXME: I don't really do what I'm suppose to :(.
 void visit_simulation_server::terminate()
 {
-    OCTOPUS_ASSERT(started_);
+    OCTOPUS_ASSERT(sim_);
 
     VisItExecuteCommand("Close()");
     VisItExecuteCommand("quit()");

@@ -14,7 +14,10 @@ namespace octopus
 {
 
 // How is this (or operator/) not a thing in Boost.Filesystem?
-std::string join_paths(std::string const& a, std::string const& b)
+inline std::string join_paths(
+    std::string const& a
+  , std::string const& b
+    )
 {
     namespace fs = boost::filesystem;
 
@@ -22,6 +25,25 @@ std::string join_paths(std::string const& a, std::string const& b)
     aa /= b;
 
     return aa.string();
+}
+
+inline std::string join_paths(
+    std::string const& a
+  , std::string const& b
+  , std::string const& c
+    )
+{
+    namespace fs = boost::filesystem;
+
+    fs::path aa(a);
+    aa /= b;
+
+    return aa.string();
+}
+
+inline std::string current_path()
+{
+    return boost::filesystem::current_path().string();
 }
 
 }
