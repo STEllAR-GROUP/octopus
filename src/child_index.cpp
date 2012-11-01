@@ -22,14 +22,22 @@ child_index invert(face f, child_index const& idx)
         // X-axis.
         case XL: // idx_inv = idx + (+1, 0, 0) 
         {
-            OCTOPUS_ASSERT(idx.x() == 0);
-            idx_inv.set_x(1);
+            //OCTOPUS_ASSERT(idx.x() == 0);
+            //idx_inv.set_x(1);
+            if (idx.x() == 0)
+                idx_inv.set_x(1);
+            else
+                idx_inv.set_x(0);
             return idx_inv;
         } 
         case XU: // idx_inv = idx + (-1, 0, 0) 
         {
-            OCTOPUS_ASSERT(idx.x() == 1);
-            idx_inv.set_x(0);
+            //OCTOPUS_ASSERT(idx.x() == 1);
+            //idx_inv.set_x(0);
+            if (idx.x() == 0)
+                idx_inv.set_x(1);
+            else
+                idx_inv.set_x(0);
             return idx_inv;
         }
 
@@ -37,14 +45,22 @@ child_index invert(face f, child_index const& idx)
         // Y-axis.
         case YL: // idx_inv = idx + (0, +1, 0) 
         {
-            OCTOPUS_ASSERT(idx.y() == 0);
-            idx_inv.set_y(1);
+            //OCTOPUS_ASSERT(idx.y() == 0);
+            //idx_inv.set_y(1);
+            if (idx.y() == 0)
+                idx_inv.set_y(1);
+            else
+                idx_inv.set_y(0);
             return idx_inv;
         } 
         case YU: // idx_inv = idx + (0, -1, 0) 
         {
-            OCTOPUS_ASSERT(idx.y() == 1);
-            idx_inv.set_y(0);
+            //OCTOPUS_ASSERT(idx.y() == 1);
+            //idx_inv.set_y(0);
+            if (idx.y() == 0)
+                idx_inv.set_y(1);
+            else
+                idx_inv.set_y(0);
             return idx_inv;
         }
 
@@ -52,14 +68,22 @@ child_index invert(face f, child_index const& idx)
         // Z-axis.
         case ZL: // idx_inv = idx + (0, +1, 0) 
         {
-            OCTOPUS_ASSERT(idx.z() == 0);
-            idx_inv.set_z(1);
+            //OCTOPUS_ASSERT(idx.z() == 0);
+            //idx_inv.set_z(1);
+            if (idx.z() == 0)
+                idx_inv.set_z(1);
+            else
+                idx_inv.set_z(0);
             return idx_inv;
         } 
         case ZU: // idx_inv = idx + (0, -1, 0) 
         {
-            OCTOPUS_ASSERT(idx.z() == 1);
-            idx_inv.set_z(0);
+            //OCTOPUS_ASSERT(idx.z() == 1);
+            //idx_inv.set_z(0);
+            if (idx.z() == 0)
+                idx_inv.set_z(1);
+            else
+                idx_inv.set_z(0);
             return idx_inv;
         }
 

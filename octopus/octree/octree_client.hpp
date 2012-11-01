@@ -128,6 +128,7 @@ struct OCTOPUS_EXPORT octree_client
       , offset_()
     {}
 
+    // FIXME: gid_ should be set here, not be set_sibling.
     octree_client(boundary_kind kind)
       : gid_(hpx::invalid_id) // Set by set_sibling.
       , kind_(kind)

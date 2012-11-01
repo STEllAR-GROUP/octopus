@@ -20,6 +20,8 @@
 #include <octopus/octree/octree_init_data.hpp>
 #include <octopus/octree/octree_client.hpp>
 
+#include <bitset>
+
 // TODO: apply_criteria, apply_zonal, apply_zonal_leaf, reduce_leaf,
 // reduce_zonal_leaf
 // TODO: Get rid of unnecessary _kernel and _locked suffixes.
@@ -66,7 +68,9 @@ struct OCTOPUS_EXPORT octree_server
     // Circular doubly-linked list; size == temporal prediction gap.
     octree_client future_self_;
     octree_client past_self_;
-  
+ 
+    std::bitset<8> marked_for_refine_;
+ 
     typedef array1d<channel<vector3d<std::vector<double> > >, 6>
         sibling_dependencies;
   
@@ -189,11 +193,15 @@ struct OCTOPUS_EXPORT octree_server
         OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
         OCTOPUS_ASSERT_MSG(siblings_set_ < 6, "double initialization");
 
-        for (std::size_t i = 0; i < 6; ++i)
-            OCTOPUS_ASSERT(siblings_[i] != hpx::invalid_id);
+        std::cout << ( boost::format("%1%: sibling_set_locked, siblings_set == %2%\n")
+                     % get_gid() % boost::uint16_t(siblings_set_ + 1)); 
 
         if ((++siblings_set_ == 6) && state_received_)
+        {
+            for (std::size_t i = 0; i < 6; ++i)
+                OCTOPUS_ASSERT(siblings_[i] != hpx::invalid_id);
             initialized_.set(); 
+        }
     }  
 
     // Preconditions: mtx_ must be locked, state_received_ is false. 
@@ -204,11 +212,15 @@ struct OCTOPUS_EXPORT octree_server
 
         state_received_ = true;
 
-        for (std::size_t i = 0; i < 6; ++i)
-            OCTOPUS_ASSERT(siblings_[i] != hpx::invalid_id);
+        std::cout << ( boost::format("%1%: sibling_set_locked, siblings_set == %2%\n")
+                     % get_gid() % boost::uint16_t(siblings_set_ + 1)); 
 
         if (siblings_set_ == 6)
-            initialized_.set(); 
+        {
+            for (std::size_t i = 0; i < 6; ++i)
+                OCTOPUS_ASSERT(siblings_[i] != hpx::invalid_id);
+            initialized_.set();
+        }
     }  
 
     child_index get_child_index() const
@@ -418,6 +430,13 @@ struct OCTOPUS_EXPORT octree_server
         child_index kid
         );
 
+  private:
+    void create_child_locked(
+        child_index kid
+      , mutex_type::scoped_lock& l
+        );
+
+  public:
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                 create_child,
                                 create_child_action);

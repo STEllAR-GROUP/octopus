@@ -32,7 +32,7 @@ struct channel
 
     channel() : data_(new future_data()) {}
 
-    channel(channel const& other) : data_(othere.data_) {}
+    channel(channel const& other) : data_(other.data_) {}
 
     channel(BOOST_RV_REF(channel) other) : data_(boost::move(other.data_)) {}
 

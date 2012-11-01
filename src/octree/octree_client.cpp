@@ -168,10 +168,11 @@ void octree_client::set_sibling_push(
 
     if (amr_boundary == kind_)
     {
-        hpx::apply(boost::bind(
-            &octree_client::set_sibling_for_amr_boundary, this,
-                _1, _2, _3), f, sib, sib_parent);
-        return;
+        // This is guranteed to be a purely local operation, and is also
+        // trivial, so we just do it directly.
+        // NOTE: Currently it's actually non-optimal.
+        set_sibling_for_amr_boundary(f, sib, sib_parent);
+        return; 
     }
 
     else if (physical_boundary == kind_)
