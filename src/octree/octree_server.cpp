@@ -442,7 +442,7 @@ void octree_server::create_child_locked(
 
     // Check if the interior X sibling of the new child exists.
     if (children_[x_sib] != hpx::invalid_id)
-        children_[x_sib].tie_sibling_push(interior_x_face, kid_client);
+        children_[x_sib].tie_sibling_push(exterior_x_face, kid_client);
 
     else if (!marked_for_refine_[x_sib]) 
     {
@@ -453,12 +453,12 @@ void octree_server::create_child_locked(
                           , kid_init.offset
                           , offset_
                             ); 
-        kid_client.set_sibling_push(exterior_x_face, bound);
+        kid_client.set_sibling_push(interior_x_face, bound);
     }
 
     // Check if the interior Y sibling of the new child exists.
     if (children_[y_sib] != hpx::invalid_id)
-        children_[y_sib].tie_sibling_push(interior_y_face, kid_client);
+        children_[y_sib].tie_sibling_push(exterior_y_face, kid_client);
 
     else if (!marked_for_refine_[y_sib]) 
     {
@@ -469,12 +469,12 @@ void octree_server::create_child_locked(
                           , kid_init.offset
                           , offset_
                             ); 
-        kid_client.set_sibling_push(exterior_y_face, bound);
+        kid_client.set_sibling_push(interior_y_face, bound);
     }
 
     // Check if the interior Z sibling of the new child exists.
     if (children_[z_sib] != hpx::invalid_id)
-        children_[z_sib].tie_sibling_push(interior_z_face, kid_client);
+        children_[z_sib].tie_sibling_push(exterior_z_face, kid_client);
 
     else if (!marked_for_refine_[z_sib]) 
     {
@@ -485,7 +485,7 @@ void octree_server::create_child_locked(
                           , kid_init.offset
                           , offset_
                             ); 
-        kid_client.set_sibling_push(exterior_y_face, bound);
+        kid_client.set_sibling_push(interior_z_face, bound);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -514,7 +514,7 @@ void octree_server::create_child_locked(
                               , kid_init.offset
                               , offset_ 
                                 );
-            kid_client.set_sibling_push(interior_x_face, bound);
+            kid_client.set_sibling_push(exterior_x_face, bound);
             break;
         }
 
@@ -524,7 +524,7 @@ void octree_server::create_child_locked(
                               , siblings_[exterior_x_face]
                               , exterior_x_face
                                 );
-            kid_client.set_sibling_push(interior_x_face, bound);
+            kid_client.set_sibling_push(exterior_x_face, bound);
             break;
         }
 
@@ -555,7 +555,7 @@ void octree_server::create_child_locked(
                               , kid_init.offset
                               , offset_ 
                                 );
-            kid_client.set_sibling_push(interior_y_face, bound);
+            kid_client.set_sibling_push(exterior_y_face, bound);
             break;
         }
 
@@ -565,7 +565,7 @@ void octree_server::create_child_locked(
                               , siblings_[exterior_y_face]
                               , exterior_y_face
                                 );
-            kid_client.set_sibling_push(interior_y_face, bound);
+            kid_client.set_sibling_push(exterior_y_face, bound);
             break;
         }
 
@@ -596,7 +596,7 @@ void octree_server::create_child_locked(
                               , kid_init.offset
                               , offset_ 
                                 );
-            kid_client.set_sibling_push(interior_z_face, bound);
+            kid_client.set_sibling_push(exterior_z_face, bound);
             break;
         }
 
@@ -606,7 +606,7 @@ void octree_server::create_child_locked(
                               , siblings_[exterior_z_face]
                               , exterior_z_face
                                 );
-            kid_client.set_sibling_push(interior_z_face, bound);
+            kid_client.set_sibling_push(exterior_z_face, bound);
             break;
         }
 
@@ -638,7 +638,7 @@ void octree_server::set_sibling(
                 face(f));
 
         std::cout << ( boost::format("%1%: set_sibling(%2%, %3%)\n")
-                     % get_gid() % f % sib.kind()); 
+                     % get_child_index_locked(l) % f % sib.kind()); 
     
         siblings_[f] = sib;  
         sibling_set_locked(l);
