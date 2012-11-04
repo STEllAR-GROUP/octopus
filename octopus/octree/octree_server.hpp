@@ -315,19 +315,9 @@ struct OCTOPUS_EXPORT octree_server
         return time_;
     }
 
-    void set_time(double time) 
-    {
-        time_ = time;
-    }
-
     boost::uint64_t get_step() const
     {
         return step_;
-    }
-
-    void set_step(boost::uint64_t step) 
-    {
-        step_ = step;
     }
 
     double get_dx() const

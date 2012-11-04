@@ -586,6 +586,8 @@ struct stepper : octopus::trivial_serialization
     
         root.output_initial();
     
+        std::cout << "Initial state prepared\n";
+    
         ///////////////////////////////////////////////////////////////////////
         // Crude, temporary stepper.
     
@@ -625,11 +627,8 @@ struct stepper : octopus::trivial_serialization
             OCTOPUS_ASSERT(0.0 < prediction.next_dt);
             OCTOPUS_ASSERT(0.0 < prediction.future_dt);
     
-            root.set_time(root.get_time() + root.get_dt());
-            root.set_step(root.get_step() + 1);
-
             root.post_dt(prediction.next_dt);
-
+    
             // Update kappa.
             // FIXME: Distributed.
             reader
