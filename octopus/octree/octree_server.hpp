@@ -121,13 +121,19 @@ struct OCTOPUS_EXPORT octree_server
                                                /// to be signed.
 
     ///////////////////////////////////////////////////////////////////////////
-    // From Grid/GridNode
+    // From Grid/GridNode (mostly)
     // NOTE: Rename dx_;
     double dx_;   ///< The spatial size of the node (w/o ghost zones). h in the
                   ///  original code. NOTE: Confirmation needed from Dominic.  
 
     double dx0_;
 
+    // NOTE: This is only thing that keeps timesteps from overwriting each
+    // other. Computing the CFL is an implicit global barrier, so I figured I
+    // might as well utilize this point of synchronization to reduce memory
+    // usage. P.S., only used by the root of each timestep currently. 
+    channel<double> dt_;
+    
     double time_; ///< The current (physics?) time.
                   ///  NOTE: Confirmation needed from Dominic.
 
@@ -235,7 +241,7 @@ struct OCTOPUS_EXPORT octree_server
     /// Remote Operations:   No.
     /// Concurrency Control: Locks mtx_.
     /// Synchrony Gurantee:  Synchronous. 
-    void inject_state_from_parent(
+    void parent_to_child_injection(
         vector3d<std::vector<double> > const& pU
         );
 
@@ -292,10 +298,6 @@ struct OCTOPUS_EXPORT octree_server
       , octree_init_data const& init
         );
 
-    // FIXME: Non-optimal, inject_state_from_parent should be called with
-    // fire-and-forget semantics. However, the lifetime of parent_U then
-    // becomes an issue. Because of this, U_ may need to be made into a
-    // shared_ptr.
     /// \brief Construct a child node.
     octree_server(
         back_pointer_type back_ptr
@@ -321,6 +323,16 @@ struct OCTOPUS_EXPORT octree_server
     double get_dx() const
     {
         return dx_;
+    }
+
+    double get_dt() const
+    {
+        return dt_.peek();
+    }
+
+    void post_dt(double dt) 
+    {
+        dt_.post(dt);
     }
 
     std::vector<double>& operator()(
@@ -467,7 +479,6 @@ struct OCTOPUS_EXPORT octree_server
     void tie_sibling(
         face target_f
       , octree_client const& target_sib
-      , octree_client const& target_sib_parent
         );
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
@@ -642,40 +653,22 @@ struct OCTOPUS_EXPORT octree_server
         mutex_type::scoped_lock& l
         );
   public:
-
     ///////////////////////////////////////////////////////////////////////////
-    // Tree traversal.
-    void apply(
-        hpx::util::function<void(octree_server&)> const& f
-        );
+    void step_recurse(double dt);
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                apply,
-                                apply_action);
+                                step_recurse,
+                                step_recurse_action);  
 
-    void apply_leaf(
-        hpx::util::function<void(octree_server&)> const& f
-        );
-
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                apply_leaf,
-                                apply_leaf_action);
-
-    ///////////////////////////////////////////////////////////////////////////
-    void step(double dt);
+    void step()
+    {
+        OCTOPUS_ASSERT(0 == level_);
+        step_recurse(boost::move(dt_.take()));
+    }
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                 step,
                                 step_action);  
-
-    /// Perform a timestep of period \a dt. Then, call step_to_time() so long as
-    /// \a time_ is less than \a until. 
-    void step_to_time(double dt, double until);
-
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                step_to_time,
-                                step_to_time_action);  
-
   private:
     void step_kernel(
         double dt
@@ -734,12 +727,42 @@ struct OCTOPUS_EXPORT octree_server
 
   public:
     ///////////////////////////////////////////////////////////////////////////
-    void output();
+    /// Precondition: An I/O epoch is active. 
+    void output()
+    {
+        client_from_this().output();
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // {{{ apply - definitions are out-of-line in octree_apply.hpp.
+    void apply(
+        hpx::util::function<void(octree_server&)> const& f
+        );
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                output,
-                                output_action);  
+                                apply,
+                                apply_action);  
+    // }}}
 
+    ///////////////////////////////////////////////////////////////////////////
+    // {{{ apply_leaf - definitions are out-of-line in octree_apply_leaf.hpp.
+    template <typename T>
+    T apply_leaf(
+        hpx::util::function<T(octree_server&)> const& f
+        );
+
+    template <typename T>
+    struct apply_leaf_action
+      : hpx::actions::make_action<
+            T (octree_server::*)(hpx::util::function<T(octree_server&)> const&)
+          , &octree_server::template apply_leaf<T>
+          , apply_leaf_action<T>
+        >
+    {};
+    // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
+    // {{{ reduce - definitions are out-of-line in octree_reduce.hpp.
   private:
     template <typename T>
     void add_reduce(
@@ -753,7 +776,6 @@ struct OCTOPUS_EXPORT octree_server
     }
 
   public:
-    // {{{ reduce - definitions are out-of-line in octree_reduce.hpp.
     template <typename T>
     T reduce(
         hpx::util::function<T(octree_server&)> const& f
@@ -817,15 +839,12 @@ OCTOPUS_REGISTER_ACTION(send_mapped_ghost_zone);
 OCTOPUS_REGISTER_ACTION(receive_child_state);
 
 OCTOPUS_REGISTER_ACTION(apply);
-OCTOPUS_REGISTER_ACTION(apply_leaf);
 
 OCTOPUS_REGISTER_ACTION(step);
-OCTOPUS_REGISTER_ACTION(step_to_time);
+OCTOPUS_REGISTER_ACTION(step_recurse);
 
 OCTOPUS_REGISTER_ACTION(copy_and_regrid);
 OCTOPUS_REGISTER_ACTION(refine);
-
-OCTOPUS_REGISTER_ACTION(output);
 
 #undef OCTOPUS_REGISTER_ACTION
 

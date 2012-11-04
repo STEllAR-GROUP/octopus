@@ -5,10 +5,7 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <octopus/science/science_table.hpp>
-#include <octopus/science/physical_boundaries.hpp>
-#include <octopus/science/reconstruction.hpp>
-#include <octopus/science/initial_spacestep.hpp>
+#include <octopus/science.hpp>
 
 namespace octopus
 {

@@ -13,6 +13,7 @@
 #include <hpx/runtime/components/runtime_support.hpp>
 
 #include <octopus/octree/octree_server.hpp>
+#include <octopus/octree/octree_apply_leaf.hpp>
 #include <octopus/engine/engine_interface.hpp>
 #include <octopus/operators/std_vector_arithmetic.hpp>
 #include <octopus/operators/boost_array_arithmetic.hpp>
@@ -21,6 +22,59 @@
 
 namespace octopus
 {
+
+octree_client::octree_client(
+    boundary_kind kind
+  , octree_client const& sib 
+  , face f
+  , boost::array<boost::int64_t, 3> const& sib_offset
+  , boost::array<boost::int64_t, 3> const& parent_offset
+    )
+  : kind_(amr_boundary)
+  , gid_(sib.gid_)
+  , face_(f)
+  , offset_() 
+{ // {{{
+    OCTOPUS_ASSERT(amr_boundary == kind);
+
+    boost::array<boost::int64_t, 3> v = { { 0, 0, 0 } };
+
+    switch (f)
+    {
+        case XU:
+            v[0] = -1;
+            break;
+        case XL:
+            v[0] = 1;
+            break;
+        case YU:
+            v[1] = -1;
+            break;
+        case YL:
+            v[1] = 1;
+            break;
+        case ZU:
+            v[2] = -1;
+            break;
+        case ZL:
+            v[2] = 1;
+            break;
+        default:
+            OCTOPUS_ASSERT(false);
+            break;
+    }
+
+    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const gnx = config().grid_node_length;
+
+    using namespace octopus::operators;
+
+    v *= (gnx - 2 * bw);
+
+    offset_ = sib_offset;
+    offset_ += v;
+    offset_ -= parent_offset * 2;
+} // }}}
 
 ///////////////////////////////////////////////////////////////////////////////
 void octree_client::create_root(
@@ -62,96 +116,31 @@ hpx::future<void> octree_client::create_child_async(
     return hpx::async<octree_server::create_child_action>(gid_, kid);
 }
 
-// FIXME: Non-optimal, find a better way to get the offsets.
-// P.S. A way that doesn't involve passing a billion parameters, e.g. something
-// like *_init_data.
-void octree_client::set_sibling_for_amr_boundary(
-    face f
-  , octree_client const& sib 
-  , octree_client const& sib_parent
-    ) const
-{ // {{{
-    gid_ = sib.gid_;
-    face_ = f;
-
-    // FIXME: Non-optimal.
-    hpx::future<boost::array<boost::int64_t, 3> > sib_offset
-        = sib.get_offset_async(); 
-
-    // FIXME: Non-optimal.
-    hpx::future<boost::array<boost::int64_t, 3> > sib_parent_offset
-        = sib_parent.get_offset_async(); 
-
-    boost::array<boost::int64_t, 3> v = { { 0, 0, 0 } };
-
-    switch (f)
-    {
-        case XU:
-            v[0] = -1;
-            break;
-        case XL:
-            v[0] = 1;
-            break;
-        case YU:
-            v[1] = -1;
-            break;
-        case YL:
-            v[1] = 1;
-            break;
-        case ZU:
-            v[2] = -1;
-            break;
-        case ZL:
-            v[2] = 1;
-            break;
-        default:
-            OCTOPUS_ASSERT(false);
-            break;
-    }
-
-    boost::uint64_t const bw = science().ghost_zone_width;
-    boost::uint64_t const gnx = config().grid_node_length;
-
-    using namespace octopus::operators;
-
-    v *= (gnx - 2 * bw);
-
-    offset_ = sib_offset.get();
-    offset_ += v;
-    offset_ -= sib_parent_offset.get() * 2;
-} // }}}
-
-void octree_client::set_sibling_for_physical_boundary(
-    face f
-  , octree_client const& sib 
-    ) const
-{ // {{{
-    gid_ = sib.gid_;
-    face_ = f;
-} // }}}
-
 ///////////////////////////////////////////////////////////////////////////////
 void octree_client::set_sibling(
     face f
   , octree_client const& sib
-  , octree_client const& sib_parent
     ) const
 {
+    ensure_real();
+
     OCTOPUS_ASSERT_FMT_MSG(invalid_face > f,
                            "invalid face, face(%1%)",
                            boost::uint16_t(f));
 
+/*
     if (amr_boundary == kind_)
     {
-        set_sibling_for_amr_boundary(f, sib, sib_parent); 
+        //set_sibling_for_amr_boundary(f, sib, sib_parent); 
         return;
     }
 
     else if (physical_boundary == kind_)
     {
-        set_sibling_for_physical_boundary(f, sib); 
+        //set_sibling_for_physical_boundary(f, sib); 
         return;
     }
+*/
 
     hpx::async<octree_server::set_sibling_action>(gid_, f, sib).get();
 }
@@ -159,19 +148,21 @@ void octree_client::set_sibling(
 void octree_client::set_sibling_push(
     face f
   , octree_client const& sib
-  , octree_client const& sib_parent
     ) const
 {
+    ensure_real();
+
     OCTOPUS_ASSERT_FMT_MSG(invalid_face > f,
                            "invalid face, face(%1%)",
                            boost::uint16_t(f));
 
+/*
     if (amr_boundary == kind_)
     {
         // This is guranteed to be a purely local operation, and is also
         // trivial, so we just do it directly.
         // NOTE: Currently it's actually non-optimal.
-        set_sibling_for_amr_boundary(f, sib, sib_parent);
+        //set_sibling_for_amr_boundary(f, sib, sib_parent);
         return; 
     }
 
@@ -179,9 +170,10 @@ void octree_client::set_sibling_push(
     {
         // This is guranteed to be a purely local operation, and is also
         // trivial, so we just do it directly.
-        set_sibling_for_physical_boundary(f, sib); 
+        //set_sibling_for_physical_boundary(f, sib); 
         return;
     }
+*/
 
     hpx::apply<octree_server::set_sibling_action>(gid_, f, sib);
 }
@@ -190,7 +182,6 @@ void octree_client::set_sibling_push(
 void octree_client::tie_sibling(
     face target_f
   , octree_client const& target_sib
-  , octree_client const& target_sib_parent
     ) const
 {
     ensure_real();
@@ -198,21 +189,19 @@ void octree_client::tie_sibling(
                            "invalid face, face(%1%)",
                            boost::uint16_t(target_f));
     hpx::async<octree_server::tie_sibling_action>
-        (gid_, target_f, target_sib, target_sib_parent).get();
+        (gid_, target_f, target_sib).get();
 }
 
 void octree_client::tie_sibling_push(
     face target_f
   , octree_client const& target_sib
-  , octree_client const& target_sib_parent
     ) const
 {
     ensure_real();
     OCTOPUS_ASSERT_FMT_MSG(invalid_face > target_f,
                            "invalid face, face(%1%)",
                            boost::uint16_t(target_f));
-    hpx::apply<octree_server::tie_sibling_action>
-        (gid_, target_f, target_sib, target_sib_parent);
+    hpx::apply<octree_server::tie_sibling_action>(gid_, target_f, target_sib);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -791,57 +780,22 @@ hpx::future<void> octree_client::apply_async(
     return hpx::async<octree_server::apply_action>(gid_, f);
 }
 
-void octree_client::apply_push(
-    hpx::util::function<void(octree_server&)> const& f
-    ) const
+///////////////////////////////////////////////////////////////////////////////
+hpx::future<void> octree_client::step_async() const
 {
     ensure_real();
-    hpx::apply<octree_server::apply_action>(gid_, f);
-}
-
-hpx::future<void> octree_client::apply_leaf_async(
-    hpx::util::function<void(octree_server&)> const& f
-    ) const
-{
-    ensure_real();
-    return hpx::async<octree_server::apply_leaf_action>(gid_, f);
-}
-
-void octree_client::apply_leaf_push(
-    hpx::util::function<void(octree_server&)> const& f
-    ) const
-{
-    ensure_real();
-    hpx::apply<octree_server::apply_leaf_action>(gid_, f);
+    return hpx::async<octree_server::step_action>(gid_);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-hpx::future<void> octree_client::step_async(double dt) const
-{
-    ensure_real();
-    return hpx::async<octree_server::step_action>(gid_, dt);
-}
-
-void octree_client::step_push(double dt) const
-{
-    ensure_real();
-    hpx::apply<octree_server::step_action>(gid_, dt);
-}
-
-void octree_client::step_to_time_push(double dt, double until) const
-{
-    ensure_real();
-    hpx::apply<octree_server::step_to_time_action>(gid_, dt, until);
-}
-
-///////////////////////////////////////////////////////////////////////////////
+template <bool Initial>
 struct begin_io_epoch_locally : trivial_serialization
 {
     typedef void result_type;
 
     result_type operator()(octree_server& root) const
     {
-        science().output.begin_epoch(root);
+        science().output.begin_epoch(root, Initial);
     }
 };
 
@@ -910,7 +864,7 @@ struct end_io_epoch_continuation : trivial_serialization
     result_type operator()(hpx::future<void> res) const
     {
         // Send ourselves to the target.
-        self_.apply_leaf(end_io_epoch_locally());
+        self_.apply_leaf<void>(end_io_epoch_locally());
     }
 };
 
@@ -919,12 +873,29 @@ hpx::future<void> octree_client::output_async() const
 {
     ensure_real();
 
-    hpx::future<void> begin  = apply_async(begin_io_epoch_locally());
-    hpx::future<void> out    = begin.when(output_continuation(*this, begin));
-    hpx::future<void> end    = out.when(end_io_epoch_continuation(*this, out));
+    begin_io_epoch_locally<false> begin_functor;
+
+    hpx::future<void> begin = apply_leaf_async<void>(begin_functor);
+    hpx::future<void> out   = begin.when(output_continuation(*this, begin));
+    hpx::future<void> end   = out.when(end_io_epoch_continuation(*this, out));
  
     return end;
 }
+
+// TODO: Make sure we are only called on the root node.
+hpx::future<void> octree_client::output_initial_async() const
+{
+    ensure_real();
+
+    begin_io_epoch_locally<true> begin_functor;
+
+    hpx::future<void> begin = apply_leaf_async<void>(begin_functor);
+    hpx::future<void> out   = begin.when(output_continuation(*this, begin));
+    hpx::future<void> end   = out.when(end_io_epoch_continuation(*this, out));
+ 
+    return end;
+}
+
 
 hpx::future<void> octree_client::refine_async() const
 {

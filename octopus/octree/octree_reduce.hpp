@@ -87,7 +87,7 @@ template <typename T>
 inline T octree_client::reduce(
     hpx::util::function<T(octree_server&)> const& f
   , hpx::util::function<T(T const&, T const&)> const& reducer
-    ) 
+    ) const
 {
     return reduce_async<T>(f, reducer).get();
 }
@@ -96,7 +96,7 @@ template <typename T>
 inline hpx::future<T> octree_client::reduce_async(
     hpx::util::function<T(octree_server&)> const& f
   , hpx::util::function<T(T const&, T const&)> const& reducer
-    ) 
+    ) const
 {
     ensure_real();
     typedef octopus::octree_server::reduce_action<T> action_type;
@@ -108,7 +108,7 @@ inline T octree_client::reduce_zonal(
     hpx::util::function<T(std::vector<double>&)> const& f
   , hpx::util::function<T(T const&, T const&)> const& reducer
   , T const& initial 
-    ) 
+    ) const 
 {
     return reduce_zonal_async<T>(f, reducer, initial).get();
 }
@@ -118,7 +118,7 @@ inline hpx::future<T> octree_client::reduce_zonal_async(
     hpx::util::function<T(std::vector<double>&)> const& f
   , hpx::util::function<T(T const&, T const&)> const& reducer
   , T const& initial
-    ) 
+    ) const
 {
     ensure_real();
     typedef octopus::octree_server::reduce_zonal_action<T> action_type;

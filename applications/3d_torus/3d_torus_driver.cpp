@@ -14,7 +14,9 @@
 #include <octopus/engine/ini.hpp>
 #include <octopus/io/silo.hpp>
 #include <octopus/octree/octree_reduce.hpp>
+#include <octopus/octree/octree_apply_leaf.hpp>
 #include <octopus/operators/boost_array_arithmetic.hpp>
+#include <octopus/math.hpp>
 
 // FIXME: Move shared code from the drivers into a shared object/headers.
 // FIXME: Names.
@@ -41,8 +43,6 @@ double const GAMMA = 2.0; // EULER_GAMMA
 // Polytropic constant.
 double KAPPA = 1.0;
     
-std::string simulation_directory = "";
-
 ///////////////////////////////////////////////////////////////////////////////
 /// Mass density
 inline double&       rho(std::vector<double>& u)       { return u[0]; }
@@ -261,15 +261,15 @@ struct max_eigenvalue : octopus::trivial_serialization
         switch (a)
         {
             case octopus::x_axis:
-                return abs(momentum_x(state) / rho(state))
+                return abs(momentum_x(state) / rho(state)) // velocity
                      + speed_of_sound(state);
 
             case octopus::y_axis:
-                return abs(momentum_y(state) / rho(state))
+                return abs(momentum_y(state) / rho(state)) // velocity
                      + speed_of_sound(state);
 
             case octopus::z_axis:
-                return abs(momentum_z(state) / rho(state))
+                return abs(momentum_z(state) / rho(state)) // velocity
                      + speed_of_sound(state);
 
             default: { OCTOPUS_ASSERT(false); break; }
@@ -279,12 +279,13 @@ struct max_eigenvalue : octopus::trivial_serialization
     }
 };
 
-struct cfl_timestep : octopus::trivial_serialization
+struct cfl_treewise_compute_timestep : octopus::trivial_serialization
 {
     double operator()(octopus::octree_server& U) const
     {
-        // REVIEW: I need to initialize this to some value higher than any
-        // possible dt, I think...
+        // REVIEW (zach): I need to initialize this to some value higher than
+        // any possible dt, I think...
+        // REVIEW: Should this be hardcoded. 
         double dt_limit = 100.0;
 
         boost::uint64_t const gnx = octopus::config().grid_node_length;
@@ -298,7 +299,8 @@ struct cfl_timestep : octopus::trivial_serialization
                 {
                     std::vector<double> const& u = U(i, j, k);
                     double const dx = U.get_dx(); 
-  
+
+                    // FIXME: 0.4 shouldn't be hard coded.  
                     double const dt_here_x
                         = 0.4*dx/(max_eigenvalue()(octopus::x_axis, u));
                     double const dt_here_y
@@ -320,13 +322,60 @@ struct cfl_timestep : octopus::trivial_serialization
     }
 };
 
-// Serializable minimum
-struct minimum : octopus::trivial_serialization
+struct cfl_initial_timestep : octopus::trivial_serialization
 {
-    template <typename T>
-    T const& operator()(T const& a, T const& b) const
+    double operator()(octopus::octree_server& root) const
     {
-        return (std::min)(a, b);
+        return 0.01 * root.reduce<double>(cfl_treewise_compute_timestep()
+                                        , octopus::minimum_functor());
+    }
+};
+
+// IMPLEMENT: Post prediction.
+struct cfl_predict_timestep
+{
+  private:
+    double max_dt_growth_;
+    double fudge_factor_;
+
+  public:
+    cfl_predict_timestep() {}
+
+    cfl_predict_timestep(
+        double max_dt_growth
+      , double fudge_factor
+        )
+      : max_dt_growth_(max_dt_growth)
+      , fudge_factor_(fudge_factor)
+    {}
+
+    /// Returns the tuple (timestep N + 1 size, timestep N+gap size)
+    octopus::timestep_prediction operator()(
+        octopus::octree_server& root
+        ) const
+    {
+        OCTOPUS_ASSERT(0 < max_dt_growth_);
+        OCTOPUS_ASSERT(0 < fudge_factor_);
+
+        boost::uint64_t const gap = octopus::config().temporal_prediction_gap;
+
+        OCTOPUS_ASSERT(0 == root.get_level());
+
+        double next_dt = (std::min)(
+            // get_dt may block
+            root.get_dt() * max_dt_growth_
+          , root.reduce<double>(cfl_treewise_compute_timestep()
+                              , octopus::minimum_functor())
+        );
+
+        return octopus::timestep_prediction(next_dt, fudge_factor_ * next_dt); 
+    }
+
+    template <typename Archive>
+    void serialize(Archive& ar, unsigned int)
+    {
+        ar & max_dt_growth_;
+        ar & fudge_factor_;
     }
 };
 
@@ -485,11 +534,26 @@ void octopus_define_problem(
   , octopus::science_table& sci
     )
 {
-    octopus::config_reader reader;
+    double max_dt_growth = 0.0; 
+    double temporal_prediction_limiter = 0.0; 
+
+    octopus::config_reader reader("octopus.3d_torus");
 
     reader
-        ("3d_torus.simulation_directory", simulation_directory, "")
+        ("max_dt_growth", max_dt_growth, 1.25)
+        ("temporal_prediction_limiter", temporal_prediction_limiter, 0.5)
+        ("kappa", KAPPA, 1.0)
     ;
+
+    std::cout
+        << "[octopus.3d_torus]\n"
+        << ( boost::format("max_dt_growth               = %.6e\n")
+           % max_dt_growth)
+        << ( boost::format("temporal_prediction_limiter = %.6e\n")
+           % temporal_prediction_limiter)
+        << ( boost::format("kappa                       = %.6e\n")
+           % KAPPA)
+        << "\n";
 
     sci.state_size = 6;
 
@@ -503,10 +567,76 @@ void octopus_define_problem(
     sci.floor = floor_state();
     sci.flux = flux();  
 
+    sci.initial_timestep = cfl_initial_timestep();
+    sci.predict_timestep = cfl_predict_timestep
+        (max_dt_growth, temporal_prediction_limiter);
+
     sci.refine_policy = refine_by_density();
 
     sci.output = octopus::single_variable_silo_writer(0, "rho");
 }
+
+struct stepper : octopus::trivial_serialization
+{
+    void operator()(octopus::octree_server& root) const
+    {
+        root.apply(octopus::science().initialize);
+    
+        root.refine();
+    
+        root.output();
+    
+        std::cout << "Initial state prepared\n";
+    
+        ///////////////////////////////////////////////////////////////////////
+        // Crude, temporary stepper.
+    
+        // FIXME: Proper support for adding commandline options.     
+        double max_dt_growth = 0.0; 
+        double temporal_prediction_limiter = 0.0; 
+    
+        octopus::config_reader reader("octopus.3d_torus");
+    
+        reader
+            ("max_dt_growth", max_dt_growth, 1.25)
+            ("temporal_prediction_limiter", temporal_prediction_limiter, 0.5)
+            ("kappa", KAPPA, 1.0)
+        ;
+    
+        root.post_dt(root.apply_leaf(octopus::science().initial_timestep));
+        double next_output_time = octopus::config().output_frequency;
+    
+        while (root.get_time() < octopus::config().temporal_domain)
+        {
+            std::cout << ( boost::format("STEP %06u : TIME %.6e += %.6e\n")
+                         % root.get_step() % root.get_time() % root.get_dt());
+    
+            root.step();
+    
+            if (root.get_time() >= next_output_time)
+            {   
+                std::cout << "OUTPUT\n";
+                root.output();
+                next_output_time += octopus::config().output_frequency; 
+            }
+    
+            // IMPLEMENT: Futurize w/ continutation.
+            octopus::timestep_prediction prediction
+                = root.apply_leaf(octopus::science().predict_timestep);
+    
+            OCTOPUS_ASSERT(0.0 < prediction.next_dt);
+            OCTOPUS_ASSERT(0.0 < prediction.future_dt);
+    
+            root.post_dt(prediction.next_dt);
+    
+            // Update kappa.
+            // FIXME: Distributed.
+            reader
+                ("kappa", KAPPA, 1.0)
+            ;
+        } 
+    }
+};
 
 int octopus_main(boost::program_options::variables_map& vm)
 {
@@ -516,73 +646,7 @@ int octopus_main(boost::program_options::variables_map& vm)
     root_data.dx = octopus::science().initial_spacestep();
     root.create_root(hpx::find_here(), root_data);
 
-    root.apply(octopus::science().initialize);
-
-    root.refine();
-
-    root.output();
-
-    ///////////////////////////////////////////////////////////////////////////
-    // Crude, temporary stepper.
-
-    // FIXME: Proper support for adding commandline options.     
-    double dt = 0.0; 
-    double max_dt_growth = 0.0; 
-    double temporal_domain = 0.0;
-    double output_frequency = 0.0;
-
-    octopus::config_reader reader;
-
-    reader
-        // FIXME: Move these somewhere more generic.
-        ("dt", dt, 1.0e-10)
-        ("max_dt_growth", max_dt_growth, 1.25)
-        ("temporal_domain", temporal_domain, 1.0e-6)
-        ("output_frequency", output_frequency, 1.0e-7)
-
-        ("3d_torus.kappa", KAPPA, 1.0)
-    ;
-
-    std::cout
-        << (boost::format("kappa            = %.6e\n") % KAPPA)
-        << (boost::format("dt               = %.6e\n") % dt)
-        << (boost::format("max_dt_growth    = %.6e\n") % max_dt_growth)
-        << (boost::format("output frequency = %.6e\n") % output_frequency)
-        << "\n"
-        << (boost::format("Stepping to %.6e...\n") % temporal_domain)
-        << "\n";
-
-    double time = 0.0;
-
-    double dt_last = 0.01*root.reduce<double>(cfl_timestep(), minimum());
-
-    boost::uint64_t step = 0;
-    double next_output_time = output_frequency;
-
-    while (time < temporal_domain)
-    {
-        //dt = (std::max)(dt_last*1.25,octopus::cfl_timestep());
-        dt = (std::min)(dt_last*max_dt_growth
-                      , root.reduce<double>(cfl_timestep(), minimum()));
-
-        OCTOPUS_ASSERT(0.0 < dt);
-
-        std::cout << ( boost::format("STEP %06u : %.6e += %.6e\n")
-                     % step % time % dt);
-
-        root.step(dt);
-
-        time += dt;
-        ++step;
-        dt_last = dt;
-
-        if ((time + dt) >= next_output_time)
-        {   
-            std::cout << "OUTPUT\n";
-            root.output();
-            next_output_time += output_frequency; 
-        }
-    } 
+    root.apply_leaf<void>(stepper());
     
     return 0;
 }

@@ -81,8 +81,9 @@ namespace octopus
 struct OCTOPUS_EXPORT octree_client
 {
   private:
-    mutable hpx::id_type gid_;
     boundary_kind kind_;
+
+    mutable hpx::id_type gid_;
 
     // FIXME: This is only used by non-real boundaries, optimize.
     mutable face face_;
@@ -112,8 +113,8 @@ struct OCTOPUS_EXPORT octree_client
     ///
     /// \note Internal use only; GIDs are not exposed to the user.
     octree_client(hpx::id_type const& gid)
-      : gid_(gid)
-      , kind_(real_boundary)
+      : kind_(real_boundary)
+      , gid_(gid)
       , face_()
       , offset_()
     {}
@@ -122,21 +123,11 @@ struct OCTOPUS_EXPORT octree_client
     ///
     /// \note Internal use only; GIDs are not exposed to the user.
     octree_client(BOOST_RV_REF(hpx::id_type) gid)
-      : gid_(gid)
-      , kind_(real_boundary)
+      : kind_(real_boundary)
+      , gid_(gid)
       , face_()
       , offset_()
     {}
-
-    // FIXME: gid_ should be set here, not be set_sibling.
-    octree_client(boundary_kind kind)
-      : gid_(hpx::invalid_id) // Set by set_sibling.
-      , kind_(kind)
-      , face_()
-      , offset_()
-    {
-        OCTOPUS_ASSERT(kind != real_boundary);
-    }
 
     /// \brief Assign the GID of a real grid node to this client. 
     ///
@@ -157,13 +148,36 @@ struct OCTOPUS_EXPORT octree_client
     /// \note Internal use only; GIDs are not exposed to the user.
     octree_client& operator=(BOOST_RV_REF(hpx::id_type) gid)
     {
-        gid_ = gid;
         kind_ = real_boundary;
+        gid_ = gid;
         face_ = face();
         offset_[0] = 0;
         offset_[1] = 0;
         offset_[2] = 0;
         return *this;
+    }
+
+    // AMR boundary.
+    octree_client(
+        boundary_kind kind
+      , octree_client const& parent 
+      , face f
+      , boost::array<boost::int64_t, 3> const& sib_offset
+      , boost::array<boost::int64_t, 3> const& parent_offset
+        );
+
+    // Physical boundary.
+    octree_client( 
+        boundary_kind kind
+      , octree_client const& sib 
+      , face f
+        )
+      : kind_(physical_boundary)
+      , gid_(sib.gid_)
+      , face_(f)
+      , offset_()
+    {
+        OCTOPUS_ASSERT(physical_boundary == kind);
     }
 
     /// \brief Get the GID this client is holding. 
@@ -183,22 +197,22 @@ struct OCTOPUS_EXPORT octree_client
 
   public:
     octree_client()
-      : gid_(hpx::naming::invalid_id)
-      , kind_(invalid_boundary)
+      : kind_(invalid_boundary)
+      , gid_(hpx::naming::invalid_id)
       , face_()
       , offset_()
     {}
 
     octree_client(octree_client const& other)
-      : gid_(other.gid_)
-      , kind_(other.kind_)
+      : kind_(other.kind_)
+      , gid_(other.gid_)
       , face_(other.face_)
       , offset_(other.offset_)
     {}
 
     octree_client(BOOST_RV_REF(octree_client) other)
-      : gid_(other.gid_)
-      , kind_(other.kind_)
+      : kind_(other.kind_)
+      , gid_(other.gid_)
       , face_(other.face_)
       , offset_(other.offset_)
     {}
@@ -225,8 +239,8 @@ struct OCTOPUS_EXPORT octree_client
 
     octree_client& operator=(BOOST_COPY_ASSIGN_REF(octree_client) other)
     {
-        gid_ = other.gid_;
         kind_ = other.kind_;        
+        gid_ = other.gid_;
         face_ = other.face_;
         offset_ = other.offset_;
         return *this;
@@ -234,8 +248,8 @@ struct OCTOPUS_EXPORT octree_client
 
     octree_client& operator=(BOOST_RV_REF(octree_client) other)
     {
-        gid_ = other.gid_;
         kind_ = other.kind_;        
+        gid_ = other.gid_;
         face_ = other.face_;
         offset_ = other.offset_;
         return *this;
@@ -330,31 +344,16 @@ struct OCTOPUS_EXPORT octree_client
         ) const;
     // }}}
 
-  private:
-    void set_sibling_for_amr_boundary(
-        face f
-      , octree_client const& sib 
-      , octree_client const& sib_parent
-        ) const;
-
-    void set_sibling_for_physical_boundary(
-        face f
-      , octree_client const& sib 
-        ) const;
-    
-  public:
     ///////////////////////////////////////////////////////////////////////////
     // {{{ set_sibling
     void set_sibling(
         face f
       , octree_client const& sib 
-      , octree_client const& sib_parent
         ) const;
 
     void set_sibling_push(
         face f
       , octree_client const& sib 
-      , octree_client const& sib_parent
         ) const;
     // }}}
 
@@ -363,18 +362,16 @@ struct OCTOPUS_EXPORT octree_client
     void tie_sibling(
         face f
       , octree_client const& sib 
-      , octree_client const& sib_parent
         ) const;
 
     void tie_sibling_push(
         face f
       , octree_client const& sib 
-      , octree_client const& sib_parent
         ) const;
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
-    // {{{ tie_child_sibling
+    // {{{ set_child_sibling
     void set_child_sibling(
         child_index kid
       , face f
@@ -514,7 +511,44 @@ struct OCTOPUS_EXPORT octree_client
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
-    // {{{ apply
+    // {{{ step 
+    void step() const
+    {
+        return step_async().get();
+    }
+
+    hpx::future<void> step_async() const;
+    // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
+    // {{{ copy_and_regrid (IMPLEMENT) and refine
+    void refine() const
+    {
+        return refine_async().get();
+    }
+
+    hpx::future<void> refine_async() const;
+    // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
+    // {{{ output 
+    void output() const
+    {
+        return output_async().get();
+    }
+
+    hpx::future<void> output_async() const;
+
+    void output_initial() const
+    {
+        return output_initial_async().get();
+    }
+
+    hpx::future<void> output_initial_async() const;
+    // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
+    // {{{ apply 
     void apply(
         hpx::util::function<void(octree_server&)> const& f
         ) const
@@ -525,52 +559,20 @@ struct OCTOPUS_EXPORT octree_client
     hpx::future<void> apply_async(
         hpx::util::function<void(octree_server&)> const& f
         ) const;
+    // }}}
 
-    void apply_push(
-        hpx::util::function<void(octree_server&)> const& f
+    ///////////////////////////////////////////////////////////////////////////
+    // {{{ apply_leaf - definitions are out-of-line in octree_apply_leaf.hpp
+    template <typename T>
+    T apply_leaf(
+        hpx::util::function<T(octree_server&)> const& f
         ) const;
 
-    void apply_leaf(
-        hpx::util::function<void(octree_server&)> const& f
-        ) const
-    {
-        return apply_leaf_async(f).get();
-    }
-
-    hpx::future<void> apply_leaf_async(
-        hpx::util::function<void(octree_server&)> const& f
-        ) const;
-
-    void apply_leaf_push(
-        hpx::util::function<void(octree_server&)> const& f
+    template <typename T>
+    hpx::future<T> apply_leaf_async(
+        hpx::util::function<T(octree_server&)> const& f
         ) const;
     // }}} 
-
-    ///////////////////////////////////////////////////////////////////////////
-    // {{{ step_to_time and step 
-    void step(double dt) const
-    {
-        return step_async(dt).get();
-    }
-
-    hpx::future<void> step_async(double dt) const;
-
-    void step_push(double dt) const;
-
-    void step_to_time_push(double dt, double until) const;
-    // }}}
-
-    ///////////////////////////////////////////////////////////////////////////
-    // {{{ output - FIXME: I am not safe to do concurrently.
-    // TODO: Make sure we are only called on the root node.
-    void output() const
-    {
-        return output_async().get();
-    }
-
-    // TODO: Make sure we are only called on the root node.
-    hpx::future<void> output_async() const;
-    // }}}
 
     ///////////////////////////////////////////////////////////////////////////
     // {{{ reduce - definitions are out-of-line in octree_reduce.hpp.
@@ -578,37 +580,27 @@ struct OCTOPUS_EXPORT octree_client
     T reduce(
         hpx::util::function<T(octree_server&)> const& f
       , hpx::util::function<T(T const&, T const&)> const& reducer
-        );
+        ) const;
 
     template <typename T>
     hpx::future<T> reduce_async(
         hpx::util::function<T(octree_server&)> const& f
       , hpx::util::function<T(T const&, T const&)> const& reducer
-        );
+        ) const;
 
     template <typename T>
     T reduce_zonal(
         hpx::util::function<T(std::vector<double>&)> const& f
       , hpx::util::function<T(T const&, T const&)> const& reducer
       , T const& initial = T()
-        );
+        ) const;
 
     template <typename T>
     hpx::future<T> reduce_zonal_async(
         hpx::util::function<T(std::vector<double>&)> const& f
       , hpx::util::function<T(T const&, T const&)> const& reducer
       , T const& initial = T()
-        );
-    // }}}
-
-    ///////////////////////////////////////////////////////////////////////////
-    // {{{ refine
-    void refine() const
-    {
-        return refine_async().get();
-    }
-
-    hpx::future<void> refine_async() const;
+        ) const;
     // }}}
 
     // NOTE: (to self) Keep the order the same as octree_server please.

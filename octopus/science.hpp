@@ -17,5 +17,7 @@
 #include <octopus/science/reconstruction.hpp>
 #include <octopus/science/initial_spacestep.hpp>
 
+#include <octopus/science/timestep_prediction.hpp>
+
 #endif // OCTOPUS_6B85CEFD_F97E_42AD_91FA_FEA7261EFFCB
 

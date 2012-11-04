@@ -17,6 +17,8 @@
 namespace octopus
 {
 
+// TODO: Refine this stuff and move it into a header.
+
 ///////////////////////////////////////////////////////////////////////////////
 // {{{ Formatting utilities
 boost::format format_option(
@@ -57,18 +59,25 @@ std::ostream& operator<<(
   , config_data const& cfg
     )
 {
-    #define OCTOPUS_FORMAT_OPTION(option)                                   \
-        format_option("octopus." BOOST_PP_STRINGIZE(option), cfg.option)    \
+    #define OCTOPUS_FORMAT_OPTION(option)                        \
+        format_option(BOOST_PP_STRINGIZE(option), cfg.option)    \
         /**/
 
     // NOTE: Last item should not have a newline after it.
     os
+        << "[octopus]\n"
         << OCTOPUS_FORMAT_OPTION(max_refinement_level) << "\n"
-        << OCTOPUS_FORMAT_OPTION(grid_node_length) << "\n"
-        << OCTOPUS_FORMAT_OPTION(spatial_domain) << "\n"
+
         << OCTOPUS_FORMAT_OPTION(runge_kutta_order) << "\n"
         << OCTOPUS_FORMAT_OPTION(reflect_on_z) << "\n"
-        << OCTOPUS_FORMAT_OPTION(temporal_prediction_gap)
+
+        << OCTOPUS_FORMAT_OPTION(spatial_domain) << "\n"
+        << OCTOPUS_FORMAT_OPTION(grid_node_length) << "\n"
+
+        << OCTOPUS_FORMAT_OPTION(temporal_domain) << "\n"
+        << OCTOPUS_FORMAT_OPTION(temporal_prediction_gap) << "\n"
+
+        << OCTOPUS_FORMAT_OPTION(output_frequency)
     ;
 
     #undef OCTOPUS_FORMAT_OPTION
@@ -80,17 +89,23 @@ config_data config_from_ini()
 {
     config_data cfg;
 
-    config_reader reader;
+    config_reader reader("octopus");
 
     // FIXME: Math in INI would make this smoother, some of these settings
     // should default to a formula not a hard-coded value.
     reader
         ("max_refinement_level", cfg.max_refinement_level, 0) 
-        ("grid_node_length", cfg.grid_node_length, 12) 
-        ("spatial_domain", cfg.spatial_domain, 1.5e-4) 
+
         ("runge_kutta_order", cfg.runge_kutta_order, 1) 
         ("reflect_on_z", cfg.reflect_on_z, true) 
+
+        ("spatial_domain", cfg.spatial_domain, 1.5e-4) 
+        ("grid_node_length", cfg.grid_node_length, 12) 
+
+        ("temporal_domain", cfg.temporal_domain, 1.0e-6) 
         ("temporal_prediction_gap", cfg.temporal_prediction_gap, 10) 
+        
+        ("output_frequency", cfg.output_frequency, 1.0e-7)
     ;
 
     return cfg;

@@ -128,9 +128,15 @@ struct channel
     T take(hpx::error_code& ec = hpx::throws) 
     {
         OCTOPUS_ASSERT(data_);
-        OCTOPUS_ASSERT(data_->ready());
         T tmp = data_->move_data(ec);
         data_->reset();
+        return boost::move(tmp);
+    }
+
+    T peek(hpx::error_code& ec = hpx::throws) const
+    {
+        OCTOPUS_ASSERT(data_);
+        T tmp = data_->get_data(ec);
         return boost::move(tmp);
     }
 
@@ -148,10 +154,18 @@ struct channel
 
     template <typename F>
     hpx::future<typename boost::result_of<F(hpx::future<T>)>::type>
-    then(BOOST_FWD_REF(F) f)
+    then_async(BOOST_FWD_REF(F) f)
     {
+        OCTOPUS_ASSERT(data_);
         return hpx::future<T>(data_).when
             (boost::forward<completed_callback_type>(f));
+    }
+
+    template <typename F>
+    void then_push(BOOST_FWD_REF(F) f)
+    {
+        OCTOPUS_ASSERT(data_);
+        data_->set_on_completed(boost::forward<completed_callback_type>(f));
     }
 
     bool ready() const

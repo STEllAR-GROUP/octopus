@@ -38,3 +38,5 @@ Long-term todo list
 * Investigate using DBShowErrors to silence the error dumps that SILO does (their error messages get mangled by something).
 * Timestep refinement.
 * Place grid nodes based on where the corresponding grid node from the previous timestep is located.
+* Combine config() and science().
+

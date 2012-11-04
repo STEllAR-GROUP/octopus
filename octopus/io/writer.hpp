@@ -20,7 +20,7 @@ struct OCTOPUS_EXPORT writer_base
 {
     virtual ~writer_base() {}
 
-    virtual void begin_epoch(octree_server& e) { }
+    virtual void begin_epoch(octree_server& e, bool initial) { }
 
     virtual void end_epoch(octree_server& e) { }
 
@@ -56,9 +56,9 @@ struct writer
         return *this;
     }
 
-    void begin_epoch(octree_server& e) const
+    void begin_epoch(octree_server& e, bool initial) const
     {
-        ptr_->begin_epoch(e);
+        ptr_->begin_epoch(e, initial);
     }
 
     void end_epoch(octree_server& e) const

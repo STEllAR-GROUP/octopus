@@ -15,7 +15,7 @@
 
 #include <iostream>
 
-#define OCTOPUS_CONFIG_DATA_VERSION 0x01
+#define OCTOPUS_CONFIG_DATA_VERSION 0x02
 
 // TODO: This is specific to the euler code, make it more general after SC.
 // TODO: Rename.
@@ -27,35 +27,27 @@ namespace octopus
 // them to config_from_init().
 // NOTE: This is kept an aggregate for simplicity. Default values are set by
 // config_from_init().
-// NOTE: Users should never copy this.
 struct config_data
 {
-    ///////////////////////////////////////////////////////////////////////////
-    // Parameters from Dominic's original code.
-    //
-    // Format:
-    //     ///< description
-    //     type name; // original name, original value, notes
     boost::uint64_t max_refinement_level; 
 
-    ///< The edge length of each grid node (units == discrete points aka zones) 
-    ///  including ghost zones.
-    /// NOTE: Needs confirmation. 
-    // NOTE: This MUST be a power of 2.
-    boost::uint64_t grid_node_length; // GNX, 8+2*BW, TODO: validate min/max 
-
-    ///< The spatial edge length of the problem NOTE: Confirm.
-    double spatial_domain; // GRID_DIM, 1.5e-4 (Zach) and 1.0 (Dominic) 
-
-    ///< Order of (TVD) Runge Kutta used to solve the PDE.
+    ///< Order of (TVD) Runge Kutta used..
     boost::uint16_t runge_kutta_order;
 
     ///< Reflection control for the Z-axis. TODO: error handling if no
     ///  reflection function is found.
     bool reflect_on_z;
- 
-    ///////////////////////////////////////////////////////////////////////////
-    // "My" parameters (stuff not in Dominic's code).
+
+    ///< The spatial edge length of the problem. 
+    double spatial_domain; // GRID_DIM, 1.5e-4 (Zach) and 1.0 (Dominic) 
+
+    ///< The edge length of each grid node (units == discrete points aka zones) 
+    ///  including ghost zones.
+    // NOTE: This MUST be of the form 8^N+2*BW, where N is an integer.
+    boost::uint64_t grid_node_length; // GNX, 8+2*BW, TODO: validate min/max 
+
+    ///< "Physical" time to step to.
+    double temporal_domain;
 
     ///< This is the gap, in timesteps, between a timestep, and the timestep
     ///  that computed its timestep size. For example, if this is 10, then,
@@ -64,15 +56,23 @@ struct config_data
     ///  number of timesteps alive at any given time after ramp up of the code. 
     boost::uint64_t temporal_prediction_gap; 
 
+    double output_frequency;
+
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int version)
     {
         ar & max_refinement_level;
-        ar & grid_node_length;
-        ar & spatial_domain;
+
         ar & runge_kutta_order;
         ar & reflect_on_z;
+
+        ar & spatial_domain;
+        ar & grid_node_length;
+
+        ar & temporal_domain;
         ar & temporal_prediction_gap;
+
+        ar & output_frequency;
     }
 };
 

@@ -26,6 +26,12 @@ inline bool has_config_entry(std::string const& key)
 
 struct config_reader
 {
+  private:
+    std::string prefix_;
+
+  public:
+    config_reader(std::string const& prefix) : prefix_(prefix) {}
+
     typedef config_reader const& result_type;
 
     template <typename A, typename B>

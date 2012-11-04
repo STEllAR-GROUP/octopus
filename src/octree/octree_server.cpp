@@ -31,7 +31,8 @@
 namespace octopus
 {
 
-void octree_server::inject_state_from_parent(
+// IMPLEMENT: Pass only the state that is needed.
+void octree_server::parent_to_child_injection(
     vector3d<std::vector<double> > const& parent_U 
     )
 { // {{{
@@ -178,10 +179,6 @@ octree_server::octree_server(
     } 
 }
 
-// FIXME: Non-optimal, inject_state_from_parent should be called with
-// fire-and-forget semantics. However, the lifetime of parent_U then
-// becomes an issue. Because of this, U_ may need to be made into a
-// shared_ptr.
 /// \brief Construct a child node.
 octree_server::octree_server(
     back_pointer_type back_ptr
@@ -226,7 +223,7 @@ octree_server::octree_server(
 
     initialize_queues();
 
-    inject_state_from_parent(parent_U);
+    parent_to_child_injection(parent_U);
 }
 
 // NOTE: Should be thread-safe, offset_ and origin_ are only read, and never
@@ -281,6 +278,7 @@ void octree_server::create_child(
     create_child_locked(kid, l);
 } // }}}
 
+// IMPLEMENT: Pass only the state that is needed.
 void octree_server::create_child_locked(
     child_index kid
   , mutex_type::scoped_lock& l
@@ -444,13 +442,13 @@ void octree_server::create_child_locked(
 
     // Check if the interior X sibling of the new child exists.
     if (children_[x_sib] != hpx::invalid_id)
-        children_[x_sib].tie_sibling_push(interior_x_face, kid_client, this_);
+        children_[x_sib].tie_sibling_push(interior_x_face, kid_client);
 
     else if (!marked_for_refine_[x_sib]) 
     {
         OCTOPUS_ASSERT(children_[x_sib].kind() != physical_boundary);
         octree_client bound(amr_boundary
-                          , kid_client
+                          , client_from_this()
                           , interior_x_face
                           , kid_init.offset
                           , offset_
@@ -460,13 +458,13 @@ void octree_server::create_child_locked(
 
     // Check if the interior Y sibling of the new child exists.
     if (children_[y_sib] != hpx::invalid_id)
-        children_[y_sib].tie_sibling_push(interior_y_face, kid_client, this_);
+        children_[y_sib].tie_sibling_push(interior_y_face, kid_client);
 
     else if (!marked_for_refine_[y_sib]) 
     {
         OCTOPUS_ASSERT(children_[y_sib].kind() != physical_boundary);
         octree_client bound(amr_boundary
-                          , kid_client
+                          , client_from_this()
                           , interior_y_face
                           , kid_init.offset
                           , offset_
@@ -476,13 +474,13 @@ void octree_server::create_child_locked(
 
     // Check if the interior Z sibling of the new child exists.
     if (children_[z_sib] != hpx::invalid_id)
-        children_[z_sib].tie_sibling_push(interior_z_face, kid_client, this_);
+        children_[z_sib].tie_sibling_push(interior_z_face, kid_client);
 
     else if (!marked_for_refine_[z_sib]) 
     {
         OCTOPUS_ASSERT(children_[z_sib].kind() != physical_boundary);
         octree_client bound(amr_boundary
-                          , kid_client
+                          , client_from_this()
                           , interior_z_face
                           , kid_init.offset
                           , offset_
@@ -789,7 +787,7 @@ void octree_server::tie_child_sibling(
         if (children_[target_kid].kind() == real_boundary)
         {
             source_sib = children_[target_kid];
-            source_sib.set_sibling(target_f, target_sib, client_from_this());
+            source_sib.set_sibling(target_f, target_sib);
         }
 
         else if (!marked_for_refine_[target_kid]) 
@@ -800,7 +798,10 @@ void octree_server::tie_child_sibling(
             boost::uint64_t const gnx = config().grid_node_length;
             // FIXME: Non-optimal.            
 
-            boost::int64_t parent_offset = siblings_[source_f].get_offset();
+            boost::array<boost::int64_t, 3> parent_offset =
+                siblings_[source_f].get_offset();
+
+            using namespace octopus::operators;
 
             boost::array<boost::int64_t, 3> kid_offset =
                 parent_offset * 2 + bw + (source_kid.array() * (gnx - 2 * bw));
@@ -892,7 +893,7 @@ void octree_server::communicate_ghost_zones(
                 send_ghost_zone_locked(invert(face(i)), l));
 
             dependencies.emplace_back( 
-                ghost_zone_queue_.at(phase)(i).then(
+                ghost_zone_queue_.at(phase)(i).then_async(
                     boost::bind(&octree_server::add_ghost_zone,
                         this, face(i), _1))); 
         }
@@ -1671,7 +1672,7 @@ void octree_server::child_to_parent_injection(
         for (boost::uint64_t i = 0; i < 8; ++i)
             if (children_[i] != hpx::invalid_id)
                 dependencies.emplace_back(
-                    children_state_queue_.at(phase)(i).then(
+                    children_state_queue_.at(phase)(i).then_async(
                         boost::bind(&octree_server::add_child_state,
                             this, child_index(i), _1))); 
     }
@@ -1783,10 +1784,9 @@ vector3d<std::vector<double> > octree_server::send_child_state_locked(
 
     child_index c = get_child_index_locked(l);
 
-    // NOTE; i += 2 comes from the original code.
     for (boost::uint64_t i = bw; i < (gnx - bw); i += 2)
-        for (boost::uint64_t j = bw; j < (gnx - bw); j += 1)
-            for (boost::uint64_t k = bw; k < (gnx - bw); k += 1)
+        for (boost::uint64_t j = bw; j < (gnx - bw); j += 2)
+            for (boost::uint64_t k = bw; k < (gnx - bw); k += 2)
             {
                 // Adjusted indices (for output state).
                 boost::uint64_t const ii = ((i + bw) / 2) - bw;
@@ -1833,26 +1833,11 @@ void octree_server::apply(
     hpx::wait(recursion_is_parallelism); 
 } // }}}
 
-void octree_server::apply_leaf(
-    hpx::util::function<void(octree_server&)> const& f
-    )
-{ // {{{
-    std::vector<hpx::future<void> > recursion_is_parallelism;
-
-    // Make sure that we are initialized.
-    initialized_.wait();
-    
-    f(*this);
-} // }}}
-
 ///////////////////////////////////////////////////////////////////////////////
-
-// The "boring" version. Does one step. 
-void octree_server::step(double dt)
+void octree_server::step_recurse(double dt)
 { // {{{
-    OCTOPUS_ASSERT_MSG(0 < dt, "invalid timestep size");
-
     std::vector<hpx::future<void> > recursion_is_parallelism;
+    recursion_is_parallelism.reserve(8);
 
     {
         // Make sure that we are initialized.
@@ -1860,56 +1845,21 @@ void octree_server::step(double dt)
     
         mutex_type::scoped_lock l(mtx_);
     
-        recursion_is_parallelism.reserve(8);
+        OCTOPUS_ASSERT_MSG(0 < dt, "invalid timestep size");
     
         // Start recursively executing the kernel function on our children.
         for (boost::uint64_t i = 0; i < 8; ++i)
             if (hpx::invalid_id != children_[i])
-                recursion_is_parallelism.push_back(children_[i].step_async(dt)); 
+                recursion_is_parallelism.push_back
+                    (hpx::async<step_recurse_action>
+                        (children_[i].get_gid(), dt)); 
     
         // Kernel.
         step_kernel(dt, l);
     }
 
     // Block while our children compute.
-    hpx::wait(recursion_is_parallelism); 
-} // }}}
-
-// Recursion is parallel iteration.
-// IMPLEMENT (properly).
-void octree_server::step_to_time(double dt, double until)
-{ // {{{
-    OCTOPUS_ASSERT_MSG(0 < dt, "invalid timestep size");
-
-/*
-    // Make sure that we are initialized.
-    initialized_.wait();
-
-    {
-        mutex_type::scoped_lock l(mtx_);
-
-        // Start recursively executing the kernel on our children.
-        for (boost::uint64_t i = 0; i < 8; ++i)
-            if (hpx::invalid_id != children_[i])
-                children_[i].step_to_time_push(dt, until); 
-
-        ///////////////////////////////////////////////////////////////////////
-        // Kernel.
-        step_kernel(dt, l);
-    }
-
-    // Are we done?
-    if ((level_ == 0) && (until <= time_))
-    {
-        // If not, keep going. 
-        double next_dt = science().next_timestep(*this, step_, dt, until);
-
-        OCTOPUS_ASSERT(future_self != hpx::invalid_id);
-
-        // More recursion!
-        future_self.step_to_time_push(next_dt, until);
-    }
-*/
+    hpx::wait_all(recursion_is_parallelism); 
 } // }}}
 
 void octree_server::step_kernel(
@@ -2292,7 +2242,7 @@ void octree_server::sum_differentials_kernel(
 
 void octree_server::copy_and_regrid()
 { // {{{ IMPLEMENT
-    return octree_client();
+    return;
 } // }}}
 
 void octree_server::refine()
@@ -2320,7 +2270,7 @@ void octree_server::refine()
     hpx::wait_all(recursion_is_parallelism); 
 } // }}}
 
-// FIXME: Parallelize, localize!
+// IMPLEMENT: Localize dependencies!
 void octree_server::refine_kernel(mutex_type::scoped_lock& l)
 { // {{{ 
     OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
@@ -2342,7 +2292,7 @@ void octree_server::refine_kernel(mutex_type::scoped_lock& l)
                 marked_for_refine_[i] = false; 
     }
 
-    // FIXME: Localize!
+    // IMPLEMENT: Localize!
     hpx::wait_all(new_children); 
 
     new_children.clear();
@@ -2362,78 +2312,6 @@ void octree_server::refine_kernel(mutex_type::scoped_lock& l)
     }
 
     hpx::wait_all(new_children); 
-} // }}}
-
-void octree_server::refine()
-{ // {{{ IMPLEMENT
-    std::vector<hpx::future<void> > recursion_is_parallelism;
-
-    {
-        // Make sure that we are initialized.
-        initialized_.wait();
-    
-        mutex_type::scoped_lock l(mtx_);
-    
-        // Kernel.
-        refine_kernel(l);
-
-        recursion_is_parallelism.reserve(8);
-    
-        // Start recursively executing the kernel function on our children.
-        for (boost::uint64_t i = 0; i < 8; ++i)
-            if (hpx::invalid_id != children_[i])
-                recursion_is_parallelism.push_back(children_[i].refine_async()); 
-    }
-
-    // Block while our children compute.
-    hpx::wait_all(recursion_is_parallelism); 
-} // }}}
-
-// FIXME: Parallelize?
-void octree_server::refine_kernel(mutex_type::scoped_lock& l)
-{ // {{{ 
-    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
-
-    if (config().max_refinement_level == level_)
-        return;
-
-    std::vector<hpx::future<void> > new_children;
-    new_children.reserve(8);
-
-    for (boost::uint64_t i = 0; i < 8; ++i)
-    {
-        child_index kid(i);
-
-        if (children_[i] == hpx::invalid_id)
-        {
-            if (science().refine_policy.refine(*this, kid))
-                new_children.push_back
-                    (client_from_this().create_child_async(kid));
-        }
-    }
-
-    hpx::wait_all(new_children); 
-} // }}}
-
-void octree_server::output()
-{ // {{{ 
-    std::vector<hpx::future<void> > recursion_is_parallelism;
-
-    // Make sure that we are initialized.
-    initialized_.wait();
-    
-    mutex_type::scoped_lock l(mtx_);
-    
-    recursion_is_parallelism.reserve(8);
-    
-    for (boost::uint64_t i = 0; i < 8; ++i)
-        if (hpx::invalid_id != children_[i])
-            recursion_is_parallelism.push_back(
-                hpx::async<output_action>(children_[i].get_gid()));
-
-    science().output(*this); 
-
-    hpx::wait(recursion_is_parallelism); 
 } // }}}
 
 }

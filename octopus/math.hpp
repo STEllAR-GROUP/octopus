@@ -10,6 +10,7 @@
 #define OCTOPUS_754BFB65_F28B_4F97_83FF_69C5DEAB500F
 
 #include <octopus/assert.hpp>
+#include <octopus/trivial_serialization.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -37,6 +38,26 @@ inline double minimum(double a, double b, double c)
 {
     return (std::min)(a, (std::min)(b, c));
 }
+
+// Serializable minimum
+struct minimum_functor : octopus::trivial_serialization
+{
+    template <typename T>
+    T const& operator()(T const& a, T const& b) const
+    {
+        return (std::min)(a, b);
+    }
+};
+
+// Serializable maximum
+struct maximum_functor : octopus::trivial_serialization
+{
+    template <typename T>
+    T const& operator()(T const& a, T const& b) const
+    {
+        return (std::max)(a, b);
+    }
+};
 
 inline double sign(double a)
 {

@@ -22,6 +22,7 @@
 #include <silo.h>
 
 // FIXME: If copied with an open file, this should probably assert.
+// FIXME: Naming for silo_writer breaks the general convention.
 
 namespace octopus
 { 
@@ -40,11 +41,13 @@ struct OCTOPUS_EXPORT single_variable_silo_writer : writer_base
     boost::uint64_t variable_index_;
     std::string variable_name_;
     std::string file_name_;
+    std::string initial_file_name_;
     bool merged_;
 
     void start_write_locked(
         boost::uint64_t step
       , double time
+      , bool initial
       , mutex_type::scoped_lock& l
         );
 
@@ -62,6 +65,7 @@ struct OCTOPUS_EXPORT single_variable_silo_writer : writer_base
       , variable_index_()
       , variable_name_()
       , file_name_()
+      , initial_file_name_()
       , merged_(false)
     {}
 
@@ -76,6 +80,7 @@ struct OCTOPUS_EXPORT single_variable_silo_writer : writer_base
       , variable_index_(other.variable_index_)
       , variable_name_(other.variable_name_)
       , file_name_(other.file_name_)
+      , initial_file_name_(other.initial_file_name_)
       , merged_(false)
     {}
  
@@ -85,6 +90,7 @@ struct OCTOPUS_EXPORT single_variable_silo_writer : writer_base
                                      // These should be sufficient default
                                      // widths (for now).
       , std::string const& file_name = "U_L%06u_S%06u.silo"
+      , std::string const& initial_file_name = "U_L%06u_initial.silo"
         )
       : mtx_()
       , file_(0)
@@ -94,6 +100,7 @@ struct OCTOPUS_EXPORT single_variable_silo_writer : writer_base
       , variable_index_(variable_index)
       , variable_name_(variable_name)
       , file_name_(file_name)
+      , initial_file_name_(initial_file_name)
       , merged_(false)
     {}
 
@@ -104,10 +111,10 @@ struct OCTOPUS_EXPORT single_variable_silo_writer : writer_base
         stop_write_locked(l);
     }
 
-    void start_write(boost::uint64_t step, double time)
+    void start_write(boost::uint64_t step, double time, bool initial)
     {
         mutex_type::scoped_lock l(mtx_);
-        start_write_locked(step, time, l);
+        start_write_locked(step, time, initial, l);
     }
 
     void stop_write()
@@ -116,7 +123,7 @@ struct OCTOPUS_EXPORT single_variable_silo_writer : writer_base
         stop_write_locked(l);
     }
 
-    void begin_epoch(octree_server& e);
+    void begin_epoch(octree_server& e, bool initial);
 
     void end_epoch(octree_server& e);
 
@@ -133,16 +140,20 @@ struct OCTOPUS_EXPORT single_variable_silo_writer : writer_base
     {
         return new single_variable_silo_writer(variable_index_
                                              , variable_name_
-                                             , file_name_);
+                                             , file_name_
+                                             , initial_file_name_);
     } 
 
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int)
     {
         ar & hpx::util::base_object_nonvirt<writer_base>(*this);
+        ar & step_;
+        ar & time_;
         ar & variable_index_;
         ar & variable_name_;
         ar & file_name_;
+        ar & initial_file_name_;
     }
 };
 

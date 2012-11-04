@@ -10,6 +10,7 @@
 
 #include <octopus/octree/octree_server.hpp>
 #include <octopus/science/refinement_criteria.hpp>
+#include <octopus/science/timestep_prediction.hpp>
 #include <octopus/io/writer.hpp>
 #include <octopus/face.hpp>
 
@@ -17,6 +18,8 @@
 
 // NOTE: (to self) Don't forgot to update default_science_table when
 // science_table is updated.
+
+#define OCTOPUS_SCIENCE_TABLE_VERSION 0x01
 
 namespace octopus
 {
@@ -84,12 +87,16 @@ struct science_table
 
     hpx::util::function<
         double(
-            octree_server&
-          , boost::uint64_t ///< Step  
-          , double ///< Current timestep.
-          , double ///< Time to step to.
+            octree_server& ///< Root
             )
-    > next_timestep;
+    > initial_timestep;
+
+    hpx::util::function<
+        /// (timestep N + 1 size, timestep N + gap size)
+        timestep_prediction(
+            octree_server& ///< Root
+            )
+    > predict_timestep;
 
     hpx::util::function<
         void(
@@ -146,7 +153,9 @@ struct science_table
         ar & max_eigenvalue;
 
         ar & initial_spacestep;
-        ar & next_timestep;
+
+        ar & initial_timestep;
+        ar & predict_timestep;
 
         ar & conserved_to_primitive;
         ar & primitive_to_conserved;
@@ -164,6 +173,9 @@ struct science_table
 OCTOPUS_EXPORT science_table default_science_table();
 
 }
+
+BOOST_CLASS_VERSION(octopus::science_table, OCTOPUS_SCIENCE_TABLE_VERSION)
+BOOST_CLASS_TRACKING(octopus::science_table, boost::serialization::track_never)
 
 #endif // OCTOPUS_903E5732_EB7C_4CBC_A13E_24DF0582AF0E
 
