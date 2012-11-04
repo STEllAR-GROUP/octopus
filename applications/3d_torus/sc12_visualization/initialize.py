@@ -11,10 +11,30 @@ HideToolbars()
 InvertBackgroundColor() #sets background to black
 Source(join(VISUALIZATION_DIRECTORY, "clear_annotation.py")) #clears annotations
 
+#############################################################
+
 AddPlot("Contour", "rho_level_0", 1, 1)
+
+#setting the contours
+ContourAtts = ContourAttributes()
+#ContourAtts.contourMethod = ContourAtts.Value  # Level, Value, Percent
+ContourAtts.contourMethod = ContourAtts.Percent  # Level, Value, Percent
+ContourAtts.contourNLevels = 3
+#ContourAtts.contourValue = (3, 6, 9)
+ContourAtts.contourPercent = (30, 60, 90)
+SetPlotOptions(ContourAtts)
+
 AddPlot("Mesh", "mesh_level_0", 1, 1)
-SetActivePlots(1) #making the mesh the active plot
-AddOperator("Slice", 0) #slicing the mesh
+AddPlot("Pseudocolor", "rho_level_0", 1, 1)
+PseudocolorAtts = PseudocolorAttributes()
+PseudocolorAtts.minFlag = 1
+PseudocolorAtts.maxFlag = 1
+PseudocolorAtts.min = 0
+PseudocolorAtts.max = 14
+SetPlotOptions(PseudocolorAtts)
+
+SetActivePlots((1,2)) #making the mesh and pseudo the active plot
+AddOperator("Slice", 0) #slicing the mesh and pseudo
 SliceAtts = SliceAttributes()
 SliceAtts.normal = (0,0,1) #slice along the z-plane
 SliceAtts.axisType = SliceAtts.ZAxis 
@@ -22,17 +42,13 @@ SliceAtts.project2d = 0 #don't project to 2D
 SliceAtts.meshName = "mesh_level_0"
 SetOperatorOptions(SliceAtts,0)
 
+
 SetActivePlots(0) #making the density the active plot
 AddOperator("Transform", 0) #raising the density above the mesh 
 TransformAtts = TransformAttributes()
 TransformAtts.doTranslate = 1
 TransformAtts.translateZ = 5e-05 #raising it by this much
 SetOperatorOptions(TransformAtts, 0)
-
-#setting the contours
-ContourAtts = ContourAttributes()
-ContourAtts.contourNLevels = 3
-SetPlotOptions(ContourAtts)
 
 AddOperator("Reflect", 0) #reflecting because we use z-reflect in the code
 ReflectAtts = ReflectAttributes() 
@@ -47,8 +63,15 @@ ClipAtts.plane1Normal = (-1, 0, 0)
 ClipAtts.plane2Normal = (0, -1, 0)
 SetOperatorOptions(ClipAtts, 0)
 
+#############################################################
+
 DrawPlots() 
-Source(join(VISUALIZATION_DIRECTORY, "set_view.py")) #sets view according to file
+#Source(join(VISUALIZATION_DIRECTORY, "set_view.py")) #sets view according to file
+Source(join(VISUALIZATION_DIRECTORY, "set_view_angle.py")) #sets view by angle
+Source(join(VISUALIZATION_DIRECTORY, "set_zoom.py")) #sets zoom
+
+set_view_angle(70,135)
+set_zoom(2.5)
 
 MeshAtts = MeshAttributes()
 MeshAtts.meshColor = (102, 102, 153, 255) #makes mesh purple
