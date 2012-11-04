@@ -1387,24 +1387,23 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
               , /* [BW, GNX - BW) */  gnx - 2 * bw
                 );
 
-/*
             for (boost::uint64_t i = bw; i < (2 * bw); ++i)
                 for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k)
-*/
+/*
             for (boost::uint64_t i = 0; i < bw; ++i)
                 for (boost::uint64_t j = 0; j < (gnx - 2 * bw); ++j)
                     for (boost::uint64_t k = 0; k < (gnx - 2 * bw); ++k)
+*/
                     {
                         using namespace octopus::operators;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices 
-/*
                         boost::uint64_t const i_out = i - bw;
                         boost::uint64_t const j_out = j - bw;
                         boost::uint64_t const k_out = k - bw; 
-*/
+
                         ///////////////////////////////////////////////////////
                         bool const i0 = (amr_offset[0] + i) % 2;
 
@@ -1418,7 +1417,7 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
                                                    / (1 << disparity);
 
                         std::vector<double> const& u = U_(i_in, j_in, k_in); 
-                        std::vector<double>& m = output(i, j, k); 
+                        std::vector<double>& m = output(i_out, j_out, k_out); 
 
                         m = minmod(U_(i_in + 1, j_in, k_in) - u
                                  , u - U_(i_in - 1, j_in, k_in));
@@ -1447,24 +1446,23 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
               , /* [BW, GNX - BW) */  gnx - 2 * bw
                 );
 
-/*
             for (boost::uint64_t i = gnx - 2 * bw; i < (gnx - bw); ++i)
                 for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
-*/
+/*
             for (boost::uint64_t i = 0; i < bw; ++i)
                 for (boost::uint64_t j = 0; j < (gnx - 2 * bw); ++j)
                     for (boost::uint64_t k = 0; k < (gnx - 2 * bw); ++k)
+*/
                     {
                         using namespace octopus::operators;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (output). 
-/*
                         boost::uint64_t const i_out = i - (gnx - 2 * bw);
                         boost::uint64_t const j_out = j - bw;
                         boost::uint64_t const k_out = k - bw; 
-*/
+
                         ///////////////////////////////////////////////////////
                         bool const i0 = (amr_offset[0] + i) % 2;
 
@@ -1478,7 +1476,7 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
                                                    / (1 << disparity);
 
                         std::vector<double> const& u = U_(i_in, j_in, k_in); 
-                        std::vector<double>& m = output(i, j, k); 
+                        std::vector<double>& m = output(i_out, j_out, k_out); 
 
                         m = minmod(U_(i_in + 1, j_in, k_in) - u
                                  , u - U_(i_in - 1, j_in, k_in));
@@ -1509,24 +1507,22 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
               , /* [BW, GNX - BW) */  gnx - 2 * bw
                 );
 
-/*
             for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
                 for (boost::uint64_t j = bw; j < (2 * bw); ++j)
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
-*/
+/*
             for (boost::uint64_t i = 0; i < (gnx - 2 * bw); ++i)
                 for (boost::uint64_t j = 0; j < bw; ++j)
                     for (boost::uint64_t k = 0; k < (gnx - 2 * bw); ++k) 
+*/
                     {
                         using namespace octopus::operators;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (output). 
-/*
                         boost::uint64_t const i_out = i - bw;
                         boost::uint64_t const j_out = j - bw;
                         boost::uint64_t const k_out = k - bw; 
-*/
 
                         //////////////////////////////////////////////////////
                         bool const j0 = (amr_offset[1] + j) % 2;
@@ -1541,7 +1537,7 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
                                                    / (1 << disparity);
 
                         std::vector<double> const& u = U_(i_in, j_in, k_in); 
-                        std::vector<double>& m = output(i, j, k); 
+                        std::vector<double>& m = output(i_out, j_out, k_out); 
 
                         m = minmod(U_(i_in, j_in + 1, k_in) - u
                                  , u - U_(i_in, j_in - 1, k_in));
@@ -1570,24 +1566,22 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
               , /* [BW, GNX - BW) */  gnx - 2 * bw
                 );
 
-/*
             for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
                 for (boost::uint64_t j = gnx - 2 * bw; j < (gnx - bw); ++j)
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
-*/
+/*
             for (boost::uint64_t i = 0; i < (gnx - 2 * bw); ++i)
                 for (boost::uint64_t j = 0; j < bw; ++j)
                     for (boost::uint64_t k = 0; k < (gnx - 2 * bw); ++k) 
+*/
                     {
                         using namespace octopus::operators;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (output). 
-/*
                         boost::uint64_t const i_out = i - bw;
                         boost::uint64_t const j_out = j - (gnx - 2 * bw);
                         boost::uint64_t const k_out = k - bw; 
-*/
 
                         ///////////////////////////////////////////////////////
                         bool const j0 = (amr_offset[1] + j) % 2;
@@ -1601,7 +1595,7 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
                                                    / (1 << disparity);
 
                         std::vector<double> const& u = U_(i_in, j_in, k_in); 
-                        std::vector<double>& m = output(i, j, k); 
+                        std::vector<double>& m = output(i_out, j_out, k_out); 
 
                         m = minmod(U_(i_in, j_in + 1, k_in) - u
                                  , u - U_(i_in, j_in - 1, k_in));
@@ -1632,24 +1626,22 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
               , /* [0, BW) */         bw
                 );
 
-/*
             for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
                 for (boost::uint64_t j = bw; j < (gnx - bw); ++j) 
                     for (boost::uint64_t k = bw; k < (2 * bw); ++k)
-*/
+/*
             for (boost::uint64_t i = 0; i < (gnx - 2 * bw); ++i)
                 for (boost::uint64_t j = 0; j < (gnx - 2 * bw); ++j) 
                     for (boost::uint64_t k = 0; k < bw; ++k)
+*/
                     {
                         using namespace octopus::operators;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (output). 
-/*
                         boost::uint64_t const i_out = i - bw;
                         boost::uint64_t const j_out = j - bw; 
                         boost::uint64_t const k_out = k - bw;
-*/
 
                         ///////////////////////////////////////////////////////
                         bool const k0 = (amr_offset[1] + k) % 2;
@@ -1664,7 +1656,7 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
                                                    / (1 << disparity);
 
                         std::vector<double> const& u = U_(i_in, j_in, k_in); 
-                        std::vector<double>& m = output(i, j, k); 
+                        std::vector<double>& m = output(i_out, j_out, k_out); 
 
                         m = minmod(U_(i_in, j_in, k_in + 1) - u
                                  , u - U_(i_in, j_in, k_in - 1));
@@ -1693,24 +1685,22 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
               , /* [GNX - BW, GNX) */ bw
                 );
 
-/*
             for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
                 for (boost::uint64_t j = bw; j < (gnx - bw); ++j) 
                     for (boost::uint64_t k = gnx - 2 * bw; k < (gnx - bw); ++k)
-*/
+/*
             for (boost::uint64_t i = 0; i < (gnx - 2 * bw); ++i)
                 for (boost::uint64_t j = 0; j < (gnx - 2 * bw); ++j) 
                     for (boost::uint64_t k = 0; k < bw; ++k)
+*/
                     {
                         using namespace octopus::operators;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (output). 
-/*
                         boost::uint64_t const i_out = i - bw;
                         boost::uint64_t const j_out = j - bw; 
                         boost::uint64_t const k_out = k - (gnx - 2 * bw);
-*/
 
                         ///////////////////////////////////////////////////////
                         bool const k0 = (amr_offset[2] + k) % 2;
@@ -1725,7 +1715,7 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
                                                    / (1 << disparity);
 
                         std::vector<double> const& u = U_(i_in, j_in, k_in); 
-                        std::vector<double>& m = output(i, j, k); 
+                        std::vector<double>& m = output(i_out, j_out, k_out); 
 
                         m = minmod(U_(i_in, j_in, k_in + 1) - u
                                  , u - U_(i_in, j_in, k_in - 1));
