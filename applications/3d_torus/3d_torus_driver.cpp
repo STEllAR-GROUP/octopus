@@ -584,7 +584,7 @@ struct stepper : octopus::trivial_serialization
     
         root.refine();
     
-        root.output();
+        root.output_initial();
     
         std::cout << "Initial state prepared\n";
     

@@ -327,7 +327,7 @@ struct OCTOPUS_EXPORT octree_server
 
     double get_dt() const
     {
-        return dt_.peek();
+        return dt_.get();
     }
 
     void post_dt(double dt) 
@@ -663,7 +663,7 @@ struct OCTOPUS_EXPORT octree_server
     void step()
     {
         OCTOPUS_ASSERT(0 == level_);
-        step_recurse(boost::move(dt_.take()));
+        step_recurse(get_dt());
     }
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
@@ -731,6 +731,11 @@ struct OCTOPUS_EXPORT octree_server
     void output()
     {
         client_from_this().output();
+    }
+
+    void output_initial()
+    {
+        client_from_this().output_initial();
     }
 
     ///////////////////////////////////////////////////////////////////////////

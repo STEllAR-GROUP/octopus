@@ -125,6 +125,7 @@ struct channel
         data_->reset();
    }
 
+/*
     T take(hpx::error_code& ec = hpx::throws) 
     {
         OCTOPUS_ASSERT(data_);
@@ -139,16 +140,28 @@ struct channel
         T tmp = data_->get_data(ec);
         return boost::move(tmp);
     }
+*/
+
+    T get(hpx::error_code& ec = hpx::throws) const
+    {
+        OCTOPUS_ASSERT(data_);
+        T tmp = data_->get_data(ec);
+        return boost::move(tmp);
+    }
 
     void post(BOOST_RV_REF(T) result)
     {
         OCTOPUS_ASSERT(data_);
+        if (data_->is_ready())
+            data_->move_data();
         data_->set_data(result);
     }
 
     void post(T const& result)
     {
         OCTOPUS_ASSERT(data_);
+        if (data_->is_ready())
+            data_->move_data();
         data_->set_data(result);
     }
 
