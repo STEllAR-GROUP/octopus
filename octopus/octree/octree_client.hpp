@@ -88,6 +88,8 @@ struct OCTOPUS_EXPORT octree_client
     // FIXME: This is only used by non-real boundaries, optimize.
     mutable face face_;
 
+    mutable boost::uint64_t disparity_; ///< Difference in refinement level.
+
     // FIXME: This is only used for AMR boundaries, optimize.
     mutable boost::array<boost::int64_t, 3> offset_; ///< Relative offset.
     
@@ -102,11 +104,29 @@ struct OCTOPUS_EXPORT octree_client
     {
         ar & gid_;
         ar & kind_;
-        if (!real())
+        switch (kind_)
         {
-            ar & face_;
-            ar & offset_;
-        }
+            case real_boundary:
+                break; 
+
+            case physical_boundary:
+            {
+                ar & face_;
+                break;
+            }
+
+            case amr_boundary:
+            {
+                ar & face_;
+                ar & disparity_;
+                ar & offset_;
+                break;
+            }
+
+            default:
+                OCTOPUS_ASSERT(false);
+                break;
+        };
     }
 
     /// \brief Create a client for a real grid node.
@@ -116,6 +136,7 @@ struct OCTOPUS_EXPORT octree_client
       : kind_(real_boundary)
       , gid_(gid)
       , face_()
+      , disparity_()
       , offset_()
     {}
 
@@ -126,6 +147,7 @@ struct OCTOPUS_EXPORT octree_client
       : kind_(real_boundary)
       , gid_(gid)
       , face_()
+      , disparity_()
       , offset_()
     {}
 
@@ -136,7 +158,8 @@ struct OCTOPUS_EXPORT octree_client
     {
         gid_ = gid;
         kind_ = real_boundary;
-        face_ = face();
+        face_ = invalid_face;
+        disparity_ = 0;
         offset_[0] = 0;
         offset_[1] = 0;
         offset_[2] = 0;
@@ -150,7 +173,8 @@ struct OCTOPUS_EXPORT octree_client
     {
         kind_ = real_boundary;
         gid_ = gid;
-        face_ = face();
+        face_ = invalid_face;
+        disparity_ = 0;
         offset_[0] = 0;
         offset_[1] = 0;
         offset_[2] = 0;
@@ -160,10 +184,11 @@ struct OCTOPUS_EXPORT octree_client
     // AMR boundary.
     octree_client(
         boundary_kind kind
-      , octree_client const& parent 
+      , octree_client const& source  
       , face f
-      , boost::array<boost::int64_t, 3> const& sib_offset
-      , boost::array<boost::int64_t, 3> const& parent_offset
+      , boost::array<boost::int64_t, 3> sib_offset
+      , boost::array<boost::int64_t, 3> source_offset
+      , boost::uint64_t disparity
         );
 
     // Physical boundary.
@@ -175,6 +200,7 @@ struct OCTOPUS_EXPORT octree_client
       : kind_(physical_boundary)
       , gid_(sib.gid_)
       , face_(f)
+      , disparity_()
       , offset_()
     {
         OCTOPUS_ASSERT(physical_boundary == kind);
@@ -199,7 +225,8 @@ struct OCTOPUS_EXPORT octree_client
     octree_client()
       : kind_(invalid_boundary)
       , gid_(hpx::naming::invalid_id)
-      , face_()
+      , face_(invalid_face)
+      , disparity_()
       , offset_()
     {}
 
@@ -207,6 +234,7 @@ struct OCTOPUS_EXPORT octree_client
       : kind_(other.kind_)
       , gid_(other.gid_)
       , face_(other.face_)
+      , disparity_(other.disparity_)
       , offset_(other.offset_)
     {}
 
@@ -214,34 +242,16 @@ struct OCTOPUS_EXPORT octree_client
       : kind_(other.kind_)
       , gid_(other.gid_)
       , face_(other.face_)
+      , disparity_(other.disparity_)
       , offset_(other.offset_)
     {}
-
-/* Not sure I need these.
-    octree_client(octree_client const& parent, boundary_kind kind)
-      : gid_(parent.gid_)
-      , kind_(kind)
-      , face_()
-      , offset_()
-    {
-        OCTOPUS_ASSERT(kind != real_boundary);
-    }
-
-    octree_client(BOOST_RV_REF(octree_client) parent, boundary_kind kind)
-      : gid_(parent.gid_)
-      , kind_(kind)
-      , face_()
-      , offset_()
-    {
-        OCTOPUS_ASSERT(kind != real_boundary);
-    }
-*/
 
     octree_client& operator=(BOOST_COPY_ASSIGN_REF(octree_client) other)
     {
         kind_ = other.kind_;        
         gid_ = other.gid_;
         face_ = other.face_;
+        disparity_ = other.disparity_;
         offset_ = other.offset_;
         return *this;
     }
@@ -251,26 +261,31 @@ struct OCTOPUS_EXPORT octree_client
         kind_ = other.kind_;        
         gid_ = other.gid_;
         face_ = other.face_;
+        disparity_ = other.disparity_;
         offset_ = other.offset_;
         return *this;
     }
 
+    // FIXME: Needs to be updated.
     operator hpx::util::safe_bool<octree_client>::result_type() const
     {
         return hpx::util::safe_bool<octree_client>()(gid_);
     }
 
+    // FIXME: Needs to be updated.
     friend bool operator==(octree_client const& lhs, octree_client const& rhs) 
     {
         return lhs.gid_ == rhs.gid_
             && lhs.kind_ == rhs.kind_; 
     }
 
+    // FIXME: Needs to be updated.
     friend bool operator==(octree_client const& lhs, hpx::id_type const& rhs) 
     {
         return lhs.gid_ == rhs;
     }
 
+    // FIXME: Needs to be updated.
     friend bool operator==(hpx::id_type const& lhs, octree_client const& rhs) 
     {
         return lhs == rhs.gid_;
@@ -421,25 +436,33 @@ struct OCTOPUS_EXPORT octree_client
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
-    // {{{ Boundary code. 
+    // {{{ Boundary forwarding code (implementation has moved to the server) 
   private:
     // AMR boundary.
-    vector3d<std::vector<double> > interpolate(
+    vector3d<std::vector<double> >
+    send_interpolated_ghost_zone(
         face f
-        ) const;
+        ) const
+    {
+        return send_interpolated_ghost_zone_async(f).get();
+    }
 
     // AMR boundary.
-    hpx::future<vector3d<std::vector<double> > > interpolate_async(
+    hpx::future<vector3d<std::vector<double> > >
+    send_interpolated_ghost_zone_async(
         face f
         ) const;
 
     // Physical boundary. 
-    vector3d<std::vector<double> > map(
+    vector3d<std::vector<double> > send_mapped_ghost_zone(
         face f
-        ) const;
+        ) const
+    {
+        return send_mapped_ghost_zone_async(f).get();
+    }
 
     // Physical boundary. 
-    hpx::future<vector3d<std::vector<double> > > map_async(
+    hpx::future<vector3d<std::vector<double> > > send_mapped_ghost_zone_async(
         face f
         ) const;
     // }}}

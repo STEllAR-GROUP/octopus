@@ -315,14 +315,19 @@ void octree_server::create_child_locked(
 
     using namespace octopus::operators;
 
-    kid_init.parent         = reference_from_this(); 
-    kid_init.level          = level_ + 1; 
-    kid_init.location       = location_ * 2 + kid.array(); 
-    kid_init.dx             = dx_ * 0.5;
-    kid_init.time           = time_;
-    kid_init.offset         = offset_ * 2 + bw + (kid.array() * (gnx - 2 * bw));
-    kid_init.origin         = origin_;
-    kid_init.step           = step_;
+    kid_init.parent   = reference_from_this(); 
+    kid_init.level    = level_ + 1; 
+    kid_init.location = location_ * 2 + kid.array(); 
+    kid_init.dx       = dx_ * 0.5;
+    kid_init.time     = time_;
+    kid_init.offset   = offset_ * 2 + bw + (kid.array() * (gnx - 2 * bw));
+    kid_init.origin   = origin_;
+    kid_init.step     = step_;
+
+    std::cout << kid << ": (" 
+              << kid_init.offset[0] << ", "
+              << kid_init.offset[1] << ", "
+              << kid_init.offset[2] << ")\n";
 
     // Start creating the child. 
     hpx::future<hpx::id_type, hpx::naming::gid_type> kid_gid
@@ -452,6 +457,7 @@ void octree_server::create_child_locked(
                           , interior_x_face
                           , kid_init.offset
                           , offset_
+                          , 1
                             ); 
         kid_client.set_sibling_push(interior_x_face, bound);
     }
@@ -468,6 +474,7 @@ void octree_server::create_child_locked(
                           , interior_y_face
                           , kid_init.offset
                           , offset_
+                          , 1
                             ); 
         kid_client.set_sibling_push(interior_y_face, bound);
     }
@@ -484,6 +491,7 @@ void octree_server::create_child_locked(
                           , interior_z_face
                           , kid_init.offset
                           , offset_
+                          , 1
                             ); 
         kid_client.set_sibling_push(interior_z_face, bound);
     }
@@ -512,7 +520,9 @@ void octree_server::create_child_locked(
                               , siblings_[exterior_x_face]
                               , exterior_x_face
                               , kid_init.offset
-                              , offset_ 
+                                // REVIEW: This may be wrong. 
+                              , siblings_[exterior_x_face].offset_ 
+                              , siblings_[exterior_x_face].disparity_ + 1 
                                 );
             kid_client.set_sibling_push(exterior_x_face, bound);
             break;
@@ -553,7 +563,9 @@ void octree_server::create_child_locked(
                               , siblings_[exterior_y_face]
                               , exterior_y_face
                               , kid_init.offset
-                              , offset_ 
+                                // REVIEW: This may be wrong. 
+                              , siblings_[exterior_y_face].offset_ 
+                              , siblings_[exterior_y_face].disparity_ + 1 
                                 );
             kid_client.set_sibling_push(exterior_y_face, bound);
             break;
@@ -594,7 +606,9 @@ void octree_server::create_child_locked(
                               , siblings_[exterior_z_face]
                               , exterior_z_face
                               , kid_init.offset
-                              , offset_ 
+                                // REVIEW: This may be wrong. 
+                              , siblings_[exterior_z_face].offset_ 
+                              , siblings_[exterior_z_face].disparity_ + 1 
                                 );
             kid_client.set_sibling_push(exterior_z_face, bound);
             break;
@@ -810,7 +824,8 @@ void octree_server::tie_child_sibling(
                                      , client_from_this() 
                                      , source_f
                                      , kid_offset
-                                     , parent_offset); 
+                                     , parent_offset
+                                     , 1); 
         }
     }
 
@@ -1339,6 +1354,408 @@ vector3d<std::vector<double> > octree_server::send_ghost_zone_locked(
     OCTOPUS_ASSERT(false);
     return vector3d<std::vector<double> >(); 
 } // }}} 
+
+///////////////////////////////////////////////////////////////////////////////
+vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
+    face f ///< Our direction, relative to the caller.
+  , boost::uint64_t disparity ///< Difference in refinement level
+  , boost::array<boost::int64_t, 3> amr_offset
+    ) 
+{ // {{{
+    // Make sure that we are initialized.
+    initialized_.wait();
+
+    mutex_type::scoped_lock l(mtx_);
+
+    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const gnx = config().grid_node_length;
+
+    vector3d<std::vector<double> > output; 
+
+    boost::uint64_t count = 0;
+
+    switch (f)
+    {
+        ///////////////////////////////////////////////////////////////////////
+        // X-axis.
+        case XL:
+        {
+            output.resize
+                (
+                /* [0, BW) */         bw
+              , /* [BW, GNX - BW) */  gnx - 2 * bw
+              , /* [BW, GNX - BW) */  gnx - 2 * bw
+                );
+
+/*
+            for (boost::uint64_t i = bw; i < (2 * bw); ++i)
+                for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
+                    for (boost::uint64_t k = bw; k < (gnx - bw); ++k)
+*/
+            for (boost::uint64_t i = 0; i < bw; ++i)
+                for (boost::uint64_t j = 0; j < (gnx - 2 * bw); ++j)
+                    for (boost::uint64_t k = 0; k < (gnx - 2 * bw); ++k)
+                    {
+                        using namespace octopus::operators;
+
+                        ///////////////////////////////////////////////////////
+                        // Adjusted indices 
+/*
+                        boost::uint64_t const i_out = i - bw;
+                        boost::uint64_t const j_out = j - bw;
+                        boost::uint64_t const k_out = k - bw; 
+*/
+                        ///////////////////////////////////////////////////////
+                        bool const i0 = (amr_offset[0] + i) % 2;
+
+                        ///////////////////////////////////////////////////////
+                        // Adjusted indices (input). 
+                        boost::uint64_t const i_in = (amr_offset[0] + i)
+                                                   / (1 << disparity);
+                        boost::uint64_t const j_in = (amr_offset[1] + j)
+                                                   / (1 << disparity);
+                        boost::uint64_t const k_in = (amr_offset[2] + k)
+                                                   / (1 << disparity);
+
+                        std::vector<double> const& u = U_(i_in, j_in, k_in); 
+                        std::vector<double>& m = output(i, j, k); 
+
+                        m = minmod(U_(i_in + 1, j_in, k_in) - u
+                                 , u - U_(i_in - 1, j_in, k_in));
+
+                        if (1 == i0)
+                            m = -m;
+
+                        m -= m * 0.25;
+
+                        // FIXME: This is too specific to Dominic/Zach's
+                        // code, move this into the science table.
+                        //OCTOPUS_ASSERT(science().rho(m) > 0.0);
+
+                        ++count;
+                    }
+
+            break;
+        } 
+
+        case XU:
+        {
+            output.resize
+                (
+                /* [GNX - BW, GNX) */ bw
+              , /* [BW, GNX - BW) */  gnx - 2 * bw
+              , /* [BW, GNX - BW) */  gnx - 2 * bw
+                );
+
+/*
+            for (boost::uint64_t i = gnx - 2 * bw; i < (gnx - bw); ++i)
+                for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
+                    for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
+*/
+            for (boost::uint64_t i = 0; i < bw; ++i)
+                for (boost::uint64_t j = 0; j < (gnx - 2 * bw); ++j)
+                    for (boost::uint64_t k = 0; k < (gnx - 2 * bw); ++k)
+                    {
+                        using namespace octopus::operators;
+
+                        ///////////////////////////////////////////////////////
+                        // Adjusted indices (output). 
+/*
+                        boost::uint64_t const i_out = i - (gnx - 2 * bw);
+                        boost::uint64_t const j_out = j - bw;
+                        boost::uint64_t const k_out = k - bw; 
+*/
+                        ///////////////////////////////////////////////////////
+                        bool const i0 = (amr_offset[0] + i) % 2;
+
+                        ///////////////////////////////////////////////////////
+                        // Adjusted indices (input). 
+                        boost::uint64_t const i_in = (amr_offset[0] + i)
+                                                   / (1 << disparity);
+                        boost::uint64_t const j_in = (amr_offset[1] + j)
+                                                   / (1 << disparity);
+                        boost::uint64_t const k_in = (amr_offset[2] + k)
+                                                   / (1 << disparity);
+
+                        std::vector<double> const& u = U_(i_in, j_in, k_in); 
+                        std::vector<double>& m = output(i, j, k); 
+
+                        m = minmod(U_(i_in + 1, j_in, k_in) - u
+                                 , u - U_(i_in - 1, j_in, k_in));
+
+                        if (1 == i0)
+                            m = -m;
+
+                        m -= m * 0.25;
+
+                        // FIXME: This is too specific to Dominic/Zach's
+                        // code, move this into the science table.
+                        //OCTOPUS_ASSERT(science().rho(m) > 0.0);
+
+                        ++count;
+                    }
+
+            break;
+        }
+
+        ///////////////////////////////////////////////////////////////////////
+        // Y-axis.
+        case YL:
+        {
+            output.resize
+                (
+                /* [BW, GNX - BW) */  gnx - 2 * bw
+              , /* [0, BW) */         bw
+              , /* [BW, GNX - BW) */  gnx - 2 * bw
+                );
+
+/*
+            for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
+                for (boost::uint64_t j = bw; j < (2 * bw); ++j)
+                    for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
+*/
+            for (boost::uint64_t i = 0; i < (gnx - 2 * bw); ++i)
+                for (boost::uint64_t j = 0; j < bw; ++j)
+                    for (boost::uint64_t k = 0; k < (gnx - 2 * bw); ++k) 
+                    {
+                        using namespace octopus::operators;
+
+                        ///////////////////////////////////////////////////////
+                        // Adjusted indices (output). 
+/*
+                        boost::uint64_t const i_out = i - bw;
+                        boost::uint64_t const j_out = j - bw;
+                        boost::uint64_t const k_out = k - bw; 
+*/
+
+                        //////////////////////////////////////////////////////
+                        bool const j0 = (amr_offset[1] + j) % 2;
+
+                        ///////////////////////////////////////////////////////
+                        // Adjusted indices (input). 
+                        boost::uint64_t const i_in = (amr_offset[0] + i)
+                                                   / (1 << disparity);
+                        boost::uint64_t const j_in = (amr_offset[1] + j)
+                                                   / (1 << disparity);
+                        boost::uint64_t const k_in = (amr_offset[2] + k)
+                                                   / (1 << disparity);
+
+                        std::vector<double> const& u = U_(i_in, j_in, k_in); 
+                        std::vector<double>& m = output(i, j, k); 
+
+                        m = minmod(U_(i_in, j_in + 1, k_in) - u
+                                 , u - U_(i_in, j_in - 1, k_in));
+
+                        if (1 == j0)
+                            m = -m;
+
+                        m -= m * 0.25;
+
+                        // FIXME: This is too specific to Dominic/Zach's
+                        // code, move this into the science table.
+                        //OCTOPUS_ASSERT(science().rho(m) > 0.0);
+
+                        ++count;
+                    }
+
+            break;
+        } 
+
+        case YU:
+        {
+            output.resize
+                (
+                /* [BW, GNX - BW) */  gnx - 2 * bw
+              , /* [GNX - BW, GNX) */ bw
+              , /* [BW, GNX - BW) */  gnx - 2 * bw
+                );
+
+/*
+            for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
+                for (boost::uint64_t j = gnx - 2 * bw; j < (gnx - bw); ++j)
+                    for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
+*/
+            for (boost::uint64_t i = 0; i < (gnx - 2 * bw); ++i)
+                for (boost::uint64_t j = 0; j < bw; ++j)
+                    for (boost::uint64_t k = 0; k < (gnx - 2 * bw); ++k) 
+                    {
+                        using namespace octopus::operators;
+
+                        ///////////////////////////////////////////////////////
+                        // Adjusted indices (output). 
+/*
+                        boost::uint64_t const i_out = i - bw;
+                        boost::uint64_t const j_out = j - (gnx - 2 * bw);
+                        boost::uint64_t const k_out = k - bw; 
+*/
+
+                        ///////////////////////////////////////////////////////
+                        bool const j0 = (amr_offset[1] + j) % 2;
+
+                        ///////////////////////////////////////////////////////
+                        boost::uint64_t const i_in = (amr_offset[0] + i)
+                                                   / (1 << disparity);
+                        boost::uint64_t const j_in = (amr_offset[1] + j)
+                                                   / (1 << disparity);
+                        boost::uint64_t const k_in = (amr_offset[2] + k)
+                                                   / (1 << disparity);
+
+                        std::vector<double> const& u = U_(i_in, j_in, k_in); 
+                        std::vector<double>& m = output(i, j, k); 
+
+                        m = minmod(U_(i_in, j_in + 1, k_in) - u
+                                 , u - U_(i_in, j_in - 1, k_in));
+
+                        if (1 == j0)
+                            m = -m;
+
+                        m -= m * 0.25;
+
+                        // FIXME: This is too specific to Dominic/Zach's
+                        // code, move this into the science table.
+                        //OCTOPUS_ASSERT(science().rho(m) > 0.0);
+
+                        ++count;
+                    }
+
+            break;
+        }
+
+        ///////////////////////////////////////////////////////////////////////
+        // Z-axis.
+        case ZL:
+        {
+            output.resize
+                (
+                /* [BW, GNX - BW) */  gnx - 2 * bw
+              , /* [BW, GNX - BW) */  gnx - 2 * bw
+              , /* [0, BW) */         bw
+                );
+
+/*
+            for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
+                for (boost::uint64_t j = bw; j < (gnx - bw); ++j) 
+                    for (boost::uint64_t k = bw; k < (2 * bw); ++k)
+*/
+            for (boost::uint64_t i = 0; i < (gnx - 2 * bw); ++i)
+                for (boost::uint64_t j = 0; j < (gnx - 2 * bw); ++j) 
+                    for (boost::uint64_t k = 0; k < bw; ++k)
+                    {
+                        using namespace octopus::operators;
+
+                        ///////////////////////////////////////////////////////
+                        // Adjusted indices (output). 
+/*
+                        boost::uint64_t const i_out = i - bw;
+                        boost::uint64_t const j_out = j - bw; 
+                        boost::uint64_t const k_out = k - bw;
+*/
+
+                        ///////////////////////////////////////////////////////
+                        bool const k0 = (amr_offset[1] + k) % 2;
+
+                        ///////////////////////////////////////////////////////
+                        // Adjusted indices (input). 
+                        boost::uint64_t const i_in = (amr_offset[0] + i)
+                                                   / (1 << disparity);
+                        boost::uint64_t const j_in = (amr_offset[1] + j)
+                                                   / (1 << disparity);
+                        boost::uint64_t const k_in = (amr_offset[2] + k)
+                                                   / (1 << disparity);
+
+                        std::vector<double> const& u = U_(i_in, j_in, k_in); 
+                        std::vector<double>& m = output(i, j, k); 
+
+                        m = minmod(U_(i_in, j_in, k_in + 1) - u
+                                 , u - U_(i_in, j_in, k_in - 1));
+
+                        if (1 == k0)
+                            m = -m;
+
+                        m -= m * 0.25;
+
+                        // FIXME: This is too specific to Dominic/Zach's
+                        // code, move this into the science table.
+                        //OCTOPUS_ASSERT(science().rho(m) > 0.0);
+
+                        ++count;
+                    }
+
+            break;
+        } 
+
+        case ZU:
+        {
+            output.resize
+                (
+                /* [BW, GNX - BW) */  gnx - 2 * bw
+              , /* [BW, GNX - BW) */  gnx - 2 * bw
+              , /* [GNX - BW, GNX) */ bw
+                );
+
+/*
+            for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
+                for (boost::uint64_t j = bw; j < (gnx - bw); ++j) 
+                    for (boost::uint64_t k = gnx - 2 * bw; k < (gnx - bw); ++k)
+*/
+            for (boost::uint64_t i = 0; i < (gnx - 2 * bw); ++i)
+                for (boost::uint64_t j = 0; j < (gnx - 2 * bw); ++j) 
+                    for (boost::uint64_t k = 0; k < bw; ++k)
+                    {
+                        using namespace octopus::operators;
+
+                        ///////////////////////////////////////////////////////
+                        // Adjusted indices (output). 
+/*
+                        boost::uint64_t const i_out = i - bw;
+                        boost::uint64_t const j_out = j - bw; 
+                        boost::uint64_t const k_out = k - (gnx - 2 * bw);
+*/
+
+                        ///////////////////////////////////////////////////////
+                        bool const k0 = (amr_offset[2] + k) % 2;
+
+                        ///////////////////////////////////////////////////////
+                        // Adjusted indices (input). 
+                        boost::uint64_t const i_in = (amr_offset[0] + i)
+                                                   / (1 << disparity);
+                        boost::uint64_t const j_in = (amr_offset[1] + j)
+                                                   / (1 << disparity);
+                        boost::uint64_t const k_in = (amr_offset[2] + k)
+                                                   / (1 << disparity);
+
+                        std::vector<double> const& u = U_(i_in, j_in, k_in); 
+                        std::vector<double>& m = output(i, j, k); 
+
+                        m = minmod(U_(i_in, j_in, k_in + 1) - u
+                                 , u - U_(i_in, j_in, k_in - 1));
+
+                        if (1 == k0)
+                            m = -m;
+
+                        m -= m * 0.25;
+
+                        // FIXME: This is too specific to Dominic/Zach's
+                        // code, move this into the science table.
+                        //OCTOPUS_ASSERT(science().rho(m) > 0.0);
+
+                        ++count;
+                    }
+
+            break;
+        }
+
+        default:
+        {
+            OCTOPUS_ASSERT_MSG(false, "face shouldn't be out-of-bounds");
+        }
+    }; 
+
+
+    OCTOPUS_ASSERT(output.size() == count);
+
+    return output; 
+} // }}}
 
 // FIXME: Range checking.
 boost::array<boost::uint64_t, 3> map_location(
@@ -2141,8 +2558,6 @@ void octree_server::compute_z_flux_kernel(
     boost::uint64_t const ss = science().state_size;
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
-
-    indexer2d<2> const indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
 
     std::vector<std::vector<double> > q0(gnx, std::vector<double>(ss));
     std::vector<std::vector<double> > ql(gnx, std::vector<double>(ss));

@@ -282,7 +282,7 @@ struct OCTOPUS_EXPORT octree_server
         OCTOPUS_ASSERT_MSG(
             gid.get_management_type() == hpx::id_type::unmanaged,
             "get_gid() should return an unmanaged GID");
-        return octree_client(gid);;
+        return octree_client(gid);
     }
 
   public:
@@ -592,8 +592,6 @@ struct OCTOPUS_EXPORT octree_server
         );
   public:
 
-    // NOTE: Pulls, this may not be necessary. Currently this is done to
-    // rectify interpolation and physical boundaries. 
     /// Produces ghost zone data for a sibling.
     vector3d<std::vector<double> > send_ghost_zone(
         face f ///< Our direction, relative to the caller.
@@ -603,8 +601,18 @@ struct OCTOPUS_EXPORT octree_server
                                 send_ghost_zone,
                                 send_ghost_zone_action);
 
-    // NOTE: Pulls, this may not be necessary. Currently this is done to
-    // rectify interpolation and physical boundaries. 
+    // FIXME: The octree doing the interpolation could reverse-engineer the
+    // offset (probably) from the face (the child_index may also be needed).
+    vector3d<std::vector<double> > send_interpolated_ghost_zone(
+        face f ///< Our direction, relative to the caller.
+      , boost::uint64_t disparity ///< Difference in refinement level
+      , boost::array<boost::int64_t, 3> offset
+        );
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                send_interpolated_ghost_zone,
+                                send_interpolated_ghost_zone_action);
+
     vector3d<std::vector<double> > send_mapped_ghost_zone(
         face f ///< Our direction, relative to the caller.
         );
@@ -839,6 +847,7 @@ OCTOPUS_REGISTER_ACTION(get_offset);
 
 OCTOPUS_REGISTER_ACTION(receive_ghost_zone);
 OCTOPUS_REGISTER_ACTION(send_ghost_zone);
+OCTOPUS_REGISTER_ACTION(send_interpolated_ghost_zone);
 OCTOPUS_REGISTER_ACTION(send_mapped_ghost_zone);
 
 OCTOPUS_REGISTER_ACTION(receive_child_state);

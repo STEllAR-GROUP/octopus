@@ -107,8 +107,9 @@ std::vector<T> operator-(
     ) 
 {
     std::vector<T> tmp; 
+    tmp.reserve(a.size());
     for (std::size_t i = 0; i < a.size(); ++i)
-        tmp[i] = T(0) - a[i];
+        tmp.emplace_back(T(0) - a[i]);
     return tmp; 
 }
 
@@ -118,8 +119,8 @@ std::vector<T> operator-(
     ) 
 {
     std::vector<T> tmp(a); 
-    for (std::size_t i = 0; i < a.size(); ++i)
-        tmp[i] = T(0) - tmp[i];
+    for (std::size_t i = 0; i < tmp.size(); ++i)
+        tmp[i] = -tmp[i];
     return tmp; 
 }
 

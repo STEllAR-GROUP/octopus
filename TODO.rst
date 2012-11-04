@@ -8,27 +8,33 @@ Short-term todo list
 * *DONE* Set up physical boundaries for root.
 * *DONE* Implement enforce_boundaries(). 
 * *DONE* Implement exec_function().
-* Implement refinement. 
+* Refinement. 
+    * *DONE* Implementation.
+    * Testing/debugging.
+* Regridding.
+    * Implementation.
+    * Testing/debugging.
+* Temporal prediction.
+    * Implementation.
+    * Testing/debugging.
 * *DONE* Implement step():
-    * Push semantics.
-* *DONE* Implement sub_step():
+* Implement sub_step():
     * *DONE* Implement compute_(x|y|z)_flux() 
     * Implement adjust_(x|y|z)_flux()
     * *DONE* Implement sum_(x|y|z)_difs()
     * *DONE* Implement add_difs()
-    * Add state injection from children.
-    * Push semantics.
+    * *DONE* Add state injection from children.
 * *DONE* Add interface for defining the problem (e.g. defining the science_table).
     * *DONE* Add defaults to science_table before passing it to the user.
 * *DONE* Add I/O for verification.
-* Implement default_main.
 * *DONE* A lot of recursive functions need to be called from within step/sub-step to break the global barriers.
-* An off switch would be nice.
 * Visit control component.
-* Switch to std::array.
-* Add grid "age".
-* Add refine_or_unrefine to refinement_criteria interface.
-
+    * *DONE* Implementation.
+    * Testing/debugging.
+    * Better cleanup during unexpected shutdown (e.g. signals, crashes).
+* User-defined configuration (necessary for dynamic updating of config data).
+* Android integration.
+ 
 Long-term todo list
 ===================
 
@@ -39,4 +45,9 @@ Long-term todo list
 * Timestep refinement.
 * Place grid nodes based on where the corresponding grid node from the previous timestep is located.
 * Combine config() and science().
+* Rename ghost_zone to ghost_region (to avoid naming clashes with zones, which is the term we use for each independent discrete value).
+* Switch to std::array.
+* Add grid "age".
+* Add refine_or_unrefine to refinement_criteria interface.
+* Implement default_main.
 
