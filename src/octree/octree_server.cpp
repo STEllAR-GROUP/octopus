@@ -941,8 +941,8 @@ void octree_server::communicate_ghost_zones(
         {
             // 0.) Send out ghost zone data to our siblings. 
             // NOTE: send_ghost_zone_locked is somewhat compute intensive.
-            siblings_[i].receive_ghost_zone_push(step_, phase, invert(face(i)),
-                send_ghost_zone_locked(face(i)/*, l*/));
+            siblings_[i].receive_ghost_zone_push(step_, phase, face(i),
+                send_ghost_zone_locked(invert(face(i))/*, l*/));
 
             dependencies.emplace_back( 
                 ghost_zone_queue_.at(phase)(i).then_async(
@@ -954,7 +954,7 @@ void octree_server::communicate_ghost_zones(
         else
         {
             keep_alive.emplace_back
-                (siblings_[i].send_ghost_zone_async(invert(face(i))));
+                (siblings_[i].send_ghost_zone_async(face(i)));
             dependencies.emplace_back(keep_alive.back().when(boost::bind
                 (&octree_server::add_ghost_zone, this, face(i), _1))); 
         }
@@ -1204,7 +1204,7 @@ void octree_server::receive_ghost_zone(
     // NOTE (wash): boost::move should be safe here, zone is a temporary, even
     // if we're local to the caller. Plus, ATM set_value requires the value to
     // be moved to it.
-    ghost_zone_queue_.at(phase)(f).post(zone);
+    ghost_zone_queue_.at(phase)(invert(f)).post(zone);
 } // }}} 
 
 vector3d<std::vector<double> > octree_server::send_ghost_zone(
