@@ -581,8 +581,11 @@ struct stepper : octopus::trivial_serialization
     void operator()(octopus::octree_server& root) const
     {
         root.apply(octopus::science().initialize);
-    
-        root.refine();
+   
+        for ( boost::uint64_t i = 1
+            ; i <= octopus::config().max_refinement_level 
+            ; ++i)
+            root.refine(i);
     
         root.output_initial();
     

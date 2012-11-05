@@ -730,14 +730,14 @@ struct OCTOPUS_EXPORT octree_server
                                 copy_and_regrid,
                                 copy_and_regrid_action);  
 
-    void refine();
+    void refine(boost::uint64_t limit);
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                 refine,
                                 refine_action);  
 
   private:
-    void refine_kernel(/*mutex_type::scoped_lock& l*/);
+    void refine_kernel(boost::uint64_t limit/*mutex_type::scoped_lock& l*/);
 
   public:
     // Enforce the law.

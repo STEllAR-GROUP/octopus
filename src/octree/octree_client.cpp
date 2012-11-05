@@ -208,7 +208,7 @@ octree_client::send_interpolated_ghost_zone_async(
                          , f % invert(face_)); 
 */
     return hpx::async<octree_server::send_interpolated_ghost_zone_action>
-        (gid_, face_, offset_);
+        (gid_, f, offset_);
 }
 
 hpx::future<vector3d<std::vector<double> > >
@@ -443,10 +443,10 @@ hpx::future<void> octree_client::output_initial_async() const
 }
 
 
-hpx::future<void> octree_client::refine_async() const
+hpx::future<void> octree_client::refine_async(boost::uint64_t level) const
 {
     ensure_real();
-    return hpx::async<octree_server::refine_action>(gid_);
+    return hpx::async<octree_server::refine_action>(gid_, level);
 }
 
 hpx::future<void> octree_client::require_refinement_async() const

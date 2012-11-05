@@ -2783,7 +2783,7 @@ void octree_server::copy_and_regrid()
     return;
 } // }}}
 
-void octree_server::refine()
+void octree_server::refine(boost::uint64_t limit)
 { // {{{ IMPLEMENT
     std::vector<hpx::future<void> > recursion_is_parallelism;
 
@@ -2794,14 +2794,15 @@ void octree_server::refine()
 //        mutex_type::scoped_lock l(mtx_);
     
         // Kernel.
-        refine_kernel(/*l*/);
+        refine_kernel(limit/*l*/);
 
         recursion_is_parallelism.reserve(8);
     
         // Start recursively executing the kernel function on our children.
         for (boost::uint64_t i = 0; i < 8; ++i)
             if (hpx::invalid_id != children_[i])
-                recursion_is_parallelism.push_back(children_[i].refine_async()); 
+                recursion_is_parallelism.push_back
+                    (children_[i].refine_async(limit)); 
     }
 
     // Block while our children compute.
@@ -2811,9 +2812,13 @@ void octree_server::refine()
 // IMPLEMENT: Localize dependencies!
 void octree_server::refine_kernel(
 //    mutex_type::scoped_lock& l
+    boost::uint64_t limit
     )
 { // {{{ 
 //    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
+
+    if (limit == level_)
+        return;
 
     if (config().max_refinement_level == level_)
         return;
