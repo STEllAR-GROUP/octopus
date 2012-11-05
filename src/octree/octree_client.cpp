@@ -23,22 +23,21 @@
 namespace octopus
 {
 
+// FIXME: sib_offset is implicit knowledge (from index and source_offset).
 octree_client::octree_client(
     boundary_kind kind
   , octree_client const& source 
   , face f
+  , child_index index
   , boost::array<boost::int64_t, 3> sib_offset
   , boost::array<boost::int64_t, 3> source_offset
-  , boost::uint64_t disparity
     )
   : kind_(amr_boundary)
   , gid_(source.gid_)
   , face_(f)
-  , disparity_(disparity)
+  , index_(index)
   , offset_() 
 { // {{{
-    std::cout << "disparity: " << disparity_ << "\n";
-
     OCTOPUS_ASSERT(amr_boundary == kind);
 
     boost::array<boost::int64_t, 3> v;
@@ -81,13 +80,6 @@ octree_client::octree_client(
     offset_ = sib_offset;
     offset_ += v;
     offset_ -= source_offset * 2;
-
-    std::cout << "amr_offset: ("
-              << offset_[0] << ", "
-              << offset_[1] << ", "
-              << offset_[2] << ")\n";
-
-    std::cout << "disparity: " << disparity_ << "\n";
 } // }}}
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -131,69 +123,20 @@ hpx::future<void> octree_client::create_child_async(
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void octree_client::set_sibling(
+hpx::future<void> octree_client::set_sibling_async(
     face f
   , octree_client const& sib
     ) const
 {
     ensure_real();
-
     OCTOPUS_ASSERT_FMT_MSG(invalid_face > f,
                            "invalid face, face(%1%)",
                            boost::uint16_t(f));
-
-/*
-    if (amr_boundary == kind_)
-    {
-        //set_sibling_for_amr_boundary(f, sib, sib_parent); 
-        return;
-    }
-
-    else if (physical_boundary == kind_)
-    {
-        //set_sibling_for_physical_boundary(f, sib); 
-        return;
-    }
-*/
-
-    hpx::async<octree_server::set_sibling_action>(gid_, f, sib).get();
-}
-
-void octree_client::set_sibling_push(
-    face f
-  , octree_client const& sib
-    ) const
-{
-    ensure_real();
-
-    OCTOPUS_ASSERT_FMT_MSG(invalid_face > f,
-                           "invalid face, face(%1%)",
-                           boost::uint16_t(f));
-
-/*
-    if (amr_boundary == kind_)
-    {
-        // This is guranteed to be a purely local operation, and is also
-        // trivial, so we just do it directly.
-        // NOTE: Currently it's actually non-optimal.
-        //set_sibling_for_amr_boundary(f, sib, sib_parent);
-        return; 
-    }
-
-    else if (physical_boundary == kind_)
-    {
-        // This is guranteed to be a purely local operation, and is also
-        // trivial, so we just do it directly.
-        //set_sibling_for_physical_boundary(f, sib); 
-        return;
-    }
-*/
-
-    hpx::apply<octree_server::set_sibling_action>(gid_, f, sib);
+    return hpx::async<octree_server::set_sibling_action>(gid_, f, sib);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void octree_client::tie_sibling(
+hpx::future<void> octree_client::tie_sibling_async(
     face target_f
   , octree_client const& target_sib
     ) const
@@ -202,24 +145,12 @@ void octree_client::tie_sibling(
     OCTOPUS_ASSERT_FMT_MSG(invalid_face > target_f,
                            "invalid face, face(%1%)",
                            boost::uint16_t(target_f));
-    hpx::async<octree_server::tie_sibling_action>
-        (gid_, target_f, target_sib).get();
-}
-
-void octree_client::tie_sibling_push(
-    face target_f
-  , octree_client const& target_sib
-    ) const
-{
-    ensure_real();
-    OCTOPUS_ASSERT_FMT_MSG(invalid_face > target_f,
-                           "invalid face, face(%1%)",
-                           boost::uint16_t(target_f));
-    hpx::apply<octree_server::tie_sibling_action>(gid_, target_f, target_sib);
+    return hpx::async<octree_server::tie_sibling_action>
+        (gid_, target_f, target_sib);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void octree_client::set_child_sibling(
+hpx::future<void> octree_client::set_child_sibling_async(
     child_index kid
   , face f
   , octree_client const& sib
@@ -229,25 +160,12 @@ void octree_client::set_child_sibling(
     OCTOPUS_ASSERT_FMT_MSG(invalid_face > f,
                            "invalid face, face(%1%)",
                            boost::uint16_t(f));
-    hpx::async<octree_server::set_child_sibling_action>
-        (gid_, kid, f, sib).get();
-}
-
-void octree_client::set_child_sibling_push(
-    child_index kid
-  , face f
-  , octree_client const& sib
-    ) const
-{
-    ensure_real();
-    OCTOPUS_ASSERT_FMT_MSG(invalid_face > f,
-                           "invalid face, face(%1%)",
-                           boost::uint16_t(f));
-    hpx::apply<octree_server::set_child_sibling_action>(gid_, kid, f, sib);
+    return hpx::async<octree_server::set_child_sibling_action>
+        (gid_, kid, f, sib);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void octree_client::tie_child_sibling(
+hpx::future<void> octree_client::tie_child_sibling_async(
     child_index target_kid
   , face target_f
   , octree_client const& target_sib
@@ -257,21 +175,7 @@ void octree_client::tie_child_sibling(
     OCTOPUS_ASSERT_FMT_MSG(invalid_face > target_f,
                            "invalid face, face(%1%)",
                            boost::uint16_t(target_f));
-    hpx::async<octree_server::tie_child_sibling_action>
-        (gid_, target_kid, target_f, target_sib).get();
-}
-
-void octree_client::tie_child_sibling_push(
-    child_index target_kid
-  , face target_f
-  , octree_client const& target_sib
-    ) const
-{
-    ensure_real();
-    OCTOPUS_ASSERT_FMT_MSG(invalid_face > target_f,
-                           "invalid face, face(%1%)",
-                           boost::uint16_t(target_f));
-    hpx::apply<octree_server::tie_child_sibling_action>
+    return hpx::async<octree_server::tie_child_sibling_action>
         (gid_, target_kid, target_f, target_sib);
 }
     
@@ -300,15 +204,8 @@ octree_client::send_interpolated_ghost_zone_async(
     OCTOPUS_ASSERT_FMT_MSG(f == face_ 
                          , "supplied face (%1%) is not the stored face (%2%)"
                          , f % face_); 
-    std::cout << "kind: " << kind_ << "\n";
-    std::cout << "gid sent: " << gid_ << "\n";
-    std::cout << "face sent: " << face_ << "\n";
-    std::cout << "disparity sent: " << disparity_ << "\n";
-    std::cout << "offset sent: (" << offset_[0] << ", "
-                                  << offset_[1] << ", "
-                                  << offset_[2] << ")\n";
     return hpx::async<octree_server::send_interpolated_ghost_zone_action>
-        (gid_, face_, disparity_, offset_);
+        (gid_, face_, offset_);
 }
 
 hpx::future<vector3d<std::vector<double> > >
@@ -544,6 +441,12 @@ hpx::future<void> octree_client::refine_async() const
 {
     ensure_real();
     return hpx::async<octree_server::refine_action>(gid_);
+}
+
+hpx::future<void> octree_client::require_refinement_async() const
+{
+    OCTOPUS_ASSERT(amr_boundary == kind_);
+    return hpx::async<octree_server::require_refinement_action>(gid_, index_); 
 }
 
 }

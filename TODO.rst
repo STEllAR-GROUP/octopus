@@ -50,4 +50,5 @@ Long-term todo list
 * Add grid "age".
 * Add refine_or_unrefine to refinement_criteria interface.
 * Implement default_main.
+* Replace hpx::wait() with continuations and hpx::wait_all().
 

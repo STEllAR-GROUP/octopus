@@ -9,6 +9,7 @@
 #include <octopus/operators/std_vector_arithmetic.hpp>
 #include <octopus/science/reconstruction.hpp>
 #include <octopus/engine/engine_interface.hpp>
+#include <octopus/math.hpp>
 
 namespace octopus
 {
@@ -36,13 +37,7 @@ void minmod_reconstruction::operator()(
         std::vector<double> um  = q0[i];
                             um -= q0[i - 1];
 
-        for (boost::uint64_t l = 0; l < ss; ++l)
-        {
-            if (up[l] * um[l] > 0.0)
-                slope[i][l] = 2.0 * up[l] * um[l] / (up[l] + um[l]);
-            else
-                slope[i][l] = 0.0;
-        }
+        slope[i] = minmod_theta(up, um, theta_);
     }
 
     for (boost::uint64_t i = 2; i < gnx - 1; ++i)

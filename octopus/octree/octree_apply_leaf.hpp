@@ -25,7 +25,7 @@ inline T octree_server::apply_leaf(
     ) 
 {
     // Make sure that we are initialized.
-    initialized_.wait();
+    //initialized_.wait();
 
     return f(*this);
 }

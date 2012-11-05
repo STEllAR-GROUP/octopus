@@ -32,7 +32,7 @@ enum boundary_kind
     invalid_boundary
   , real_boundary
   , physical_boundary
-  , amr_boundary 
+  , amr_boundary
 };
 
 inline std::ostream& operator<<(std::ostream& os, boundary_kind k)
@@ -88,7 +88,7 @@ struct OCTOPUS_EXPORT octree_client
     // FIXME: This is only used by non-real boundaries, optimize.
     mutable face face_;
 
-    mutable boost::uint64_t disparity_; ///< Difference in refinement level.
+    mutable child_index index_; 
 
     // FIXME: This is only used for AMR boundaries, optimize.
     mutable boost::array<boost::int64_t, 3> offset_; ///< Relative offset.
@@ -118,7 +118,7 @@ struct OCTOPUS_EXPORT octree_client
             case amr_boundary:
             {
                 ar & face_;
-                ar & disparity_;
+                ar & index_;
                 ar & offset_;
                 break;
             }
@@ -136,7 +136,7 @@ struct OCTOPUS_EXPORT octree_client
       : kind_(real_boundary)
       , gid_(gid)
       , face_()
-      , disparity_()
+      , index_()
       , offset_()
     {}
 
@@ -147,7 +147,7 @@ struct OCTOPUS_EXPORT octree_client
       : kind_(real_boundary)
       , gid_(gid)
       , face_()
-      , disparity_()
+      , index_()
       , offset_()
     {}
 
@@ -159,7 +159,7 @@ struct OCTOPUS_EXPORT octree_client
         gid_ = gid;
         kind_ = real_boundary;
         face_ = invalid_face;
-        disparity_ = 0;
+        index_ = 0;
         offset_[0] = 0;
         offset_[1] = 0;
         offset_[2] = 0;
@@ -174,7 +174,7 @@ struct OCTOPUS_EXPORT octree_client
         kind_ = real_boundary;
         gid_ = gid;
         face_ = invalid_face;
-        disparity_ = 0;
+        index_ = 0;
         offset_[0] = 0;
         offset_[1] = 0;
         offset_[2] = 0;
@@ -186,9 +186,9 @@ struct OCTOPUS_EXPORT octree_client
         boundary_kind kind
       , octree_client const& source  
       , face f
+      , child_index index
       , boost::array<boost::int64_t, 3> sib_offset
       , boost::array<boost::int64_t, 3> source_offset
-      , boost::uint64_t disparity
         );
 
     // Physical boundary.
@@ -200,7 +200,7 @@ struct OCTOPUS_EXPORT octree_client
       : kind_(physical_boundary)
       , gid_(sib.gid_)
       , face_(f)
-      , disparity_()
+      , index_()
       , offset_()
     {
         OCTOPUS_ASSERT(physical_boundary == kind);
@@ -226,7 +226,7 @@ struct OCTOPUS_EXPORT octree_client
       : kind_(invalid_boundary)
       , gid_(hpx::naming::invalid_id)
       , face_(invalid_face)
-      , disparity_()
+      , index_()
       , offset_()
     {}
 
@@ -234,7 +234,7 @@ struct OCTOPUS_EXPORT octree_client
       : kind_(other.kind_)
       , gid_(other.gid_)
       , face_(other.face_)
-      , disparity_(other.disparity_)
+      , index_(other.index_)
       , offset_(other.offset_)
     {}
 
@@ -242,7 +242,7 @@ struct OCTOPUS_EXPORT octree_client
       : kind_(other.kind_)
       , gid_(other.gid_)
       , face_(other.face_)
-      , disparity_(other.disparity_)
+      , index_(other.index_)
       , offset_(other.offset_)
     {}
 
@@ -251,7 +251,7 @@ struct OCTOPUS_EXPORT octree_client
         kind_ = other.kind_;        
         gid_ = other.gid_;
         face_ = other.face_;
-        disparity_ = other.disparity_;
+        index_ = other.index_;
         offset_ = other.offset_;
         return *this;
     }
@@ -261,7 +261,7 @@ struct OCTOPUS_EXPORT octree_client
         kind_ = other.kind_;        
         gid_ = other.gid_;
         face_ = other.face_;
-        disparity_ = other.disparity_;
+        index_ = other.index_;
         offset_ = other.offset_;
         return *this;
     }
@@ -364,9 +364,12 @@ struct OCTOPUS_EXPORT octree_client
     void set_sibling(
         face f
       , octree_client const& sib 
-        ) const;
+        ) const
+    {
+        set_sibling_async(f, sib).get();
+    }
 
-    void set_sibling_push(
+    hpx::future<void> set_sibling_async(
         face f
       , octree_client const& sib 
         ) const;
@@ -377,9 +380,12 @@ struct OCTOPUS_EXPORT octree_client
     void tie_sibling(
         face f
       , octree_client const& sib 
-        ) const;
+        ) const
+    {
+        tie_sibling_async(f, sib).get();
+    }
 
-    void tie_sibling_push(
+    hpx::future<void> tie_sibling_async(
         face f
       , octree_client const& sib 
         ) const;
@@ -391,9 +397,12 @@ struct OCTOPUS_EXPORT octree_client
         child_index kid
       , face f
       , octree_client const& sib 
-        ) const;
+        ) const
+    {
+        set_child_sibling_async(kid, f, sib).get(); 
+    }
 
-    void set_child_sibling_push(
+    hpx::future<void> set_child_sibling_async(
         child_index kid
       , face f
       , octree_client const& sib 
@@ -406,9 +415,12 @@ struct OCTOPUS_EXPORT octree_client
         child_index kid
       , face f
       , octree_client const& sib 
-        ) const;
+        ) const
+    {
+        tie_child_sibling_async(kid, f, sib).get();
+    }
 
-    void tie_child_sibling_push(
+    hpx::future<void> tie_child_sibling_async(
         child_index kid
       , face f
       , octree_client const& sib 
@@ -537,20 +549,27 @@ struct OCTOPUS_EXPORT octree_client
     // {{{ step 
     void step() const
     {
-        return step_async().get();
+        step_async().get();
     }
 
     hpx::future<void> step_async() const;
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
-    // {{{ copy_and_regrid (IMPLEMENT) and refine
+    // {{{ Refinment 
     void refine() const
     {
         return refine_async().get();
     }
 
     hpx::future<void> refine_async() const;
+
+    void require_refinement() const
+    {
+        require_refinement_async().get();
+    }
+
+    hpx::future<void> require_refinement_async() const;
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////

@@ -24,7 +24,7 @@ inline T octree_server::reduce(
     ) 
 {
     // Make sure that we are initialized.
-    initialized_.wait();
+    //initialized_.wait();
 
     std::vector<hpx::future<T> > recursion_is_parallelism;
     recursion_is_parallelism.reserve(8);
@@ -53,7 +53,7 @@ inline T octree_server::reduce_zonal(
     ) 
 {
     // Make sure that we are initialized.
-    initialized_.wait();
+    //initialized_.wait();
 
     std::vector<hpx::future<T> > recursion_is_parallelism;
     recursion_is_parallelism.reserve(8);

@@ -56,14 +56,14 @@ struct OCTOPUS_EXPORT octree_server
     typedef hpx::components::managed_component<octree_server>*
         back_pointer_type;
 
-    typedef hpx::lcos::local::mutex mutex_type;
+//    typedef hpx::lcos::local::mutex mutex_type;
 
     ///< This event is triggered when we are first initialized. 
-    hpx::lcos::local::event initialized_;
+//    hpx::lcos::local::event initialized_;
 
-    mutable mutex_type mtx_; 
-    boost::uint8_t siblings_set_;
-    bool state_received_;
+//    mutable mutex_type mtx_; 
+//    boost::uint8_t siblings_set_;
+//    bool state_received_;
 
     // Circular doubly-linked list; size == temporal prediction gap.
     octree_client future_self_;
@@ -185,15 +185,16 @@ struct OCTOPUS_EXPORT octree_server
 #endif
 
     // Precondition: mtx_ must be locked.
-    child_index get_child_index_locked(mutex_type::scoped_lock& l) const
+    child_index get_child_index_locked(/*mutex_type::scoped_lock& l*/) const
     {
-        OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
+        //OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
         OCTOPUS_ASSERT_MSG(0 != level_, "root octree_server has no parent");
         child_index idx(location_[0] % 2, location_[1] % 2, location_[2] % 2);
         return idx; 
     }
 
     // Preconditions: mtx_ must be locked, siblings_set_ must be less than 6.
+/*
     void sibling_set_locked(mutex_type::scoped_lock& l)
     {
         OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
@@ -209,8 +210,10 @@ struct OCTOPUS_EXPORT octree_server
             initialized_.set(); 
         }
     }  
+*/
 
     // Preconditions: mtx_ must be locked, state_received_ is false. 
+/*
     void state_received_locked(mutex_type::scoped_lock& l)
     {
         OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
@@ -228,11 +231,12 @@ struct OCTOPUS_EXPORT octree_server
             initialized_.set();
         }
     }  
+*/
 
     child_index get_child_index() const
     {
-        mutex_type::scoped_lock l(mtx_);
-        return get_child_index_locked(l); 
+        //mutex_type::scoped_lock l(mtx_);
+        return get_child_index_locked(/*l*/); 
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -353,11 +357,13 @@ struct OCTOPUS_EXPORT octree_server
         return U_(i, j, k);
     } 
 
+/*
     // NOTE: Use with caution.
     mutex_type& get_mutex() const
     {
         return mtx_;
     }
+*/
 
     boost::array<double, 3> center_coords(
         boost::uint64_t i
@@ -445,7 +451,7 @@ struct OCTOPUS_EXPORT octree_server
   private:
     void create_child_locked(
         child_index kid
-      , mutex_type::scoped_lock& l
+      /*, mutex_type::scoped_lock& l*/
         );
 
   public:
@@ -524,10 +530,10 @@ struct OCTOPUS_EXPORT octree_server
     boost::array<octree_client, 6> get_siblings() 
     {
         // Make sure that we are initialized.
-        initialized_.wait();
+        //initialized_.wait();
 
         // Is the lock needed?
-        mutex_type::scoped_lock l(mtx_);
+        //mutex_type::scoped_lock l(mtx_);
         return siblings_;
     }
 
@@ -561,7 +567,7 @@ struct OCTOPUS_EXPORT octree_server
     /// Synchrony Gurantee:  Fire-and-Forget.
     void communicate_ghost_zones(
         boost::uint64_t phase
-      , mutex_type::scoped_lock& l
+      /*, mutex_type::scoped_lock& l*/
         );
 
     // FIXME: Rvalue reference kung-fo must be applied here.
@@ -588,7 +594,7 @@ struct OCTOPUS_EXPORT octree_server
   private:
     vector3d<std::vector<double> > send_ghost_zone_locked(
         face f ///< Our direction, relative to the caller.
-      , mutex_type::scoped_lock& l
+      /*, mutex_type::scoped_lock& l*/
         );
   public:
 
@@ -605,7 +611,7 @@ struct OCTOPUS_EXPORT octree_server
     // offset (probably) from the face (the child_index may also be needed).
     vector3d<std::vector<double> > send_interpolated_ghost_zone(
         face f ///< Our direction, relative to the caller.
-      , boost::uint64_t disparity ///< Difference in refinement level
+//      , boost::uint64_t disparity ///< Difference in refinement level
       , boost::array<boost::int64_t, 3> offset
         );
 
@@ -632,7 +638,7 @@ struct OCTOPUS_EXPORT octree_server
     /// 3.) Send a child -> parent injection up to our parent. 
     void child_to_parent_injection(
         boost::uint64_t phase
-      , mutex_type::scoped_lock& l
+      /*, mutex_type::scoped_lock& l*/
         );
 
     // FIXME: Rvalue reference kung-fo must be applied here.
@@ -658,7 +664,7 @@ struct OCTOPUS_EXPORT octree_server
 
   private:
     vector3d<std::vector<double> > send_child_state_locked(
-        mutex_type::scoped_lock& l
+        /*mutex_type::scoped_lock& l*/
         );
   public:
     ///////////////////////////////////////////////////////////////////////////
@@ -680,40 +686,40 @@ struct OCTOPUS_EXPORT octree_server
   private:
     void step_kernel(
         double dt
-      , mutex_type::scoped_lock& l
+      /*, mutex_type::scoped_lock& l*/
         );
 
     void sub_step_kernel(
         boost::uint64_t phase
       , double dt
       , double beta
-      , mutex_type::scoped_lock& l
+      /*, mutex_type::scoped_lock& l*/
         );
 
     void add_differentials_kernel(
         double dt
       , double beta
-      , mutex_type::scoped_lock& l
+      /*, mutex_type::scoped_lock& l*/
         ); 
 
-    void prepare_differentials_kernel(mutex_type::scoped_lock& l); 
+    void prepare_differentials_kernel(/*mutex_type::scoped_lock& l*/); 
 
     // NOTE: Operations on each axis overlap each other.
-    void compute_flux_kernel(mutex_type::scoped_lock& l);
+    void compute_flux_kernel(/*mutex_type::scoped_lock& l*/);
 
     // NOTE: Reads from U_, writes to FX_.
-    void compute_x_flux_kernel(mutex_type::scoped_lock& l);
+    void compute_x_flux_kernel(/*mutex_type::scoped_lock& l*/);
 
     // NOTE: Reads from U_, writes to FY_.
-    void compute_y_flux_kernel(mutex_type::scoped_lock& l);
+    void compute_y_flux_kernel(/*mutex_type::scoped_lock& l*/);
 
     // NOTE: Reads from U_, writes to FZ_.
-    void compute_z_flux_kernel(mutex_type::scoped_lock& l);
+    void compute_z_flux_kernel(/*mutex_type::scoped_lock& l*/);
 
     // IMPLEMENT 
-    void adjust_flux_kernel(mutex_type::scoped_lock& l);
+    void adjust_flux_kernel(/*mutex_type::scoped_lock& l*/);
 
-    void sum_differentials_kernel(mutex_type::scoped_lock& l);
+    void sum_differentials_kernel(/*mutex_type::scoped_lock& l*/);
 
   public:
     ///////////////////////////////////////////////////////////////////////////
@@ -731,11 +737,17 @@ struct OCTOPUS_EXPORT octree_server
                                 refine_action);  
 
   private:
-    void refine_kernel(mutex_type::scoped_lock& l);
+    void refine_kernel(/*mutex_type::scoped_lock& l*/);
 
   public:
+    // Enforce the law.
+    void require_refinement(child_index idx);
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                require_refinement, 
+                                require_refinement_action);
+
     ///////////////////////////////////////////////////////////////////////////
-    /// Precondition: An I/O epoch is active. 
     void output()
     {
         client_from_this().output();
@@ -859,6 +871,7 @@ OCTOPUS_REGISTER_ACTION(step_recurse);
 
 OCTOPUS_REGISTER_ACTION(copy_and_regrid);
 OCTOPUS_REGISTER_ACTION(refine);
+OCTOPUS_REGISTER_ACTION(require_refinement);
 
 #undef OCTOPUS_REGISTER_ACTION
 

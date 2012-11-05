@@ -42,9 +42,9 @@ void octree_server::parent_to_child_injection(
     
     indexer2d<2> const indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
 
-    mutex_type::scoped_lock l(mtx_);
+    //mutex_type::scoped_lock l(mtx_);
   
-    child_index c = get_child_index_locked(l);
+    child_index c = get_child_index_locked(/*l*/);
 
     std::vector<double> s1(ss), s2(ss), s3(ss);
 
@@ -85,7 +85,7 @@ void octree_server::parent_to_child_injection(
         }
     }
 
-    state_received_locked(l);
+    //state_received_locked(l);
 } // }}}
 
 void octree_server::initialize_queues()
@@ -137,10 +137,12 @@ octree_server::octree_server(
   , octree_init_data const& init
     )
   : base_type(back_ptr)
+/*
   , initialized_()
   , mtx_()
   , siblings_set_(6)
   , state_received_(true)
+*/
   , future_self_(init.future_self)
   , past_self_(init.past_self)
   , marked_for_refine_()
@@ -171,7 +173,7 @@ octree_server::octree_server(
 
     initialize_queues();
 
-    initialized_.set();
+//    initialized_.set();
 
     for (face i = XL; i < invalid_face; i = face(boost::uint8_t(i + 1)))
     {
@@ -186,10 +188,12 @@ octree_server::octree_server(
   , vector3d<std::vector<double> > const& parent_U
     )
   : base_type(back_ptr)
+/*
   , initialized_()
   , mtx_()
   , siblings_set_(0)
   , state_received_(false)
+*/
   , future_self_(init.future_self)
   , past_self_(init.past_self)
   , marked_for_refine_()
@@ -271,20 +275,20 @@ void octree_server::create_child(
     )
 { // {{{
     // Make sure that we are initialized.
-    initialized_.wait();
+//    initialized_.wait();
 
-    mutex_type::scoped_lock l(mtx_);
+//    mutex_type::scoped_lock l(mtx_);
 
-    create_child_locked(kid, l);
+    create_child_locked(kid/*, l*/);
 } // }}}
 
 // IMPLEMENT: Pass only the state that is needed.
 void octree_server::create_child_locked(
     child_index kid
-  , mutex_type::scoped_lock& l
+/*  , mutex_type::scoped_lock& l*/
     )
 { // {{{
-    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
+//    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
 
     OCTOPUS_ASSERT_FMT_MSG(
         children_[kid] == hpx::invalid_id,
@@ -440,14 +444,16 @@ void octree_server::create_child_locked(
 
     children_[kid] = kid_client;
 
+    std::vector<hpx::future<void> > links;
+    links.reserve(6); 
+
     ///////////////////////////////////////////////////////////////////////////
     // Create the interior "family" links.
 
-    // These links will be set later if the child doesn't exist yet.
-
     // Check if the interior X sibling of the new child exists.
     if (children_[x_sib] != hpx::invalid_id)
-        children_[x_sib].tie_sibling_push(exterior_x_face, kid_client);
+        links.emplace_back
+            (children_[x_sib].tie_sibling_async(exterior_x_face, kid_client));
 
     else if (!marked_for_refine_[x_sib]) 
     {
@@ -455,16 +461,18 @@ void octree_server::create_child_locked(
         octree_client bound(amr_boundary
                           , client_from_this()
                           , interior_x_face
+                          , kid
                           , kid_init.offset
                           , offset_
-                          , 1
                             ); 
-        kid_client.set_sibling_push(interior_x_face, bound);
+        links.emplace_back
+            (kid_client.set_sibling_async(interior_x_face, bound));
     }
 
     // Check if the interior Y sibling of the new child exists.
     if (children_[y_sib] != hpx::invalid_id)
-        children_[y_sib].tie_sibling_push(exterior_y_face, kid_client);
+        links.emplace_back(
+            children_[y_sib].tie_sibling_async(exterior_y_face, kid_client));
 
     else if (!marked_for_refine_[y_sib]) 
     {
@@ -472,16 +480,18 @@ void octree_server::create_child_locked(
         octree_client bound(amr_boundary
                           , client_from_this()
                           , interior_y_face
+                          , kid
                           , kid_init.offset
                           , offset_
-                          , 1
                             ); 
-        kid_client.set_sibling_push(interior_y_face, bound);
+        links.emplace_back
+            (kid_client.set_sibling_async(interior_y_face, bound));
     }
 
     // Check if the interior Z sibling of the new child exists.
     if (children_[z_sib] != hpx::invalid_id)
-        children_[z_sib].tie_sibling_push(exterior_z_face, kid_client);
+        links.emplace_back
+            (children_[z_sib].tie_sibling_async(exterior_z_face, kid_client));
 
     else if (!marked_for_refine_[z_sib]) 
     {
@@ -489,11 +499,12 @@ void octree_server::create_child_locked(
         octree_client bound(amr_boundary
                           , client_from_this()
                           , interior_z_face
+                          , kid
                           , kid_init.offset
                           , offset_
-                          , 1
                             ); 
-        kid_client.set_sibling_push(interior_z_face, bound);
+        links.emplace_back
+            (kid_client.set_sibling_async(interior_z_face, bound));
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -509,13 +520,17 @@ void octree_server::create_child_locked(
     {
         case real_boundary:
         {
-            siblings_[exterior_x_face].tie_child_sibling_push
-                (x_sib, interior_x_face, kid_client);
+            links.emplace_back
+                (siblings_[exterior_x_face].tie_child_sibling_async
+                    (x_sib, interior_x_face, kid_client));
             break;
         }
 
         case amr_boundary:
         {
+            links.emplace_back
+                (siblings_[exterior_x_face].require_refinement_async());
+/* 
             octree_client bound(amr_boundary
                               , siblings_[exterior_x_face]
                               , exterior_x_face
@@ -525,16 +540,18 @@ void octree_server::create_child_locked(
                               , siblings_[exterior_x_face].disparity_ + 1 
                                 );
             kid_client.set_sibling_push(exterior_x_face, bound);
+*/
             break;
         }
 
         case physical_boundary:
         {
             octree_client bound(physical_boundary
-                              , siblings_[exterior_x_face]
+                              , kid_client
                               , exterior_x_face
                                 );
-            kid_client.set_sibling_push(exterior_x_face, bound);
+            links.emplace_back
+                (kid_client.set_sibling_async(exterior_x_face, bound));
             break;
         }
 
@@ -552,13 +569,17 @@ void octree_server::create_child_locked(
     {
         case real_boundary:
         {
-            siblings_[exterior_y_face].tie_child_sibling_push
-                (y_sib, interior_y_face, kid_client);
+            links.emplace_back
+                (siblings_[exterior_y_face].tie_child_sibling_async
+                    (y_sib, interior_y_face, kid_client));
             break;
         }
 
         case amr_boundary:
         {
+            links.emplace_back
+                (siblings_[exterior_y_face].require_refinement_async());
+/*
             octree_client bound(amr_boundary
                               , siblings_[exterior_y_face]
                               , exterior_y_face
@@ -568,16 +589,18 @@ void octree_server::create_child_locked(
                               , siblings_[exterior_y_face].disparity_ + 1 
                                 );
             kid_client.set_sibling_push(exterior_y_face, bound);
+*/
             break;
         }
 
         case physical_boundary:
         {
             octree_client bound(physical_boundary
-                              , siblings_[exterior_y_face]
+                              , kid_client
                               , exterior_y_face
                                 );
-            kid_client.set_sibling_push(exterior_y_face, bound);
+            links.emplace_back
+                (kid_client.set_sibling_async(exterior_y_face, bound));
             break;
         }
 
@@ -595,13 +618,17 @@ void octree_server::create_child_locked(
     {
         case real_boundary:
         {
-            siblings_[exterior_z_face].tie_child_sibling_push
-                (z_sib, interior_z_face, kid_client);
+            links.emplace_back
+                (siblings_[exterior_z_face].tie_child_sibling_async
+                    (z_sib, interior_z_face, kid_client));
             break;
         }
 
         case amr_boundary:
         {
+            links.emplace_back
+                (siblings_[exterior_z_face].require_refinement_async());
+/*
             octree_client bound(amr_boundary
                               , siblings_[exterior_z_face]
                               , exterior_z_face
@@ -611,16 +638,18 @@ void octree_server::create_child_locked(
                               , siblings_[exterior_z_face].disparity_ + 1 
                                 );
             kid_client.set_sibling_push(exterior_z_face, bound);
+*/
             break;
         }
 
         case physical_boundary:
         {
             octree_client bound(physical_boundary
-                              , siblings_[exterior_z_face]
+                              , kid_client
                               , exterior_z_face
                                 );
-            kid_client.set_sibling_push(exterior_z_face, bound);
+            links.emplace_back
+                (kid_client.set_sibling_async(exterior_z_face, bound));
             break;
         }
 
@@ -630,6 +659,8 @@ void octree_server::create_child_locked(
             break;
         }
     };
+
+    hpx::wait_all(links);
 } // }}}
 
 void octree_server::set_sibling(
@@ -643,7 +674,7 @@ void octree_server::set_sibling(
         face(f));
 
     {
-        mutex_type::scoped_lock l(mtx_);
+        //mutex_type::scoped_lock l(mtx_);
 
         if (siblings_[f].kind() == real_boundary)
             OCTOPUS_ASSERT_FMT_MSG(
@@ -652,10 +683,10 @@ void octree_server::set_sibling(
                 face(f));
 
         std::cout << ( boost::format("%1%: set_sibling(%2%, %3%)\n")
-                     % get_child_index_locked(l) % f % sib.kind()); 
+                     % get_child_index_locked(/*l*/) % f % sib.kind()); 
     
         siblings_[f] = sib;  
-        sibling_set_locked(l);
+        //sibling_set_locked(l);
     }
 } // }}}
 
@@ -684,7 +715,7 @@ void octree_server::tie_sibling(
     
     octree_client source_sib(get_gid());
 
-    target_sib.set_sibling_push(source_f, source_sib);  
+    target_sib.set_sibling(source_f, source_sib);  
 } // }}}
 
 void octree_server::set_child_sibling(
@@ -699,17 +730,17 @@ void octree_server::set_child_sibling(
         kid % boost::uint16_t(f));
 
     // Make sure that we are initialized.
-    initialized_.wait();
+//    initialized_.wait();
 
     {
-        mutex_type::scoped_lock l(mtx_);
+//        mutex_type::scoped_lock l(mtx_);
 
         OCTOPUS_ASSERT_FMT_MSG(
             children_[kid] != hpx::invalid_id,
             "child does not exists, kid(%1%), face(%2%)",
             kid % boost::uint16_t(f));
 
-        children_[kid].set_sibling_push(f, sib);
+        children_[kid].set_sibling(f, sib);
     }
 } // }}}
 
@@ -725,7 +756,7 @@ void octree_server::tie_child_sibling(
         target_kid % boost::uint16_t(target_f));
 
     // Make sure that we are initialized.
-    initialized_.wait();
+//    initialized_.wait();
 
     child_index source_kid = target_kid;
 
@@ -787,8 +818,11 @@ void octree_server::tie_child_sibling(
 
     octree_client source_sib;
 
+    std::vector<hpx::future<void> > links;
+    links.reserve(2);
+
     {
-        mutex_type::scoped_lock l(mtx_);
+//        mutex_type::scoped_lock l(mtx_);
 
         OCTOPUS_ASSERT_FMT_MSG(
             siblings_[source_f] != hpx::invalid_id,
@@ -801,7 +835,8 @@ void octree_server::tie_child_sibling(
         if (children_[target_kid].kind() == real_boundary)
         {
             source_sib = children_[target_kid];
-            source_sib.set_sibling(target_f, target_sib);
+            links.emplace_back
+                (source_sib.set_sibling_async(target_f, target_sib));
         }
 
         else if (!marked_for_refine_[target_kid]) 
@@ -823,14 +858,16 @@ void octree_server::tie_child_sibling(
             source_sib = octree_client(amr_boundary
                                      , client_from_this() 
                                      , source_f
+                                     , source_kid
                                      , kid_offset
-                                     , parent_offset
-                                     , 1); 
+                                     , parent_offset); 
         }
     }
 
-    siblings_[source_f].set_child_sibling_push
-        (source_kid, source_f, source_sib);
+    links.emplace_back(siblings_[source_f].set_child_sibling_async
+        (source_kid, source_f, source_sib));
+
+    hpx::wait_all(links);
 } // }}}
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -877,10 +914,10 @@ void octree_server::tie_child_sibling(
 /// 3.) Relock \a l.
 void octree_server::communicate_ghost_zones(
     boost::uint64_t phase
-  , mutex_type::scoped_lock& l
+//  , mutex_type::scoped_lock& l
     )
 {
-    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
+    //OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
 
     OCTOPUS_ASSERT_FMT_MSG(
         phase < ghost_zone_queue_.size(),
@@ -904,8 +941,8 @@ void octree_server::communicate_ghost_zones(
         {
             // 0.) Send out ghost zone data to our siblings. 
             // NOTE: send_ghost_zone_locked is somewhat compute intensive.
-            parent_.receive_ghost_zone_push(step_, phase, face(i),
-                send_ghost_zone_locked(invert(face(i)), l));
+            siblings_[i].receive_ghost_zone_push(step_, phase, face(i),
+                send_ghost_zone_locked(invert(face(i))/*, l*/));
 
             dependencies.emplace_back( 
                 ghost_zone_queue_.at(phase)(i).then_async(
@@ -916,7 +953,8 @@ void octree_server::communicate_ghost_zones(
         // A boundary, so we pull.
         else
         {
-            keep_alive.push_back(siblings_[i].send_ghost_zone_async(face(i)));
+            keep_alive.emplace_back
+                (siblings_[i].send_ghost_zone_async(face(i)));
             dependencies.emplace_back(keep_alive.back().when(boost::bind
                 (&octree_server::add_ghost_zone, this, face(i), _1))); 
         }
@@ -924,10 +962,15 @@ void octree_server::communicate_ghost_zones(
 
     {
         // 1.) Unlock l.
-        hpx::util::unlock_the_lock<mutex_type::scoped_lock> ul(l);
+//        hpx::util::unlock_the_lock<mutex_type::scoped_lock> ul(l);
+
+        if (level_ != 0)
+            std::cout << "Unlocked [" << level_ << "](" << get_child_index() << ")\n";
+
+//        hpx::wait(keep_alive);
 
         // 2.) Block until out ghost zones for phase are ready.
-        hpx::wait_all(dependencies);
+        hpx::wait(dependencies);
 
     } // 3.) Relock l.
 }
@@ -940,10 +983,21 @@ void octree_server::add_ghost_zone(
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
 
-    // Make sure that we are initialized.
-    initialized_.wait();
+    if (level_ != 0)
+        std::cout << "add_ghost_zone: "
+                  << get_child_index()
+                  << " face " << f
+                  << "\n";
+    else
+        std::cout << "add_ghost_zone: root"
+                  << " face " << f
+                  << "\n";
+         
 
-    mutex_type::scoped_lock l(mtx_);
+    // Make sure that we are initialized.
+//    initialized_.wait();
+
+    //mutex_type::scoped_lock l(mtx_);
 
     OCTOPUS_ASSERT(zone_f.is_ready());
 
@@ -1123,9 +1177,23 @@ void octree_server::receive_ghost_zone(
     )
 { // {{{
     // Make sure that we are initialized.
-    initialized_.wait();
+//    initialized_.wait();
 
-    mutex_type::scoped_lock l(mtx_);
+    //mutex_type::scoped_lock l(mtx_);
+
+    if (level_ != 0)
+        std::cout << "receive_ghost_zone: "
+                  << get_child_index()
+                  << " step " << step
+                  << " phase " << phase
+                  << " face " << f
+                  << "\n"; 
+    else 
+        std::cout << "receive_ghost_zone: root"
+                  << " step " << step
+                  << " phase " << phase
+                  << " face " << f
+                  << "\n"; 
 
     OCTOPUS_ASSERT_MSG(step_ == step,
         "cross-timestep communication occurred, octree is ill-formed");
@@ -1148,21 +1216,31 @@ vector3d<std::vector<double> > octree_server::send_ghost_zone(
     )
 { // {{{
     // Make sure that we are initialized.
-    initialized_.wait();
+//    initialized_.wait();
 
-    mutex_type::scoped_lock l(mtx_);
+//    mutex_type::scoped_lock l(mtx_);
 
-    return send_ghost_zone_locked(f, l);
+//    return send_ghost_zone_locked(f, l);
+//    mutex_type::scoped_lock l;
+    return send_ghost_zone_locked(f/*, l*/);
 } // }}}
 
 // Who ya gonna call? Ghostbusters!
 vector3d<std::vector<double> > octree_server::send_ghost_zone_locked(
     face f ///< Our direction, relative to the caller.
-  , mutex_type::scoped_lock& l
+//  , mutex_type::scoped_lock& l
     )
 { // {{{
-    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
-    
+//    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
+
+//    hpx::util::unlock_the_lock<mutex_type::scoped_lock> ul(l);
+
+    if (0 == level_)  
+        std::cout << "send_ghost_zone: "
+                  << get_child_index()
+                  << " face " << f
+                  << "\n"; 
+ 
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
 
@@ -1358,14 +1436,14 @@ vector3d<std::vector<double> > octree_server::send_ghost_zone_locked(
 ///////////////////////////////////////////////////////////////////////////////
 vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
     face f ///< Our direction, relative to the caller.
-  , boost::uint64_t disparity ///< Difference in refinement level
+//  , boost::uint64_t disparity ///< Difference in refinement level
   , boost::array<boost::int64_t, 3> amr_offset
     ) 
 { // {{{
     // Make sure that we are initialized.
-    initialized_.wait();
+//    initialized_.wait();
 
-    mutex_type::scoped_lock l(mtx_);
+//    mutex_type::scoped_lock l(mtx_);
 
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
@@ -1409,27 +1487,32 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
+/*
                         boost::uint64_t const i_in = (amr_offset[0] + i)
                                                    / (1 << disparity);
                         boost::uint64_t const j_in = (amr_offset[1] + j)
                                                    / (1 << disparity);
                         boost::uint64_t const k_in = (amr_offset[2] + k)
                                                    / (1 << disparity);
+*/
+                        boost::uint64_t const i_in = (amr_offset[0] + i) / 2;
+                        boost::uint64_t const j_in = (amr_offset[1] + j) / 2;
+                        boost::uint64_t const k_in = (amr_offset[2] + k) / 2;
 
-                        std::vector<double> const& u = U_(i_in, j_in, k_in); 
-                        std::vector<double>& m = output(i_out, j_out, k_out); 
+                        std::vector<double> u = U_(i_in, j_in, k_in); 
 
-                        m = minmod(U_(i_in + 1, j_in, k_in) - u
+                        u = minmod(U_(i_in + 1, j_in, k_in) - u
                                  , u - U_(i_in - 1, j_in, k_in));
 
                         if (1 == i0)
-                            m = -m;
+                            u = -u;
 
-                        m -= m * 0.25;
+                        output(i_out, j_out, k_out)  = U_(i_in, j_in, k_in);
+                        output(i_out, j_out, k_out) -= u * 0.25;
 
                         // FIXME: This is too specific to Dominic/Zach's
                         // code, move this into the science table.
-                        //OCTOPUS_ASSERT(science().rho(m) > 0.0);
+                        OCTOPUS_ASSERT(output(i_out, j_out, k_out)[0] > 0.0);
 
                         ++count;
                     }
@@ -1468,27 +1551,32 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
+/*
                         boost::uint64_t const i_in = (amr_offset[0] + i)
                                                    / (1 << disparity);
                         boost::uint64_t const j_in = (amr_offset[1] + j)
                                                    / (1 << disparity);
                         boost::uint64_t const k_in = (amr_offset[2] + k)
                                                    / (1 << disparity);
+*/
+                        boost::uint64_t const i_in = (amr_offset[0] + i) / 2;
+                        boost::uint64_t const j_in = (amr_offset[1] + j) / 2;
+                        boost::uint64_t const k_in = (amr_offset[2] + k) / 2;
 
-                        std::vector<double> const& u = U_(i_in, j_in, k_in); 
-                        std::vector<double>& m = output(i_out, j_out, k_out); 
+                        std::vector<double> u = U_(i_in, j_in, k_in); 
 
-                        m = minmod(U_(i_in + 1, j_in, k_in) - u
+                        u = minmod(U_(i_in + 1, j_in, k_in) - u
                                  , u - U_(i_in - 1, j_in, k_in));
 
                         if (1 == i0)
-                            m = -m;
+                            u = -u;
 
-                        m -= m * 0.25;
+                        output(i_out, j_out, k_out)  = U_(i_in, j_in, k_in);
+                        output(i_out, j_out, k_out) -= u * 0.25;
 
                         // FIXME: This is too specific to Dominic/Zach's
                         // code, move this into the science table.
-                        //OCTOPUS_ASSERT(science().rho(m) > 0.0);
+                        OCTOPUS_ASSERT(output(i_out, j_out, k_out)[0] > 0.0);
 
                         ++count;
                     }
@@ -1529,27 +1617,33 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
+/*
                         boost::uint64_t const i_in = (amr_offset[0] + i)
                                                    / (1 << disparity);
                         boost::uint64_t const j_in = (amr_offset[1] + j)
                                                    / (1 << disparity);
                         boost::uint64_t const k_in = (amr_offset[2] + k)
                                                    / (1 << disparity);
+*/
 
-                        std::vector<double> const& u = U_(i_in, j_in, k_in); 
-                        std::vector<double>& m = output(i_out, j_out, k_out); 
+                        boost::uint64_t const i_in = (amr_offset[0] + i) / 2;
+                        boost::uint64_t const j_in = (amr_offset[1] + j) / 2;
+                        boost::uint64_t const k_in = (amr_offset[2] + k) / 2;
 
-                        m = minmod(U_(i_in, j_in + 1, k_in) - u
+                        std::vector<double> u = output(i_out, j_out, k_out); 
+
+                        u = minmod(U_(i_in, j_in + 1, k_in) - u
                                  , u - U_(i_in, j_in - 1, k_in));
 
                         if (1 == j0)
-                            m = -m;
+                            u = -u;
 
-                        m -= m * 0.25;
+                        output(i_out, j_out, k_out)  = U_(i_in, j_in, k_in);
+                        output(i_out, j_out, k_out) -= u * 0.25;
 
                         // FIXME: This is too specific to Dominic/Zach's
                         // code, move this into the science table.
-                        //OCTOPUS_ASSERT(science().rho(m) > 0.0);
+                        OCTOPUS_ASSERT(output(i_out, j_out, k_out)[0] > 0.0);
 
                         ++count;
                     }
@@ -1587,27 +1681,33 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
                         bool const j0 = (amr_offset[1] + j) % 2;
 
                         ///////////////////////////////////////////////////////
+/*
                         boost::uint64_t const i_in = (amr_offset[0] + i)
                                                    / (1 << disparity);
                         boost::uint64_t const j_in = (amr_offset[1] + j)
                                                    / (1 << disparity);
                         boost::uint64_t const k_in = (amr_offset[2] + k)
                                                    / (1 << disparity);
+*/
 
-                        std::vector<double> const& u = U_(i_in, j_in, k_in); 
-                        std::vector<double>& m = output(i_out, j_out, k_out); 
+                        boost::uint64_t const i_in = (amr_offset[0] + i) / 2;
+                        boost::uint64_t const j_in = (amr_offset[1] + j) / 2;
+                        boost::uint64_t const k_in = (amr_offset[2] + k) / 2;
 
-                        m = minmod(U_(i_in, j_in + 1, k_in) - u
+                        std::vector<double> u = U_(i_in, j_in, k_in); 
+
+                        u = minmod(U_(i_in, j_in + 1, k_in) - u
                                  , u - U_(i_in, j_in - 1, k_in));
 
                         if (1 == j0)
-                            m = -m;
+                            u = -u;
 
-                        m -= m * 0.25;
+                        output(i_out, j_out, k_out)  = U_(i_in, j_in, k_in);
+                        output(i_out, j_out, k_out) -= u * 0.25;
 
                         // FIXME: This is too specific to Dominic/Zach's
                         // code, move this into the science table.
-                        //OCTOPUS_ASSERT(science().rho(m) > 0.0);
+                        OCTOPUS_ASSERT(output(i_out, j_out, k_out)[0] > 0.0);
 
                         ++count;
                     }
@@ -1644,31 +1744,37 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const k_out = k - bw;
 
                         ///////////////////////////////////////////////////////
-                        bool const k0 = (amr_offset[1] + k) % 2;
+                        bool const k0 = (amr_offset[2] + k) % 2;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
+/*
                         boost::uint64_t const i_in = (amr_offset[0] + i)
                                                    / (1 << disparity);
                         boost::uint64_t const j_in = (amr_offset[1] + j)
                                                    / (1 << disparity);
                         boost::uint64_t const k_in = (amr_offset[2] + k)
                                                    / (1 << disparity);
+*/
 
-                        std::vector<double> const& u = U_(i_in, j_in, k_in); 
-                        std::vector<double>& m = output(i_out, j_out, k_out); 
+                        boost::uint64_t const i_in = (amr_offset[0] + i) / 2;
+                        boost::uint64_t const j_in = (amr_offset[1] + j) / 2;
+                        boost::uint64_t const k_in = (amr_offset[2] + k) / 2;
 
-                        m = minmod(U_(i_in, j_in, k_in + 1) - u
+                        std::vector<double> u = U_(i_in, j_in, k_in); 
+
+                        u = minmod(U_(i_in, j_in, k_in + 1) - u
                                  , u - U_(i_in, j_in, k_in - 1));
 
                         if (1 == k0)
-                            m = -m;
+                            u = -u;
 
-                        m -= m * 0.25;
+                        output(i_out, j_out, k_out)  = U_(i_in, j_in, k_in);
+                        output(i_out, j_out, k_out) -= u * 0.25;
 
                         // FIXME: This is too specific to Dominic/Zach's
                         // code, move this into the science table.
-                        //OCTOPUS_ASSERT(science().rho(m) > 0.0);
+                        OCTOPUS_ASSERT(output(i_out, j_out, k_out)[0] > 0.0);
 
                         ++count;
                     }
@@ -1707,27 +1813,33 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
+/*
                         boost::uint64_t const i_in = (amr_offset[0] + i)
                                                    / (1 << disparity);
                         boost::uint64_t const j_in = (amr_offset[1] + j)
                                                    / (1 << disparity);
                         boost::uint64_t const k_in = (amr_offset[2] + k)
                                                    / (1 << disparity);
+*/
 
-                        std::vector<double> const& u = U_(i_in, j_in, k_in); 
-                        std::vector<double>& m = output(i_out, j_out, k_out); 
+                        boost::uint64_t const i_in = (amr_offset[0] + i) / 2;
+                        boost::uint64_t const j_in = (amr_offset[1] + j) / 2;
+                        boost::uint64_t const k_in = (amr_offset[2] + k) / 2;
 
-                        m = minmod(U_(i_in, j_in, k_in + 1) - u
+                        std::vector<double> u = U_(i_in, j_in, k_in); 
+
+                        u = minmod(U_(i_in, j_in, k_in + 1) - u
                                  , u - U_(i_in, j_in, k_in - 1));
 
                         if (1 == k0)
-                            m = -m;
+                            u = -u;
 
-                        m -= m * 0.25;
+                        output(i_out, j_out, k_out)  = U_(i_in, j_in, k_in);
+                        output(i_out, j_out, k_out) -= u * 0.25;
 
                         // FIXME: This is too specific to Dominic/Zach's
                         // code, move this into the science table.
-                        //OCTOPUS_ASSERT(science().rho(m) > 0.0);
+                        OCTOPUS_ASSERT(output(i_out, j_out, k_out)[0] > 0.0);
 
                         ++count;
                     }
@@ -1740,7 +1852,6 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
             OCTOPUS_ASSERT_MSG(false, "face shouldn't be out-of-bounds");
         }
     }; 
-
 
     OCTOPUS_ASSERT(output.size() == count);
 
@@ -1804,9 +1915,9 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
     boost::uint64_t const gnx = config().grid_node_length;
 
     // Make sure that we are initialized.
-    initialized_.wait();
+//    initialized_.wait();
 
-    mutex_type::scoped_lock l(mtx_);
+//    mutex_type::scoped_lock l(mtx_);
 
     switch (f)
     {
@@ -1979,6 +2090,8 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                         else
                             science().enforce_outflow
                                 (f, z_face_coords(v[0], v[1], v[2] + 1));
+
+                        OCTOPUS_ASSERT(zone(ii, jj, kk)[0] > 0.0);
                     }
 
             return zone;
@@ -2015,6 +2128,8 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                         else
                             science().enforce_outflow
                                 (f, z_face_coords(v[0], v[1], v[2]));
+
+                        OCTOPUS_ASSERT(zone(ii, jj, kk)[0] > 0.0);
                     }
 
             return zone;
@@ -2041,10 +2156,10 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
 /// 3.) Send a child -> parent injection up to our parent. 
 void octree_server::child_to_parent_injection(
     boost::uint64_t phase
-  , mutex_type::scoped_lock& l
+//  , mutex_type::scoped_lock& l
     )
 { // {{{
-    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
+//    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
 
     std::vector<hpx::future<void> > dependencies;
     
@@ -2086,7 +2201,7 @@ void octree_server::child_to_parent_injection(
 
     {
         // 0.) Unlock l.
-        hpx::util::unlock_the_lock<mutex_type::scoped_lock> ul(l);
+//        hpx::util::unlock_the_lock<mutex_type::scoped_lock> ul(l);
 
         // 1.) Blocks until the child -> parent injection that is at phase in 
         //     the queue is ready.
@@ -2101,7 +2216,7 @@ void octree_server::child_to_parent_injection(
         // 3.) Send a child -> parent injection up to our parent. 
         // NOTE: send_child_state_locked is somewhat compute intensive.
         parent_.receive_child_state_push(step_, phase,
-            get_child_index_locked(l), send_child_state_locked(l));
+            get_child_index_locked(/*l*/), send_child_state_locked(/*l*/));
     }
 } // }}}
 
@@ -2114,9 +2229,9 @@ void octree_server::add_child_state(
     boost::uint64_t const gnx = config().grid_node_length;
 
     // Make sure that we are initialized.
-    initialized_.wait();
+//    initialized_.wait();
 
-    mutex_type::scoped_lock l(mtx_);
+//    mutex_type::scoped_lock l(mtx_);
 
     OCTOPUS_ASSERT(state_f.is_ready());
 
@@ -2126,25 +2241,19 @@ void octree_server::add_child_state(
     OCTOPUS_ASSERT(state.y_length() == ((gnx - 2 * bw) / 2));
     OCTOPUS_ASSERT(state.z_length() == ((gnx - 2 * bw) / 2));
 
-    // NOTE; i += 2 comes from the original code.
-    for (boost::uint64_t i = bw; i < (gnx - bw); i += 2)
-        for (boost::uint64_t j = bw; j < (gnx - bw); j += 1)
-            for (boost::uint64_t k = bw; k < (gnx - bw); k += 1)
+    for (boost::uint64_t i = 0; i < ((gnx - 2 * bw) / 2); ++i)
+        for (boost::uint64_t j = 0; j < ((gnx - 2 * bw) / 2); ++j)
+            for (boost::uint64_t k = 0; k < ((gnx - 2 * bw) / 2); ++k)
             {
                 // Adjusted indices (for destination).
                 boost::uint64_t const id
-                    = (bw + i) / 2 + idx.x() * ((gnx / 2) - bw);
+                    = i + bw + idx.x() * ((gnx / 2) - bw);
                 boost::uint64_t const jd
-                    = (bw + j) / 2 + idx.y() * ((gnx / 2) - bw);
+                    = j + bw + idx.y() * ((gnx / 2) - bw);
                 boost::uint64_t const kd
-                    = (bw + k) / 2 + idx.z() * ((gnx / 2) - bw);
+                    = k + bw + idx.z() * ((gnx / 2) - bw);
 
-                // Adjusted indices (for source).
-                boost::uint64_t is = i - bw; 
-                boost::uint64_t js = j - bw; 
-                boost::uint64_t ks = k - bw; 
-
-                U_(id, jd, kd) = state(is, js, ks); 
+                U_(id, jd, kd) = state(i, j, k); 
             }
 } // }}}
 
@@ -2155,7 +2264,7 @@ void octree_server::receive_child_state(
   , vector3d<std::vector<double> > const& state
     )
 { // {{{
-    mutex_type::scoped_lock l(mtx_);
+//    mutex_type::scoped_lock l(mtx_);
 
     OCTOPUS_ASSERT_MSG(step_ == step,
         "cross-timestep communication occurred, octree is ill-formed");
@@ -2174,10 +2283,10 @@ void octree_server::receive_child_state(
 } // }}}
 
 vector3d<std::vector<double> > octree_server::send_child_state_locked(
-    mutex_type::scoped_lock &l
+//    mutex_type::scoped_lock &l
     )
 { // {{{
-    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
+//    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
 
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
@@ -2189,7 +2298,7 @@ vector3d<std::vector<double> > octree_server::send_child_state_locked(
       , (gnx - 2 * bw) / 2
         ); 
 
-    child_index c = get_child_index_locked(l);
+    child_index c = get_child_index();
 
     for (boost::uint64_t i = bw; i < (gnx - bw); i += 2)
         for (boost::uint64_t j = bw; j < (gnx - bw); j += 2)
@@ -2202,7 +2311,7 @@ vector3d<std::vector<double> > octree_server::send_child_state_locked(
 
                 using namespace octopus::operators;
 
-                state(ii, jj, kk) += U_(i + 0, j + 0, k + 0);
+                state(ii, jj, kk)  = U_(i + 0, j + 0, k + 0);
                 state(ii, jj, kk) += U_(i + 1, j + 0, k + 0);
                 state(ii, jj, kk) += U_(i + 0, j + 1, k + 0);
                 state(ii, jj, kk) += U_(i + 1, j + 1, k + 0);
@@ -2225,7 +2334,7 @@ void octree_server::apply(
     std::vector<hpx::future<void> > recursion_is_parallelism;
 
     // Make sure that we are initialized.
-    initialized_.wait();
+//    initialized_.wait();
     
     recursion_is_parallelism.reserve(8);
     
@@ -2248,9 +2357,9 @@ void octree_server::step_recurse(double dt)
 
     {
         // Make sure that we are initialized.
-        initialized_.wait();
+//        initialized_.wait();
     
-        mutex_type::scoped_lock l(mtx_);
+//        mutex_type::scoped_lock l(mtx_);
     
         OCTOPUS_ASSERT_MSG(0 < dt, "invalid timestep size");
     
@@ -2262,7 +2371,7 @@ void octree_server::step_recurse(double dt)
                         (children_[i].get_gid(), dt)); 
     
         // Kernel.
-        step_kernel(dt, l);
+        step_kernel(dt/*, l*/);
     }
 
     // Block while our children compute.
@@ -2271,10 +2380,10 @@ void octree_server::step_recurse(double dt)
 
 void octree_server::step_kernel(
     double dt
-  , mutex_type::scoped_lock& l
+//  , mutex_type::scoped_lock& l
     )
 { // {{{
-    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
+//    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
 
     U0_ = U_;
     FO0_ = FO_;
@@ -2287,22 +2396,22 @@ void octree_server::step_kernel(
     {
         case 1:
         {
-            sub_step_kernel(0, dt, 1.0, l);
+            sub_step_kernel(0, dt, 1.0/*, l*/);
             break;
         }
 
         case 2:
         {
-            sub_step_kernel(0, dt, 1.0, l);
-            sub_step_kernel(1, dt, 0.5, l);
+            sub_step_kernel(0, dt, 1.0/*, l*/);
+            sub_step_kernel(1, dt, 0.5/*, l*/);
             break; 
         }
 
         case 3:
         {
-            sub_step_kernel(0, dt, 1.0, l);
-            sub_step_kernel(1, dt, 0.25, l);
-            sub_step_kernel(2, dt, 2.0 / 3.0, l);
+            sub_step_kernel(0, dt, 1.0/*, l*/);
+            sub_step_kernel(1, dt, 0.25/*, l*/);
+            sub_step_kernel(2, dt, 2.0 / 3.0/*, l*/);
             break; 
         }
 
@@ -2319,7 +2428,7 @@ void octree_server::step_kernel(
     // beginning of the next timestep already.
     // NOTE (wash): See math in the header above the declaration of
     // ghost_zone_queue for an explaination of the phase used here.
-    communicate_ghost_zones(config().runge_kutta_order, l);
+    communicate_ghost_zones(config().runge_kutta_order/*, l*/);
 
     ++step_;
     time_ += dt;
@@ -2330,36 +2439,38 @@ void octree_server::sub_step_kernel(
     boost::uint64_t phase
   , double dt
   , double beta
-  , mutex_type::scoped_lock &l 
+//  , mutex_type::scoped_lock &l 
     )
 { // {{{
-    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
+//    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
 
     // Talks, unlocks, blocks, and relocks.
-    communicate_ghost_zones(phase, l);
+    communicate_ghost_zones(phase/*, l*/);
+
+    std::cout << "past comms\n";
 
     // Semi-trivial.
-    prepare_differentials_kernel(l);
+    prepare_differentials_kernel(/*l*/);
 
     // Operations parallelizes by axis.
-    compute_flux_kernel(l);
-    adjust_flux_kernel(l);
+    compute_flux_kernel(/*l*/);
+    adjust_flux_kernel(/*l*/);
 
     // Critical section.
-    sum_differentials_kernel(l);
-    add_differentials_kernel(dt, beta, l);
+    sum_differentials_kernel(/*l*/);
+    add_differentials_kernel(dt, beta/*, l*/);
 
     // Unlocks, blocks, relocks and talks. 
-    child_to_parent_injection(phase, l);
+    child_to_parent_injection(phase/*, l*/);
 } // }}}
 
 void octree_server::add_differentials_kernel(
     double dt
   , double beta
-  , mutex_type::scoped_lock &l 
+//  , mutex_type::scoped_lock &l 
     )
 { // {{{
-    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
+//    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
 
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
@@ -2385,10 +2496,10 @@ void octree_server::add_differentials_kernel(
 } // }}}
 
 void octree_server::prepare_differentials_kernel(
-    mutex_type::scoped_lock &l
+//    mutex_type::scoped_lock &l
     ) 
 { // {{{
-    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
+//    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
 
     boost::uint64_t const ss = science().state_size;
     boost::uint64_t const gnx = config().grid_node_length;
@@ -2411,10 +2522,10 @@ void octree_server::prepare_differentials_kernel(
 } // }}}
 
 void octree_server::compute_flux_kernel(
-    mutex_type::scoped_lock &l 
+//    mutex_type::scoped_lock &l 
     )
 { // {{{ 
-    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
+//    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
 
     ////////////////////////////////////////////////////////////////////////////    
     // Compute our own local fluxes locally in parallel. 
@@ -2425,23 +2536,27 @@ void octree_server::compute_flux_kernel(
     boost::array<hpx::future<void>, 2> xyz =
     { {
         hpx::async(boost::bind
-            (&octree_server::compute_x_flux_kernel, this, boost::ref(l)))
+            (&octree_server::compute_x_flux_kernel, this/*, boost::ref(l)*/))
       , hpx::async(boost::bind
-            (&octree_server::compute_y_flux_kernel, this, boost::ref(l)))
+            (&octree_server::compute_y_flux_kernel, this/*, boost::ref(l)*/))
     } };
 
     // And do one here.
-    compute_z_flux_kernel(l);
+    compute_z_flux_kernel(/*l*/);
 
-    // Wait for the local x and y fluxes to be computed.
-    hpx::wait(xyz[0], xyz[1]);
+    {
+//        hpx::util::unlock_the_lock<mutex_type::scoped_lock> ul(l);
+
+        // Wait for the local x and y fluxes to be computed.
+        hpx::wait(xyz[0], xyz[1]);
+    }
 } // }}}
 
 void octree_server::compute_x_flux_kernel(
-    mutex_type::scoped_lock &l 
+//    mutex_type::scoped_lock &l 
     )
 { // {{{ 
-    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
+//    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
 
     boost::uint64_t const ss = science().state_size;
     boost::uint64_t const bw = science().ghost_zone_width;
@@ -2489,10 +2604,10 @@ void octree_server::compute_x_flux_kernel(
 } // }}}
 
 void octree_server::compute_y_flux_kernel(
-    mutex_type::scoped_lock &l 
+//    mutex_type::scoped_lock &l 
     )
 { // {{{ 
-    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
+//    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
 
     boost::uint64_t const ss = science().state_size;
     boost::uint64_t const bw = science().ghost_zone_width;
@@ -2540,10 +2655,10 @@ void octree_server::compute_y_flux_kernel(
 } // }}}
 
 void octree_server::compute_z_flux_kernel(
-    mutex_type::scoped_lock &l 
+//    mutex_type::scoped_lock &l 
     )
 { // {{{ 
-    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
+//    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
 
     boost::uint64_t const ss = science().state_size;
     boost::uint64_t const bw = science().ghost_zone_width;
@@ -2591,18 +2706,18 @@ void octree_server::compute_z_flux_kernel(
 } // }}}
 
 void octree_server::adjust_flux_kernel(
-    mutex_type::scoped_lock& l
+//    mutex_type::scoped_lock& l
     )
 { // {{{ IMPLEMENT
-    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
+//    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
 
 } // }}}
 
 void octree_server::sum_differentials_kernel(
-    mutex_type::scoped_lock& l
+//    mutex_type::scoped_lock& l
     )
 { // {{{ 
-    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
+//    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
 
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
@@ -2656,12 +2771,12 @@ void octree_server::refine()
 
     {
         // Make sure that we are initialized.
-        initialized_.wait();
+//        initialized_.wait();
     
-        mutex_type::scoped_lock l(mtx_);
+//        mutex_type::scoped_lock l(mtx_);
     
         // Kernel.
-        refine_kernel(l);
+        refine_kernel(/*l*/);
 
         recursion_is_parallelism.reserve(8);
     
@@ -2676,14 +2791,16 @@ void octree_server::refine()
 } // }}}
 
 // IMPLEMENT: Localize dependencies!
-void octree_server::refine_kernel(mutex_type::scoped_lock& l)
+void octree_server::refine_kernel(
+//    mutex_type::scoped_lock& l
+    )
 { // {{{ 
-    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
+//    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
 
     if (config().max_refinement_level == level_)
         return;
 
-    marked_for_refine_.set();
+    marked_for_refine_.reset();
 
     std::vector<hpx::future<void> > new_children;
     new_children.reserve(8);
@@ -2712,12 +2829,17 @@ void octree_server::refine_kernel(mutex_type::scoped_lock& l)
             if (science().refine_policy.refine(*this, kid))
                 new_children.push_back(hpx::async(boost::bind
                     (&octree_server::create_child_locked,
-                        this, kid, boost::ref(l))));
+                        this, kid/*, boost::ref(l)*/)));
         }
     }
 
     hpx::wait_all(new_children); 
 } // }}}
+
+void octree_server::require_refinement(child_index idx)
+{
+    // IMPLEMENT
+}
 
 }
 

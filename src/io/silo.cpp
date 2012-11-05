@@ -240,7 +240,7 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
 
 void single_variable_silo_writer::operator()(octree_server& e)
 {
-    mutex_type::scoped_lock(mtx_);
+    mutex_type::scoped_lock l(mtx_);
 
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
