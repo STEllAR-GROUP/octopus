@@ -27,7 +27,7 @@ namespace octopus
 octree_client::octree_client(
     boundary_kind kind
   , octree_client const& source 
-  , face f
+  , face f ///< Relative to caller.
   , child_index index
   , boost::array<boost::int64_t, 3> sib_offset
   , boost::array<boost::int64_t, 3> source_offset
@@ -124,7 +124,7 @@ hpx::future<void> octree_client::create_child_async(
 
 ///////////////////////////////////////////////////////////////////////////////
 hpx::future<void> octree_client::set_sibling_async(
-    face f
+    face f ///< Relative to us.
   , octree_client const& sib
     ) const
 {
@@ -137,7 +137,7 @@ hpx::future<void> octree_client::set_sibling_async(
 
 ///////////////////////////////////////////////////////////////////////////////
 hpx::future<void> octree_client::tie_sibling_async(
-    face target_f
+    face target_f ///< Relative to \a target_sib.
   , octree_client const& target_sib
     ) const
 {
@@ -152,7 +152,7 @@ hpx::future<void> octree_client::tie_sibling_async(
 ///////////////////////////////////////////////////////////////////////////////
 hpx::future<void> octree_client::set_child_sibling_async(
     child_index kid
-  , face f
+  , face f ///< Relative to \a sib
   , octree_client const& sib
     ) const
 {
@@ -167,7 +167,7 @@ hpx::future<void> octree_client::set_child_sibling_async(
 ///////////////////////////////////////////////////////////////////////////////
 hpx::future<void> octree_client::tie_child_sibling_async(
     child_index target_kid
-  , face target_f
+  , face target_f ///< Relative to \a target_sib 
   , octree_client const& target_sib
     ) const
 {
@@ -198,30 +198,36 @@ octree_client::get_offset_async() const
 ///////////////////////////////////////////////////////////////////////////////
 hpx::future<vector3d<std::vector<double> > >
 octree_client::send_interpolated_ghost_zone_async(
-    face f
+    face f ///< Direction, relative to us 
     ) const
 {
-    OCTOPUS_ASSERT_FMT_MSG(f == face_ 
-                         , "supplied face (%1%) is not the stored face (%2%)"
-                         , f % face_); 
+/*
+    OCTOPUS_ASSERT_FMT_MSG(f == invert(face_) 
+                         , "supplied face (%1%) is not inverse of the "
+                           "stored face (%2%)"
+                         , f % invert(face_)); 
+*/
     return hpx::async<octree_server::send_interpolated_ghost_zone_action>
         (gid_, face_, offset_);
 }
 
 hpx::future<vector3d<std::vector<double> > >
 octree_client::send_mapped_ghost_zone_async(
-    face f
+    face f ///< Direction, relative to us 
     ) const
 {
-    OCTOPUS_ASSERT_FMT_MSG(f == face_ 
-                         , "supplied face (%1%) is not the stored face (%2%)"
-                         , f % face_); 
+/*
+    OCTOPUS_ASSERT_FMT_MSG(f == invert(face_) 
+                         , "supplied face (%1%) is not inverse of the "
+                           "stored face (%2%)"
+                         , f % invert(face_)); 
+*/
     return hpx::async<octree_server::send_mapped_ghost_zone_action>
         (gid_, face_);
 }
 
 vector3d<std::vector<double> > octree_client::send_ghost_zone(
-    face f
+    face f ///< Direction, relative to us 
     ) const
 {
     switch (kind_)
@@ -242,7 +248,7 @@ vector3d<std::vector<double> > octree_client::send_ghost_zone(
 
 hpx::future<vector3d<std::vector<double> > > 
 octree_client::send_ghost_zone_async(
-    face f
+    face f ///< Direction, relative to us. 
     ) const
 {
     switch (kind_)

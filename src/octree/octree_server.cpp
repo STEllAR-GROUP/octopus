@@ -328,10 +328,10 @@ void octree_server::create_child_locked(
     kid_init.origin   = origin_;
     kid_init.step     = step_;
 
-    std::cout << kid << ": (" 
-              << kid_init.offset[0] << ", "
-              << kid_init.offset[1] << ", "
-              << kid_init.offset[2] << ")\n";
+//    std::cout << kid << ": (" 
+//              << kid_init.offset[0] << ", "
+//              << kid_init.offset[1] << ", "
+//              << kid_init.offset[2] << ")\n";
 
     // Start creating the child. 
     hpx::future<hpx::id_type, hpx::naming::gid_type> kid_gid
@@ -682,8 +682,8 @@ void octree_server::set_sibling(
                 "sibling already exists, face(%1%)",
                 face(f));
 
-        std::cout << ( boost::format("%1%: set_sibling(%2%, %3%)\n")
-                     % get_child_index_locked(/*l*/) % f % sib.kind()); 
+//        std::cout << ( boost::format("%1%: set_sibling(%2%, %3%)\n")
+//                     % get_child_index_locked(/*l*/) % f % sib.kind()); 
     
         siblings_[f] = sib;  
         //sibling_set_locked(l);
@@ -707,8 +707,8 @@ void octree_server::tie_sibling(
 
     child_index source_kid = invert(target_f, target_kid);
 
-    std::cout << ( boost::format("invert(%1%, %2%) == %3%\n")
-                 % target_f % target_kid % source_kid); 
+//    std::cout << ( boost::format("invert(%1%, %2%) == %3%\n")
+//                 % target_f % target_kid % source_kid); 
 
     // Locks.
     set_sibling(target_f, target_sib);
@@ -941,8 +941,8 @@ void octree_server::communicate_ghost_zones(
         {
             // 0.) Send out ghost zone data to our siblings. 
             // NOTE: send_ghost_zone_locked is somewhat compute intensive.
-            siblings_[i].receive_ghost_zone_push(step_, phase, face(i),
-                send_ghost_zone_locked(invert(face(i))/*, l*/));
+            siblings_[i].receive_ghost_zone_push(step_, phase, invert(face(i)),
+                send_ghost_zone_locked(face(i)/*, l*/));
 
             dependencies.emplace_back( 
                 ghost_zone_queue_.at(phase)(i).then_async(
@@ -954,7 +954,7 @@ void octree_server::communicate_ghost_zones(
         else
         {
             keep_alive.emplace_back
-                (siblings_[i].send_ghost_zone_async(face(i)));
+                (siblings_[i].send_ghost_zone_async(invert(face(i))));
             dependencies.emplace_back(keep_alive.back().when(boost::bind
                 (&octree_server::add_ghost_zone, this, face(i), _1))); 
         }
@@ -963,9 +963,6 @@ void octree_server::communicate_ghost_zones(
     {
         // 1.) Unlock l.
 //        hpx::util::unlock_the_lock<mutex_type::scoped_lock> ul(l);
-
-        if (level_ != 0)
-            std::cout << "Unlocked [" << level_ << "](" << get_child_index() << ")\n";
 
 //        hpx::wait(keep_alive);
 
@@ -992,7 +989,6 @@ void octree_server::add_ghost_zone(
         std::cout << "add_ghost_zone: root"
                   << " face " << f
                   << "\n";
-         
 
     // Make sure that we are initialized.
 //    initialized_.wait();
@@ -1208,7 +1204,7 @@ void octree_server::receive_ghost_zone(
     // NOTE (wash): boost::move should be safe here, zone is a temporary, even
     // if we're local to the caller. Plus, ATM set_value requires the value to
     // be moved to it.
-    ghost_zone_queue_.at(phase)(invert(f)).post(zone);
+    ghost_zone_queue_.at(phase)(f).post(zone);
 } // }}} 
 
 vector3d<std::vector<double> > octree_server::send_ghost_zone(
@@ -1235,9 +1231,13 @@ vector3d<std::vector<double> > octree_server::send_ghost_zone_locked(
 
 //    hpx::util::unlock_the_lock<mutex_type::scoped_lock> ul(l);
 
-    if (0 == level_)  
+    if (level_ != 0)  
         std::cout << "send_ghost_zone: "
                   << get_child_index()
+                  << " face " << f
+                  << "\n"; 
+    else
+        std::cout << "send_ghost_zone: root"
                   << " face " << f
                   << "\n"; 
  
@@ -1444,6 +1444,16 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
 //    initialized_.wait();
 
 //    mutex_type::scoped_lock l(mtx_);
+
+    if (level_ != 0)
+        std::cout << "send_interpolated_ghost_zone: "
+                  << get_child_index()
+                  << " face " << f
+                  << "\n";
+    else
+        std::cout << "send_interpolated_ghost_zone: root"
+                  << " face " << f
+                  << "\n";
 
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
@@ -1876,7 +1886,7 @@ boost::array<boost::uint64_t, 3> map_location(
     v[1] = j;
     v[2] = k;
 
-    switch (f)
+    switch (invert(f))
     {
         case XU:
             v[0] = bw;
@@ -1918,6 +1928,16 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
 //    initialized_.wait();
 
 //    mutex_type::scoped_lock l(mtx_);
+
+    if (level_ != 0)
+        std::cout << "send_mapped_ghost_zone: "
+                  << get_child_index()
+                  << " face " << f
+                  << "\n";
+    else
+        std::cout << "send_mapped_ghost_zone: root"
+                  << " face " << f
+                  << "\n";
 
     switch (f)
     {
@@ -2446,8 +2466,6 @@ void octree_server::sub_step_kernel(
 
     // Talks, unlocks, blocks, and relocks.
     communicate_ghost_zones(phase/*, l*/);
-
-    std::cout << "past comms\n";
 
     // Semi-trivial.
     prepare_differentials_kernel(/*l*/);

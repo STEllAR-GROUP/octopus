@@ -185,7 +185,7 @@ struct OCTOPUS_EXPORT octree_client
     octree_client(
         boundary_kind kind
       , octree_client const& source  
-      , face f
+      , face f ///< Relative to caller.
       , child_index index
       , boost::array<boost::int64_t, 3> sib_offset
       , boost::array<boost::int64_t, 3> source_offset
@@ -195,7 +195,7 @@ struct OCTOPUS_EXPORT octree_client
     octree_client( 
         boundary_kind kind
       , octree_client const& sib 
-      , face f
+      , face f ///< Relative to caller.
         )
       : kind_(physical_boundary)
       , gid_(sib.gid_)
@@ -362,7 +362,7 @@ struct OCTOPUS_EXPORT octree_client
     ///////////////////////////////////////////////////////////////////////////
     // {{{ set_sibling
     void set_sibling(
-        face f
+        face f ///< Relative to us.
       , octree_client const& sib 
         ) const
     {
@@ -370,7 +370,7 @@ struct OCTOPUS_EXPORT octree_client
     }
 
     hpx::future<void> set_sibling_async(
-        face f
+        face f ///< Relative to us.
       , octree_client const& sib 
         ) const;
     // }}}
@@ -378,16 +378,16 @@ struct OCTOPUS_EXPORT octree_client
     ///////////////////////////////////////////////////////////////////////////
     // {{{ tie_sibling
     void tie_sibling(
-        face f
-      , octree_client const& sib 
+        face target_f ///< Relative to \a target_sib.
+      , octree_client const& target_sib 
         ) const
     {
-        tie_sibling_async(f, sib).get();
+        tie_sibling_async(target_f, target_sib).get();
     }
 
     hpx::future<void> tie_sibling_async(
-        face f
-      , octree_client const& sib 
+        face target_f ///< Relative to \a target_sib.
+      , octree_client const& target_sib 
         ) const;
     // }}}
 
@@ -395,7 +395,7 @@ struct OCTOPUS_EXPORT octree_client
     // {{{ set_child_sibling
     void set_child_sibling(
         child_index kid
-      , face f
+      , face f ///< Relative to \a sib.
       , octree_client const& sib 
         ) const
     {
@@ -404,7 +404,7 @@ struct OCTOPUS_EXPORT octree_client
 
     hpx::future<void> set_child_sibling_async(
         child_index kid
-      , face f
+      , face f ///< Relative to \a sib.
       , octree_client const& sib 
         ) const;
     // }}}
@@ -413,7 +413,7 @@ struct OCTOPUS_EXPORT octree_client
     // {{{ tie_child_sibling
     void tie_child_sibling(
         child_index kid
-      , face f
+      , face f ///< Relative to \a sib.
       , octree_client const& sib 
         ) const
     {
@@ -422,7 +422,7 @@ struct OCTOPUS_EXPORT octree_client
 
     hpx::future<void> tie_child_sibling_async(
         child_index kid
-      , face f
+      , face f ///< Relative to \a sib.
       , octree_client const& sib 
         ) const;
     // }}}
@@ -453,7 +453,7 @@ struct OCTOPUS_EXPORT octree_client
     // AMR boundary.
     vector3d<std::vector<double> >
     send_interpolated_ghost_zone(
-        face f
+        face f ///< Direction, relative to us 
         ) const
     {
         return send_interpolated_ghost_zone_async(f).get();
@@ -462,12 +462,12 @@ struct OCTOPUS_EXPORT octree_client
     // AMR boundary.
     hpx::future<vector3d<std::vector<double> > >
     send_interpolated_ghost_zone_async(
-        face f
+        face f ///< Direction, relative to us 
         ) const;
 
     // Physical boundary. 
     vector3d<std::vector<double> > send_mapped_ghost_zone(
-        face f
+        face f ///< Direction, relative to us 
         ) const
     {
         return send_mapped_ghost_zone_async(f).get();
@@ -475,7 +475,7 @@ struct OCTOPUS_EXPORT octree_client
 
     // Physical boundary. 
     hpx::future<vector3d<std::vector<double> > > send_mapped_ghost_zone_async(
-        face f
+        face f ///< Direction, relative to us 
         ) const;
     // }}}
 
