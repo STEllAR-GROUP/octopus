@@ -42,7 +42,15 @@ double const GAMMA = 2.0; // EULER_GAMMA
 
 // Polytropic constant.
 double KAPPA = 1.0;
-    
+
+enum rotation_direction
+{
+    rotate_clockwise,
+    rotate_counterclockwise
+};
+
+rotation_direction rotation;
+
 ///////////////////////////////////////////////////////////////////////////////
 /// Mass density
 inline double&       rho(std::vector<double>& u)       { return u[0]; }
@@ -180,9 +188,29 @@ struct initialize : octopus::trivial_serialization
                                   (0.5/kappa0)
                                 * (C + G*M_C/sqrt(r*r + z*z) - 0.5*pow(h/r, 2));
 
-                            rho(U(i, j, k))          = rho_here;
-                            momentum_x(U(i, j, k))   = -y*rho_here*h/pow(r, 2);
-                            momentum_y(U(i, j, k))   = x*rho_here*h/pow(r, 2);
+                            rho(U(i, j, k)) = rho_here;
+
+                            double& mom_x = momentum_x(U(i, j, k));
+                            double& mom_y = momentum_y(U(i, j, k));
+
+                            mom_x = y*rho_here*h/pow(r, 2);
+                            mom_y = x*rho_here*h/pow(r, 2);
+
+                            if (rotate_counterclockwise == rotation)
+                            {
+                                mom_x = (-y)*rho_here*h/pow(r, 2);
+                                mom_y = (+x)*rho_here*h/pow(r, 2);
+                            }
+
+                            else if (rotate_clockwise == rotation)
+                            {
+                                mom_x = (+y)*rho_here*h/pow(r, 2);
+                                mom_y = (-x)*rho_here*h/pow(r, 2);
+                            }
+
+                            else
+                                OCTOPUS_ASSERT(false);
+
                             total_energy(U(i, j, k)) = ei0;
                             tau(U(i, j, k))          = tau0;
                         }
@@ -210,7 +238,7 @@ struct initialize : octopus::trivial_serialization
                     //std::cout << "(" << x << ", " << y << ", " << z << ") == "
                     //          << rho(U(i, j, k)) << "\n";
 
-                    momentum_z(U(i, j, k)) = 0.0;
+                    momentum_z(U(i, j, k)) = 0.0; 
 
                     rho(U(i, j, k)) = (std::max)(rho(U(i, j, k)), rho_floor); 
                 }
@@ -537,22 +565,34 @@ void octopus_define_problem(
     double max_dt_growth = 0.0; 
     double temporal_prediction_limiter = 0.0; 
 
+    std::string rotation_direction_str = "";
+
     octopus::config_reader reader("octopus.3d_torus");
 
     reader
         ("max_dt_growth", max_dt_growth, 1.25)
         ("temporal_prediction_limiter", temporal_prediction_limiter, 0.5)
         ("kappa", KAPPA, 1.0)
+        ("rotation_direction", rotation_direction_str, "counterclockwise")
     ;
+   
+    if (rotation_direction_str == "clockwise")
+        rotation = rotate_clockwise;
+    else if (rotation_direction_str == "counterclockwise")
+        rotation = rotate_counterclockwise;
+    else
+        OCTOPUS_ASSERT_MSG(false, "invalid rotation direction");
 
     std::cout
         << "[octopus.3d_torus]\n"
-        << ( boost::format("max_dt_growth               = %.6e\n")
+        << ( boost::format("max_dt_growth               = %lf\n")
            % max_dt_growth)
-        << ( boost::format("temporal_prediction_limiter = %.6e\n")
+        << ( boost::format("temporal_prediction_limiter = %i\n")
            % temporal_prediction_limiter)
-        << ( boost::format("kappa                       = %.6e\n")
+        << ( boost::format("kappa                       = %lf\n")
            % KAPPA)
+        << ( boost::format("rotiona_direction           = %s\n")
+           % rotation_direction)
         << "\n";
 
     sci.state_size = 6;
@@ -585,8 +625,11 @@ struct stepper : octopus::trivial_serialization
         for ( boost::uint64_t i = 1
             ; i <= octopus::config().max_refinement_level 
             ; ++i)
+        {
             root.refine(i);
-    
+            root.apply(octopus::science().initialize);
+        }
+ 
         root.output_initial();
     
         std::cout << "Initial state prepared\n";
@@ -597,15 +640,16 @@ struct stepper : octopus::trivial_serialization
         // FIXME: Proper support for adding commandline options.     
         double max_dt_growth = 0.0; 
         double temporal_prediction_limiter = 0.0; 
-    
+   
+        std::string rotation_direction_str = "";
+ 
         octopus::config_reader reader("octopus.3d_torus");
     
         reader
             ("max_dt_growth", max_dt_growth, 1.25)
             ("temporal_prediction_limiter", temporal_prediction_limiter, 0.5)
-            ("kappa", KAPPA, 1.0)
         ;
-    
+   
         root.post_dt(root.apply_leaf(octopus::science().initial_timestep));
         double next_output_time = octopus::config().output_frequency;
     

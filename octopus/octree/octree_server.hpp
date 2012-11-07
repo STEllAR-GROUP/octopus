@@ -572,6 +572,27 @@ struct OCTOPUS_EXPORT octree_server
 
     // FIXME: Rvalue reference kung-fo must be applied here.
     /// Callback used to wait for a particular ghost zone. 
+    void add_sibling_ghost_zone(
+        face f ///< Bound parameter.
+      , hpx::future<vector3d<std::vector<double> > > zone_f
+        );
+
+    // FIXME: Rvalue reference kung-fo must be applied here.
+    /// Callback used to wait for a particular ghost zone. 
+    void add_interpolated_ghost_zone(
+        face f ///< Bound parameter.
+      , hpx::future<vector3d<std::vector<double> > > zone_f
+        );
+
+    // FIXME: Rvalue reference kung-fo must be applied here.
+    /// Callback used to wait for a particular ghost zone. 
+    void add_mapped_ghost_zone(
+        face f ///< Bound parameter.
+      , hpx::future<vector3d<std::vector<double> > > zone_f
+        );
+
+    // FIXME: Rvalue reference kung-fo must be applied here.
+    /// Callback used to wait for a particular ghost zone. 
     void add_ghost_zone(
         face f ///< Bound parameter.
       , hpx::future<vector3d<std::vector<double> > > zone_f

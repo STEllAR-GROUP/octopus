@@ -460,7 +460,7 @@ void octree_server::create_child_locked(
         OCTOPUS_ASSERT(children_[x_sib].kind() != physical_boundary);
         octree_client bound(amr_boundary
                           , client_from_this()
-                          , interior_x_face
+                          , exterior_x_face
                           , kid
                           , kid_init.offset
                           , offset_
@@ -479,7 +479,7 @@ void octree_server::create_child_locked(
         OCTOPUS_ASSERT(children_[y_sib].kind() != physical_boundary);
         octree_client bound(amr_boundary
                           , client_from_this()
-                          , interior_y_face
+                          , exterior_y_face
                           , kid
                           , kid_init.offset
                           , offset_
@@ -498,7 +498,7 @@ void octree_server::create_child_locked(
         OCTOPUS_ASSERT(children_[z_sib].kind() != physical_boundary);
         octree_client bound(amr_boundary
                           , client_from_this()
-                          , interior_z_face
+                          , exterior_z_face
                           , kid
                           , kid_init.offset
                           , offset_
@@ -941,23 +941,43 @@ void octree_server::communicate_ghost_zones(
         {
             // 0.) Send out ghost zone data to our siblings. 
             // NOTE: send_ghost_zone_locked is somewhat compute intensive.
-            siblings_[i].receive_ghost_zone_push(step_, phase, face(i),
+            siblings_[i].receive_ghost_zone_push(step_, phase, invert(face(i)),
                 send_ghost_zone_locked(invert(face(i))/*, l*/));
 
             dependencies.emplace_back( 
                 ghost_zone_queue_.at(phase)(i).then_async(
-                    boost::bind(&octree_server::add_ghost_zone,
+                    boost::bind(&octree_server::add_sibling_ghost_zone,
                         this, face(i), _1))); 
         }
 
+/*
         // A boundary, so we pull.
-        else
+        else 
         {
             keep_alive.emplace_back
                 (siblings_[i].send_ghost_zone_async(face(i)));
             dependencies.emplace_back(keep_alive.back().when(boost::bind
-                (&octree_server::add_ghost_zone, this, face(i), _1))); 
+                (&octree_server::add_ghost_zone, this, invert(face(i)), _1))); 
         }
+*/
+        else if (amr_boundary == siblings_[i].kind())
+        {
+            keep_alive.emplace_back
+                (siblings_[i].send_ghost_zone_async(face(i)));
+            dependencies.emplace_back(keep_alive.back().when(boost::bind
+                (&octree_server::add_interpolated_ghost_zone, this, face(i), _1))); 
+        }
+
+        else if (physical_boundary == siblings_[i].kind())
+        {
+            keep_alive.emplace_back
+                (siblings_[i].send_ghost_zone_async(face(i)));
+            dependencies.emplace_back(keep_alive.back().when(boost::bind
+                (&octree_server::add_mapped_ghost_zone, this, face(i), _1))); 
+        }
+
+        else
+            OCTOPUS_ASSERT(false);
     }
 
     {
@@ -972,6 +992,60 @@ void octree_server::communicate_ghost_zones(
     } // 3.) Relock l.
 }
 
+void octree_server::add_sibling_ghost_zone(
+    face f ///< Bound parameter.
+  , hpx::future<vector3d<std::vector<double> > > zone_f
+    )
+{ // {{{
+    if (level_ != 0)
+        std::cout << "add_sibling_ghost_zone: "
+                  << get_child_index()
+                  << " face " << f
+                  << "\n";
+    else
+        std::cout << "add_sibling_ghost_zone: root"
+                  << " face " << f
+                  << "\n";
+
+    add_ghost_zone(f, zone_f);
+} // }}}
+
+void octree_server::add_interpolated_ghost_zone(
+    face f ///< Bound parameter.
+  , hpx::future<vector3d<std::vector<double> > > zone_f
+    )
+{ // {{{
+    if (level_ != 0)
+        std::cout << "add_interpolated_ghost_zone: "
+                  << get_child_index()
+                  << " face " << f
+                  << "\n";
+    else
+        std::cout << "add_interpolated_ghost_zone: root"
+                  << " face " << f
+                  << "\n";
+
+    add_ghost_zone(f, zone_f);
+} // }}}
+
+void octree_server::add_mapped_ghost_zone(
+    face f ///< Bound parameter.
+  , hpx::future<vector3d<std::vector<double> > > zone_f
+    )
+{ // {{{
+    if (level_ != 0)
+        std::cout << "add_mapped_ghost_zone: "
+                  << get_child_index()
+                  << " face " << f
+                  << "\n";
+    else
+        std::cout << "add_mapped_ghost_zone: root"
+                  << " face " << f
+                  << "\n";
+
+    add_ghost_zone(f, zone_f);
+} // }}}
+
 void octree_server::add_ghost_zone(
     face f ///< Bound parameter.
   , hpx::future<vector3d<std::vector<double> > > zone_f
@@ -979,16 +1053,6 @@ void octree_server::add_ghost_zone(
 { // {{{
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
-
-    if (level_ != 0)
-        std::cout << "add_ghost_zone: "
-                  << get_child_index()
-                  << " face " << f
-                  << "\n";
-    else
-        std::cout << "add_ghost_zone: root"
-                  << " face " << f
-                  << "\n";
 
     // Make sure that we are initialized.
 //    initialized_.wait();
@@ -1204,7 +1268,7 @@ void octree_server::receive_ghost_zone(
     // NOTE (wash): boost::move should be safe here, zone is a temporary, even
     // if we're local to the caller. Plus, ATM set_value requires the value to
     // be moved to it.
-    ghost_zone_queue_.at(phase)(invert(f)).post(zone);
+    ghost_zone_queue_.at(phase)(f).post(zone);
 } // }}} 
 
 vector3d<std::vector<double> > octree_server::send_ghost_zone(
@@ -2758,23 +2822,19 @@ void octree_server::sum_differentials_kernel(
                 D_(i, j, k) -= (FZ_(i, j, k + 1) - FZ_(i, j, k)) * dxinv;
             }
 
-            // Only do this for the root node.
             // REVIEW: Talk to Dominic about how this works, this is ported
             // directly from the original code.
-            if (level_ == 0)
-            {
-                // i = y-axis, j = z-axis 
-                DFO_ += (FX_(gnx - bw, i, j) - FX_(bw, i, j)) * dx_ * dx_;
+            // i = y-axis, j = z-axis 
+            DFO_ += (FX_(gnx - bw, i, j) - FX_(bw, i, j)) * dx_ * dx_;
 
-                // i = x-axis, j = z-axis 
-                DFO_ += (FY_(i, gnx - bw, j) - FY_(i, bw, j)) * dx_ * dx_;
+            // i = x-axis, j = z-axis 
+            DFO_ += (FY_(i, gnx - bw, j) - FY_(i, bw, j)) * dx_ * dx_;
         
-                // i = x-axis, j = y-axis 
-                if (config().reflect_on_z)
-                    DFO_ += (FZ_(i, j, gnx - bw)) * dx_ * dx_;
-                else
-                    DFO_ += (FZ_(i, j, gnx - bw) - FZ_(i, j, bw)) * dx_ * dx_;
-            }
+            // i = x-axis, j = y-axis 
+            if (config().reflect_on_z)
+                DFO_ += (FZ_(i, j, gnx - bw)) * dx_ * dx_;
+            else
+                DFO_ += (FZ_(i, j, gnx - bw) - FZ_(i, j, bw)) * dx_ * dx_;
         }
 } // }}}
 
