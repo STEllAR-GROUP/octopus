@@ -37,21 +37,23 @@ link_directories(${HPX_LIBRARY_DIR})
 include_directories(${octopus_SOURCE_DIR})
 
 ################################################################################
+include_directories(externals/process)
+
+################################################################################
 find_package(HPX_Silo REQUIRED)
 
 include_directories(${SILO_INCLUDE_DIR})
 link_directories(${SILO_LIBRARY_DIR})
 
 ################################################################################
-# FIXME (wash): SC12 Hacks
-include_directories("/opt/boost_process")
+find_package(HPX_Visit)
 
-################################################################################
-# FIXME (wash): SC12 Hacks
-include_directories("/opt/visit/2.5.2/2.5.2/linux-x86_64/libsim/V2/include")
-link_directories("/opt/visit/2.5.2/2.5.2/linux-x86_64/libsim/V2/lib")
-
-add_definitions(-DOCTOPUS_VISIT_ROOT="/opt/visit/2.5.2")
+if(VISIT_DRIVER_FOUND AND VISIT_LIBSIM_FOUND)
+  include_directories(${VISIT_LIBSIM_INCLUDE_DIR})
+  link_directories(${VISIT_LIBSIM_LIBRARY_DIR})
+  add_definitions(-DOCTOPUS_HAVE_VISIT)
+  add_definitions(-DOCTOPUS_VISIT_DRIVER_ROOT="${VISIT_DRIVER_ROOT}")
+endif()
 
 ################################################################################
 hpx_option(OCTOPUS_VERIFY BOOL
@@ -62,16 +64,6 @@ if(OCTOPUS_VERIFY)
 else()
   add_definitions(-DOCTOPUS_ENABLE_VERIFICATION=0)
 endif()
-
-################################################################################
-hpx_option(OCTOPUS_TEST_IN_PLACE BOOL
-           "Enable in-code testing of Octopus (default: ON)" ON ADVANCED)
-
-if(OCTOPUS_TEST_IN_PLACE)
-  add_definitions(-DOCTOPUS_ENABLE_TEST_IN_PLACE=1)
-else()
-  add_definitions(-DOCTOPUS_ENABLE_TEST_IN_PLACE=0)
-endif()
   
 ################################################################################
 hpx_include(CompilerFlags)
@@ -80,10 +72,6 @@ hpx_use_flag_if_available(-Werror=switch LANGUAGES CXX)
 
 ################################################################################
 add_subdirectory(src)
-
-################################################################################
-add_hpx_pseudo_target(tests)
-add_subdirectory(tests)
 
 ################################################################################
 add_hpx_pseudo_target(applications)

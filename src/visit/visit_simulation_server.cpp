@@ -17,7 +17,7 @@ namespace octopus
 void visit_simulation_server::start(
     std::string const& name
   , std::string const& sim_file
-  , std::string const& exec
+  , std::string const& exe
   , std::vector<std::string> const& args
     // environment is a std::map<std::string, std::string>
   , boost::process::environment env // by value for swap
@@ -47,7 +47,7 @@ void visit_simulation_server::start(
     env.insert(ctx.environment.begin(), ctx.environment.end());
     env.swap(ctx.environment);
 
-    sim_.reset(new bp::child(bp::launch(exec, args, ctx)));
+    sim_.reset(new bp::child(bp::launch(exe, args, ctx)));
 
     VisItDetectInput(0, -1);
      

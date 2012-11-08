@@ -388,7 +388,7 @@ struct output_continuation
         self_.apply(output_locally());
     }
 };
-
+    
 struct end_io_epoch_continuation : trivial_serialization
 {
     typedef void result_type;

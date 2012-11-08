@@ -67,41 +67,41 @@ struct visit_simulation_client
       , std::string const& sim_file
         )
     {
-        std::string exec = join_paths(OCTOPUS_VISIT_ROOT, "bin", "visit"); 
-        return start_async(name, sim_file, exec);
+        std::string exe = join_paths(OCTOPUS_VISIT_DRIVER_ROOT, "bin", "visit"); 
+        return start_async(name, sim_file, exe);
     }
 
     hpx::future<void> start_async(
         std::string const& name
       , std::string const& sim_file
-      , std::string const& exec
+      , std::string const& exe
         )
     {
         std::vector<std::string> args { "-fullscreen", "-cli", "-o", sim_file };
-        return start_async(name, sim_file, exec, args);  
+        return start_async(name, sim_file, exe, args);  
     }
 
     hpx::future<void> start_async(
         std::string const& name
       , std::string const& sim_file
-      , std::string const& exec
+      , std::string const& exe
       , std::vector<std::string> const& args
         )
     {
         boost::process::environment env;
-        return start_async(name, sim_file, exec, args, env);  
+        return start_async(name, sim_file, exe, args, env);  
     }
 
     hpx::future<void> start_async(
         std::string const& name
       , std::string const& sim_file
-      , std::string const& exec
+      , std::string const& exe
       , std::vector<std::string> const& args
       , boost::process::environment const& env 
         )
     {
         return hpx::async<visit_simulation_server::start_action>
-            (this->gid_, name, sim_file, exec, args, env);
+            (this->gid_, name, sim_file, exe, args, env);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -123,31 +123,31 @@ struct visit_simulation_client
     void start(
         std::string const& name
       , std::string const& sim_file
-      , std::string const& exec
+      , std::string const& exe
         )
     {
-        start_async(name, sim_file, exec).get();
+        start_async(name, sim_file, exe).get();
     }
 
     void start(
         std::string const& name
       , std::string const& sim_file
-      , std::string const& exec
+      , std::string const& exe
       , std::vector<std::string> const& args
         )
     {
-        start_async(name, sim_file, exec, args).get();
+        start_async(name, sim_file, exe, args).get();
     }
 
     void start(
         std::string const& name
       , std::string const& sim_file
-      , std::string const& exec
+      , std::string const& exe
       , std::vector<std::string> const& args
       , boost::process::environment const& env 
         )
     {
-        start_async(name, sim_file, exec, args, env).get();
+        start_async(name, sim_file, exe, args, env).get();
     }
     // }}}
 

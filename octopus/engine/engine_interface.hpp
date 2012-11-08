@@ -17,9 +17,9 @@ namespace octopus
 /// \brief Retrieve the runtime configuration data. 
 ///
 /// Remote Operations:   No.
-/// Concurrency Control: None (read by multiple threads; data is read-only). 
+/// Concurrency Control: None (not thread-safe).
 /// Synchrony Gurantee:  Synchronous.
-inline config_data const& config()
+inline config_data& config()
 {
     OCTOPUS_ASSERT_MSG(engine_ptr != 0, "engine_ptr is NULL");
     return engine_ptr->config();    
@@ -28,9 +28,9 @@ inline config_data const& config()
 /// \brief Retrieve the science vtable. 
 ///
 /// Remote Operations:   No.
-/// Concurrency Control: None (read by multiple threads; data is read-only). 
+/// Concurrency Control: None (not thread-safe). 
 /// Synchrony Gurantee:  Synchronous.
-inline science_table const& /* Lets do some */ science() /* ! */
+inline science_table& /* Lets do some */ science() /* ! */
 {
     OCTOPUS_ASSERT_MSG(engine_ptr != 0, "engine_ptr is NULL");
     return engine_ptr->science(); 
@@ -39,7 +39,7 @@ inline science_table const& /* Lets do some */ science() /* ! */
 /// \brief Retrieve a list of all localities that are running Octopus. 
 ///
 /// Remote Operations:   No.
-/// Concurrency Control: None (read by multiple threads; data is read-only). 
+/// Concurrency Control: None (not thread-safe). 
 /// Synchrony Gurantee:  Synchronous.
 inline std::vector<hpx::id_type> const& localities() 
 {
@@ -94,6 +94,10 @@ inline hpx::id_type create_octree(
 {
     return create_octree_async(init, parent_U).get();
 } 
+
+OCTOPUS_EXPORT std::vector<hpx::future<void> > call_everywhere(
+    hpx::util::function<void()> const& f
+    );
 
 }
 

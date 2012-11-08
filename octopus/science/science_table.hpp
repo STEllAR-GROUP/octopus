@@ -69,12 +69,20 @@ struct science_table
     > enforce_outflow; 
 
     hpx::util::function<
+        void(
+            std::vector<double>& 
+          , boost::array<double, 3> const&
+            )
+    > enforce_limits; 
+
+    hpx::util::function<
         void(std::vector<double>&)
     > reflect_z; 
 
     hpx::util::function<
         double(
-            axis
+            octree_server&
+          , axis
           , std::vector<double> const& ///< State 
           , boost::array<double, 3> const& 
             )
@@ -114,21 +122,16 @@ struct science_table
 
     hpx::util::function<
         std::vector<double>(
-            std::vector<double> const& 
+            octree_server&
+          , std::vector<double> const& 
           , boost::array<double, 3> const&
             )
     > source; 
 
     hpx::util::function<
-        void(
-            std::vector<double>& 
-          , boost::array<double, 3> const&
-            )
-    > floor; 
-
-    hpx::util::function<
         std::vector<double>(
-            axis
+            octree_server&
+          , axis
           , std::vector<double>& ///< State 
           , boost::array<double, 3> const& 
             )
@@ -148,7 +151,10 @@ struct science_table
         ar & ghost_zone_width;
 
         ar & initialize;
+
         ar & enforce_outflow;
+        ar & enforce_limits;
+
         ar & reflect_z;
         ar & max_eigenvalue;
 
@@ -161,7 +167,6 @@ struct science_table
         ar & primitive_to_conserved;
 
         ar & source;
-        ar & floor;
         ar & flux;
 
         ar & refine_policy;

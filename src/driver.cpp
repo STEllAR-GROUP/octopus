@@ -16,6 +16,7 @@
 
 #include <octopus/driver.hpp>
 #include <octopus/engine/engine_server.hpp>
+#include <octopus/engine/engine_interface.hpp>
 
 using boost::program_options::options_description;
 using boost::program_options::variables_map;
@@ -60,16 +61,14 @@ int hpx_main(variables_map& vm)
         hpx::components::component_type type =
             hpx::components::get_component_type<octopus::engine_server>();
     
-        // Find all localities supporting Octopus.
-        std::vector<hpx::id_type> localities =
-            hpx::find_all_localities(type);
-    
+        // Find all localities supporting Octopus (except for us).
+        std::vector<hpx::id_type> localities = hpx::find_all_localities(type);
+
         OCTOPUS_ASSERT_MSG(!localities.empty(),
-                           "no localities supporting Octopus available"); 
+            "no localities supporting Octopus found");
     
         std::cout << "Found " << localities.size()
-                  << " usable localities, deploying infrastructure...\n"
-                  << "\n";
+                  << " usable localities, deploying infrastructure...\n";
 
         // FIXME: Sadly, distributing factory doesn't support constructor args
         // yet, so we have to do this by hand.
@@ -114,27 +113,46 @@ int hpx_main(variables_map& vm)
         OCTOPUS_ASSERT_MSG(define_p.first || main_p.first,
             "either octopus_define_problem or octopus_main must be defined");
 */
+        hpx::id_type const here = hpx::find_here();
+
+        engines.emplace_back(
+            runtime_support::create_component<octopus::engine_server>
+                (here, cfg, octopus::default_science_table(), localities));
 
         ///////////////////////////////////////////////////////////////////////
         // Initialize the science table.
         std::cout << "Initializing science table...\n"
-                     "\n";
+                  << "\n";
 
-        octopus::science_table sci = octopus::default_science_table(); 
+        octopus_define_problem(vm, octopus::science());
 
-        octopus_define_problem(vm, sci);
 /*
         if (define_p.first)
             (*define_p.first)(sci);
 */
 
+        ///////////////////////////////////////////////////////////////////////
+        // Create an engine on every locality.
+        std::cout << "Creating system components...\n";
+
+        bool found_here = false;
+
         for (std::size_t i = 0; i < localities.size(); ++i)
         {
-            engines.push_back(
+            if (localities[i] == here)
+            {
+                found_here = true;
+                continue;
+            }
+
+            engines.emplace_back(
                 runtime_support::create_component_async<octopus::engine_server>
-                    (localities[i], cfg, sci, localities));
+                    (localities[i], octopus::config(),
+                        octopus::science(), localities));
         }
-    
+
+        OCTOPUS_ASSERT(found_here);
+
         hpx::wait(engines);   
 
         ///////////////////////////////////////////////////////////////////////

@@ -37,16 +37,5 @@
     #define OCTOPUS_ASSERT_FMT_MSG(expr, fmt, args)
 #endif
 
-#if OCTOPUS_ENABLE_TEST_IN_PLACE
-    #include <boost/current_function.hpp>
-
-    #define OCTOPUS_TEST_IN_PLACE(expr) ((expr)                         \
-      ? ((void)0)                                                       \
-      : ::boost::assertion_failed                                       \
-            (#expr, BOOST_CURRENT_FUNCTION, __FILE__, __LINE__))
-#else
-    #define OCTOPUS_TIP(expr)
-#endif
-
 #endif // OCTOPUS_C509AE65_1FE4_4FAD_96B5_BB75605EB37C
 

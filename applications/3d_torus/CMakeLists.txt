@@ -7,8 +7,15 @@ add_definitions(-DOCTOPUS_CURRENT_SOURCE_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}"
 
 set(applications
     3d_torus_driver
-    3d_torus_realtime_viz
    )
+
+if(VISIT_DRIVER_FOUND AND VISIT_LIBSIM_FOUND)
+  set(applications
+      ${applications}
+      3d_torus_realtime_viz
+     )
+  set(3d_torus_realtime_viz_COMPONENT_DEPENDENCIES visit_simulation)
+endif()
 
 foreach(application ${applications})
   set(sources ${application}.cpp)
@@ -16,7 +23,8 @@ foreach(application ${applications})
   source_group("Source Files" FILES ${sources})
 
   add_hpx_executable(${application} SOURCES ${sources} ${${application}_FLAGS}
-                     DEPENDENCIES octopus_component simV2
+                     COMPONENT_DEPENDENCIES octopus
+                                            ${${applications}_COMPONENT_DEPENDENCIES}
                      FOLDER "Applications")
 
   add_hpx_pseudo_target(applications.${application})

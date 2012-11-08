@@ -33,11 +33,11 @@ struct OCTOPUS_EXPORT visit_simulation_server
     visit_simulation_server() : sim_() {}
 
     ///////////////////////////////////////////////////////////////////////////
-    // NOTE: exec is set up by the client, as is args if none are specified.
+    // NOTE: exe is set up by the client, as is args if none are specified.
     void start(
         std::string const& name
       , std::string const& sim_file
-      , std::string const& exec
+      , std::string const& exe
       , std::vector<std::string> const& args
         // environment is a std::map<std::string, std::string>
       , boost::process::environment env // by value for swap

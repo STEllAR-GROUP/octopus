@@ -33,26 +33,26 @@ struct OCTOPUS_EXPORT engine_server
   : hpx::components::simple_component_base<engine_server>
 {
   private:
-    config_data const config_;
-    science_table const science_;
+    config_data config_;
+    science_table science_;
 
     // TODO: Replace with modular distribution.
     boost::atomic<boost::uint64_t> round_robin_;
-    std::vector<hpx::id_type> const localities_;
+    std::vector<hpx::id_type> localities_;
 
   public:
-    engine_server() : config_(), science_(), round_robin_(0), localities_() 
+    engine_server() : config_(), science_(), round_robin_(0), localities_()
     {
         OCTOPUS_ASSERT_MSG(false, "engine_server can't be default constructed");
     }
 
     engine_server(
         config_data const& config
-      , science_table const& science
+      , science_table const& science 
       , std::vector<hpx::id_type> const& localities
         )
       : config_(config)
-      , science_(science)
+      , science_(science) 
       , round_robin_(0)
       , localities_(localities)
     {
@@ -60,12 +60,12 @@ struct OCTOPUS_EXPORT engine_server
         engine_ptr = this;
     }
 
-    config_data const& config() const
+    config_data& config() 
     {
         return config_;
     }
 
-    science_table const& science() const
+    science_table& science() 
     {
         return science_;
     }
@@ -85,12 +85,9 @@ struct OCTOPUS_EXPORT engine_server
       , BOOST_RV_REF(vector3d<std::vector<double> >) parent_U
         );
 
-  private:
-    friend void OCTOPUS_EXPORT enforce_io_epoch(boost::uint64_t step);
-
-    // NOTE: It is not safe to call this function concurrently. Actually, you
-    // probably shouldn't be calling it directly.
-    void io_epoch(boost::uint64_t step);
+    std::vector<hpx::future<void> > call_everywhere(
+        hpx::util::function<void()> const& f
+        ) const;
 };
 
 }

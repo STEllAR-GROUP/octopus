@@ -51,7 +51,8 @@ std::string data_directory = "";
 // The directory containing the scripts that define the simulation
 // visualization.
 std::string visualization_directory =
-    octopus::join_paths(OCTOPUS_CURRENT_SOURCE_DIRECTORY, "sc12_visualization");
+    octopus::join_paths(OCTOPUS_CURRENT_SOURCE_DIRECTORY
+                      , "visualization/tablet_interactive");
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Mass density
