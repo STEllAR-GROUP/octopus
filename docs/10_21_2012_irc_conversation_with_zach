@@ -1,0 +1,39 @@
+[] used for context
+
+Flow Off
+--------
+
+14:18 < zbyerly_> [FO/flow_off] the flow of material out of the grid
+14:18 < zbyerly_> if you want to allow stuff to leave the grid but still measure conservation, you have to track it
+14:18 < zbyerly_> it might be used in the diagnostics
+
+14:20 <@wash> zbyerly_: you want it ported?
+14:20 < zbyerly_> yes please
+14:20 < zbyerly_> but not critical for the demo probably
+14:20 <@wash> zbyerly_: Well, we need to make sure the code works.
+14:21 < zbyerly_> will be important afterwards for sure
+14:21 < zbyerly_> yeah
+
+14:22 <@wash> zbyerly_: So it records the material that leaves each zone?
+14:23 <@wash> zbyerly_: (FO is a grid, same size as U)
+14:23 < zbyerly_> i'm not sure why it's needed for every zone
+14:23 < zbyerly_> should just be needed for the outer zones
+
+14:26 <@wash> zbyerly_: (doesn't enforce_outflow() well, enforce outflow?)
+14:27 <@wash> enforce_outflow is in State
+14:27 < zbyerly_> yeah
+14:28 < zbyerly_> the outer boundary zones
+14:28 < zbyerly_> you don't want mass to accidentally flow into the grid from the ghost cells
+14:28 <@wash> zbyerly_: ah, so enforce outflow is different than this?
+14:29 < zbyerly_> yeah enforcing outflow is different than measuring what flows out
+14:29 <@wash> zbyerly_: but enforce_outflow is only done on physical boundaries. And measuring what flows out should only be important on the boundaries
+14:30 < zbyerly_> i think i agree
+14:30 < zbyerly_> are you just suggesting that we combine the two?
+
+Source
+------
+
+14:08 < zbyerly_> all units are relative to each other
+14:09 < zbyerly_> source is a source term for the conservation equation for that variable
+14:09 < zbyerly_> so mass has no source term
+14:10 < zbyerly_> momentum has one due to gravity

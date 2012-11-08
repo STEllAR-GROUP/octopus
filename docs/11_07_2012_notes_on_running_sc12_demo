@@ -1,0 +1,11 @@
+To run the SC12 demo, Visit needs a few paths to be exported (probably best to
+do this in your .bashrc). For example, if you installed visit 2.5.2 on a x86-64
+Linux machineto /opt/visit/2.5.2, then you need to do:
+ 
+export PATH=$PATH:/opt/visit/2.5.2/bin
+export VISIT=/opt/visit/2.5.2/2.5.2/linux-x86-64
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$VISIT/lib
+export VISITPLUGINDIR=$VISIT/plugins
+
+- wash
+

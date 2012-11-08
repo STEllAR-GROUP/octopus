@@ -1,0 +1,18 @@
+Answers to State questions:
+
+tau - entropy tracer (not needed for the demo)
+KAPPA - constant for the polytropic eq of state (dial for the demo)
+gamma - polytropic equation of state constant 
+pg - pressure
+m_c - mass of central object
+d - mass density
+sx - momentum
+sy - momentum
+sz - momentum
+et - total energy
+source - this is != momentum
+cs - speed of sound
+floor - lowest mass density allowed
+
+Zach says the gravitional instant G = 1 in his simulation.
+
