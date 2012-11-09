@@ -282,19 +282,6 @@ void octree_server::create_child(
     create_child_locked(kid/*, l*/);
 } // }}}
 
-void octree_server::require_child(
-    child_index kid
-    )
-{ // {{{
-    // Make sure that we are initialized.
-//    initialized_.wait();
-
-//    mutex_type::scoped_lock l(mtx_);
-
-    if (children_[kid] == hpx::invalid_id)
-        create_child_locked(kid/*, l*/);
-} // }}}
-
 struct relatives
 { // {{{
     // Exterior/interior is relative to the new child.
@@ -533,7 +520,7 @@ void octree_server::create_child_locked(
         case real_boundary:
         {
             links.emplace_back
-                (siblings_[r.exterior_x_face].tie_child_sibling_async
+                (siblings_[r.exterior_x_face].set_child_sibling_async
                     (r.x_sib, r.interior_x_face, kid_client));
             break;
         }
@@ -584,7 +571,7 @@ void octree_server::create_child_locked(
         case real_boundary:
         {
             links.emplace_back
-                (siblings_[r.exterior_y_face].tie_child_sibling_async
+                (siblings_[r.exterior_y_face].set_child_sibling_async
                     (r.y_sib, r.interior_y_face, kid_client));
             break;
         }
@@ -635,7 +622,7 @@ void octree_server::create_child_locked(
         case real_boundary:
         {
             links.emplace_back
-                (siblings_[r.exterior_z_face].tie_child_sibling_async
+                (siblings_[r.exterior_z_face].set_child_sibling_async
                     (r.z_sib, r.interior_z_face, kid_client));
             break;
         }
@@ -700,8 +687,14 @@ void octree_server::set_sibling(
                 "sibling already exists, face(%1%)",
                 face(f));
 
-       std::cout << ( boost::format("%1%: set_sibling(%2%, %3%)\n")
-                     % get_child_index_locked(/*l*/) % f % sib.kind()); 
+        std::cout << ( boost::format("%1% %2% %3% %4%: set_sibling(%5%, %6%, %7%)\n")
+                     % level_ % get_child_index_locked(/*l*/)
+                     % boost::str( boost::format("(%1%, %2%, %3%)")
+                                 % location_[0]
+                                 % location_[1]
+                                 % location_[2])
+                     % get_gid()
+                     % f % sib.kind() % sib.gid_); 
     
         siblings_[f] = sib;  
         //sibling_set_locked(l);
@@ -750,8 +743,14 @@ void octree_server::set_child_sibling(
     // Make sure that we are initialized.
 //    initialized_.wait();
     
-    std::cout << ( boost::format("%1%: set_child_sibling(%2%, %3%, %4%)\n")
-                 % get_child_index_locked(/*l*/) % kid % f % sib.kind()); 
+    std::cout << ( boost::format("%1% %2% %3% %4%: set_child_sibling(%5%, %6%, %7%, %8%)\n")
+                 % level_ % get_child_index_locked(/*l*/)
+                 % boost::str( boost::format("(%1%, %2%, %3%)")
+                             % location_[0]
+                             % location_[1]
+                             % location_[2])
+                 % get_gid()
+                 % f % kid % sib.kind() % sib.gid_); 
 
     {
 //        mutex_type::scoped_lock l(mtx_);
@@ -782,6 +781,7 @@ void octree_server::tie_child_sibling(
     child_index source_kid = target_kid;
 
     // Invert 
+    //switch (invert(target_f))
     switch (target_f)
     {
         ///////////////////////////////////////////////////////////////////////
@@ -856,6 +856,7 @@ void octree_server::tie_child_sibling(
         // Check if we're at a boundary.
         if (children_[target_kid].kind() == real_boundary)
         {
+            std::cout << "real\n";
             source_sib = children_[target_kid];
             links.emplace_back
                 (source_sib.set_sibling_async(target_f, target_sib));
@@ -863,6 +864,7 @@ void octree_server::tie_child_sibling(
 
         else if (!marked_for_refinement_.test(target_kid)) 
         {
+            std::cout << "no refine\n";
             OCTOPUS_ASSERT(children_[target_kid].kind() != physical_boundary);
 
             boost::uint64_t const bw = science().ghost_zone_width;
@@ -884,7 +886,22 @@ void octree_server::tie_child_sibling(
                                      , kid_offset
                                      , parent_offset); 
         }
+
+        else
+            std::cout << "refine\n";
     }
+
+    std::cout << ( boost::format("%1% %2% %3% %4%: tie_child_sibling(target: %5% source: %6%)\n")
+                 % level_ % get_child_index_locked(/*l*/)
+                 % boost::str( boost::format("(%1%, %2%, %3%)")
+                             % location_[0]
+                             % location_[1]
+                             % location_[2])
+                 % get_gid()
+                 % boost::str( boost::format("%1%, %2%, %3%, %4%")
+                             % target_f % target_kid % target_sib.kind() % target_sib.gid_)
+                 % boost::str( boost::format("%1%, %2%, %3%, %4%")
+                             % source_f % source_kid % source_sib.kind() % source_sib.gid_));
 
     links.emplace_back(siblings_[target_f].set_child_sibling_async
         (source_kid, source_f, source_sib));
@@ -1738,7 +1755,7 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const j_in = (amr_offset[1] + j) / 2;
                         boost::uint64_t const k_in = (amr_offset[2] + k) / 2;
 
-                        std::vector<double> u = output(i_out, j_out, k_out); 
+                        std::vector<double> u = U_(i_in, j_in, k_in); 
 
                         u = minmod(U_(i_in, j_in + 1, k_in) - u
                                  , u - U_(i_in, j_in - 1, k_in));
@@ -2889,9 +2906,15 @@ void octree_server::refine(boost::uint64_t limit)
 //        initialized_.wait();
     
 //        mutex_type::scoped_lock l(mtx_);
+
+        if (limit == level_)
+            return;
     
+        if (config().max_refinement_level == level_)
+            return;
+
         // Kernel.
-        refine_kernel(limit/*l*/);
+        refine_kernel();
 
         recursion_is_parallelism.reserve(8);
     
@@ -2907,19 +2930,12 @@ void octree_server::refine(boost::uint64_t limit)
 } // }}}
 
 // IMPLEMENT: Localize dependencies!
+// IMPLEMENT: Not so very efficient.
 void octree_server::refine_kernel(
 //    mutex_type::scoped_lock& l
-    boost::uint64_t limit
     )
 { // {{{ 
 //    OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
-
-    if (limit == level_)
-        return;
-
-    if (config().max_refinement_level == level_)
-        return;
-
     marked_for_refinement_.reset();
 
     std::vector<hpx::future<void> > new_children;
@@ -2965,9 +2981,10 @@ void octree_server::refine_kernel(
     {
         child_index kid(i);
 
-        if (  marked_for_refinement_.test(i)
-           && hpx::invalid_id == children_[i])
+        if (marked_for_refinement_.test(i))
         {
+            if (hpx::invalid_id != children_[i])
+                OCTOPUS_ASSERT(amr_boundary == children_[i].kind());
             new_children.emplace_back(hpx::async(boost::bind
                 (&octree_server::create_child_locked, this, kid)));
         }

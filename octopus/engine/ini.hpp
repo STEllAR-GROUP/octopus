@@ -37,7 +37,8 @@ struct config_reader
     template <typename A, typename B>
     result_type operator()(std::string const& param, A& data, B dflt) const
     {
-        std::string key("octopus.");
+        std::string key(prefix_);
+        key += ".";
         key += param;
 
         try
@@ -70,7 +71,8 @@ struct config_reader
     template <typename A>
     result_type operator()(std::string const& param, A& data) const
     {
-        std::string key("octopus.");
+        std::string key(prefix_);
+        key += ".";
         key += param;
 
         try
@@ -79,7 +81,100 @@ struct config_reader
             {
                 data = boost::lexical_cast<A>(hpx::get_config_entry(key, ""));
             }
+            else
+            {
+                data = A();
+            }
+        }
     
+        catch (boost::bad_lexical_cast&)
+        {
+            // REVIEW: This is literally the only place where we throw directly
+            // instead of asserting.
+            std::string msg = boost::str(boost::format(
+                "bad INI parameter, '%1%' is not a valid value for %2%")
+                % hpx::get_config_entry(key, "") % key);
+            HPX_THROW_EXCEPTION(hpx::bad_parameter,
+                "octopus::config_from_ini", msg);
+        }
+
+        return *this;
+    }
+
+    result_type operator()(
+        std::string const& param, bool& data, bool dflt
+        ) const
+    {
+        std::string key(prefix_);
+        key += ".";
+        key += param;
+
+        try
+        {
+            if (has_config_entry(key))
+            {
+                std::string str = hpx::get_config_entry(key, "");
+
+                if ("true" == str) 
+                    data = true;
+                else if ("false" == str)
+                    data = false;
+                else
+                {
+                    boost::int64_t num
+                        = boost::lexical_cast<boost::int64_t>(str);
+
+                    data = num;
+                } 
+            }
+            else
+            {
+                data = dflt;
+            }
+        }
+    
+        catch (boost::bad_lexical_cast&)
+        {
+            // REVIEW: This is literally the only place where we throw directly
+            // instead of asserting.
+            std::string msg = boost::str(boost::format(
+                "bad INI parameter, '%1%' is not a valid value for %2%")
+                % hpx::get_config_entry(key, "") % key);
+            HPX_THROW_EXCEPTION(hpx::bad_parameter,
+                "octopus::config_from_ini", msg);
+        }
+
+        return *this;
+    }
+
+    result_type operator()(std::string const& param, bool& data) const
+    {
+        std::string key(prefix_);
+        key += ".";
+        key += param;
+
+        try
+        {
+            if (has_config_entry(key))
+            {
+                std::string str = hpx::get_config_entry(key, "");
+
+                if ("true" == str) 
+                    data = true;
+                else if ("false" == str)
+                    data = false;
+                else
+                {
+                    boost::int64_t num
+                        = boost::lexical_cast<boost::int64_t>(str);
+
+                    data = num;
+                } 
+            }
+            else
+            {
+                data = bool();
+            }
         }
     
         catch (boost::bad_lexical_cast&)

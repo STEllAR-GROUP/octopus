@@ -1,0 +1,14 @@
+22:14 <wash> ATM we do a refinement pass for each level
+22:14 <wash> it's a little slower, but ensures proper nesting easily
+22:14 <wash> e.g.
+22:14 <wash> we do this:
+22:15 <wash> 0.) Start at level 0
+22:15 <zbyerly> sounds good so far
+22:15 <wash> 1.) Refine at current_level + 1
+22:16 <wash> 1.a.) First, mark everyone who should be refined, either because they pass the refinement criteria, or because one of our neighbors wants us to refine it to ensure proper 
+             nesting
+22:16 <wash> 1.b.) Wait for all of our neighbors to tell us that they've finished marking and told us everything we need to know
+22:16 <wash> 1.c.) Add new children
+22:17 <wash> 2.) ++current_level
+22:17 <wash> 3.) Repeat step 1 and 2 until current_level == max_refinement_level
+22:17 <wash> the problem was, the code was just refining everything possible each time

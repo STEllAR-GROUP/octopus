@@ -458,11 +458,14 @@ struct OCTOPUS_EXPORT octree_server
 
     void require_child(
         child_index kid
-        );
+        )
+    {
+        marked_for_refinement_.set(kid, true);
+    }
 
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                require_child,
-                                require_child_action);
+    HPX_DEFINE_COMPONENT_DIRECT_ACTION(octree_server,
+                                       require_child,
+                                       require_child_action);
 
   private:
     void create_child_locked(
@@ -563,6 +566,17 @@ struct OCTOPUS_EXPORT octree_server
     HPX_DEFINE_COMPONENT_CONST_DIRECT_ACTION(octree_server,
                                              get_offset,
                                              get_offset_action);
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Purely for debugging. 
+    boost::array<boost::int64_t, 3> get_location() const
+    {
+        return location_;
+    }
+
+    HPX_DEFINE_COMPONENT_CONST_DIRECT_ACTION(octree_server,
+                                             get_location,
+                                             get_location_action);
 
     ///////////////////////////////////////////////////////////////////////////
     // Ghost zone communication
@@ -770,7 +784,7 @@ struct OCTOPUS_EXPORT octree_server
                                 refine_action);  
 
   private:
-    void refine_kernel(boost::uint64_t limit/*mutex_type::scoped_lock& l*/);
+    void refine_kernel();
 
   public:
     // Enforce the law.
@@ -900,6 +914,7 @@ OCTOPUS_REGISTER_ACTION(tie_child_sibling);
 
 OCTOPUS_REGISTER_ACTION(get_siblings);
 OCTOPUS_REGISTER_ACTION(get_offset);
+OCTOPUS_REGISTER_ACTION(get_location);
 
 OCTOPUS_REGISTER_ACTION(receive_ghost_zone);
 OCTOPUS_REGISTER_ACTION(send_ghost_zone);

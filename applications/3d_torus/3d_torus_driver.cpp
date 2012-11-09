@@ -85,11 +85,10 @@ struct stepper : octopus::trivial_serialization
             ; ++i)
         {
             root.refine(i);
-            root.apply(octopus::science().initialize);
         }
- 
-        std::cout << "Reached I/O\n";
 
+        root.apply(octopus::science().initialize);
+ 
         root.output_initial();
     
         //std::cout << "Initial state prepared\n";

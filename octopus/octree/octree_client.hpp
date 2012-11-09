@@ -459,6 +459,16 @@ struct OCTOPUS_EXPORT octree_client
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
+    // {{{ get_location
+    boost::array<boost::int64_t, 3> get_location() const
+    {
+        return get_location_async().get();
+    }
+
+    hpx::future<boost::array<boost::int64_t, 3> > get_location_async() const;
+    // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
     // {{{ Boundary forwarding code (implementation has moved to the server) 
   private:
     // AMR boundary.

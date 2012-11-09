@@ -205,6 +205,14 @@ octree_client::get_offset_async() const
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+hpx::future<boost::array<boost::int64_t, 3> >
+octree_client::get_location_async() const
+{
+    ensure_real();
+    return hpx::async<octree_server::get_location_action>(gid_);
+}
+
+///////////////////////////////////////////////////////////////////////////////
 hpx::future<vector3d<std::vector<double> > >
 octree_client::send_interpolated_ghost_zone_async(
     face f ///< Direction, relative to us 
