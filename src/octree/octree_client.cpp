@@ -123,6 +123,15 @@ hpx::future<void> octree_client::create_child_async(
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+hpx::future<void> octree_client::require_child_async(
+    child_index kid
+    ) const
+{
+    ensure_real();
+    return hpx::async<octree_server::require_child_action>(gid_, kid);
+}
+
+///////////////////////////////////////////////////////////////////////////////
 hpx::future<void> octree_client::set_sibling_async(
     face f ///< Relative to us.
   , octree_client const& sib
@@ -449,10 +458,16 @@ hpx::future<void> octree_client::refine_async(boost::uint64_t level) const
     return hpx::async<octree_server::refine_action>(gid_, level);
 }
 
-hpx::future<void> octree_client::require_refinement_async() const
+hpx::future<void> octree_client::confirm_refinement_async() const
 {
     OCTOPUS_ASSERT(amr_boundary == kind_);
-    return hpx::async<octree_server::require_refinement_action>(gid_, index_); 
+    return hpx::async<octree_server::confirm_refinement_action>(gid_, index_); 
+}
+
+void octree_client::receive_sync_for_refinement_push(face f) const
+{
+    ensure_real();
+    hpx::apply<octree_server::receive_sync_for_refinement_action>(gid_, f); 
 }
 
 }

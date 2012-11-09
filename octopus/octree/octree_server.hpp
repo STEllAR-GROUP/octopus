@@ -19,8 +19,7 @@
 #include <octopus/channel.hpp>
 #include <octopus/octree/octree_init_data.hpp>
 #include <octopus/octree/octree_client.hpp>
-
-#include <bitset>
+#include <octopus/atomic_bitset.hpp>
 
 // TODO: apply_criteria, apply_zonal, apply_zonal_leaf, reduce_leaf,
 // reduce_zonal_leaf
@@ -69,13 +68,16 @@ struct OCTOPUS_EXPORT octree_server
     octree_client future_self_;
     octree_client past_self_;
  
-    std::bitset<8> marked_for_refine_;
+    atomic_bitset<8> marked_for_refinement_;
  
     typedef array1d<channel<vector3d<std::vector<double> > >, 6>
-        sibling_dependencies;
+        sibling_state_dependencies;
   
     typedef array1d<channel<vector3d<std::vector<double> > >, 8>
-        children_dependencies;
+        children_state_dependencies;
+
+    typedef array1d<channel<void>, 6>
+        sibling_sync_dependencies;
 
     // IMPLEMENT: This should totally be in the science table, along with like
     // 3k other lines of stuff in octree_server.
@@ -93,7 +95,7 @@ struct OCTOPUS_EXPORT octree_server
     // NOTE: Elements of this queue should be cleared but not removed until the
     // end of each timestep. This is necessary to ensure that indices into this
     // vector remain the same throughout the entire step. 
-    std::vector<sibling_dependencies> ghost_zone_queue_;
+    std::vector<sibling_state_dependencies> ghost_zone_deps_;
 
     // Queue for incoming state from our children.
     // NOTE: Elements of this queue should be cleared but not removed until the
@@ -101,7 +103,7 @@ struct OCTOPUS_EXPORT octree_server
     // vector remain the same throughout the entire step. 
     // NOTE: Some of these may be empty; if they are, these indicates that
     // we don't have that child.
-    std::vector<children_dependencies> children_state_queue_;
+    std::vector<children_state_dependencies> children_state_deps_;
 
     // Queue for flux adjustment.
     // NOTE: Elements of this queue should be cleared but not removed until the
@@ -109,7 +111,9 @@ struct OCTOPUS_EXPORT octree_server
     // vector remain the same throughout the entire step. 
     // NOTE: Some of these may be empty; if they are, these indicates that
     // we don't have that child.
-    std::vector<children_dependencies> adjust_flux_queue_;
+    std::vector<children_state_dependencies> adjust_flux_deps_;
+
+    sibling_sync_dependencies refinement_deps_;
 
     ///////////////////////////////////////////////////////////////////////////
     // From OctNode
@@ -448,6 +452,18 @@ struct OCTOPUS_EXPORT octree_server
         child_index kid
         );
 
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                create_child,
+                                create_child_action);
+
+    void require_child(
+        child_index kid
+        );
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                require_child,
+                                require_child_action);
+
   private:
     void create_child_locked(
         child_index kid
@@ -455,10 +471,6 @@ struct OCTOPUS_EXPORT octree_server
         );
 
   public:
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                create_child,
-                                create_child_action);
-
     ///////////////////////////////////////////////////////////////////////////
     /// \brief Set \a target_sib as the \a target_f sibling of this node.
     /// 
@@ -762,11 +774,21 @@ struct OCTOPUS_EXPORT octree_server
 
   public:
     // Enforce the law.
-    void require_refinement(child_index idx);
+    void confirm_refinement(child_index idx);
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                require_refinement, 
-                                require_refinement_action);
+                                confirm_refinement, 
+                                confirm_refinement_action);
+
+  private:
+    void sync_for_refinement();
+
+  public:
+    void receive_sync_for_refinement(face f);
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                receive_sync_for_refinement, 
+                                receive_sync_for_refinement_action);
 
     ///////////////////////////////////////////////////////////////////////////
     void output()
@@ -870,6 +892,7 @@ struct OCTOPUS_EXPORT octree_server
 
 // FIXME: Make sure this is in order.
 OCTOPUS_REGISTER_ACTION(create_child);
+OCTOPUS_REGISTER_ACTION(require_child);
 OCTOPUS_REGISTER_ACTION(set_sibling);
 OCTOPUS_REGISTER_ACTION(tie_sibling);
 OCTOPUS_REGISTER_ACTION(set_child_sibling);
@@ -892,7 +915,8 @@ OCTOPUS_REGISTER_ACTION(step_recurse);
 
 OCTOPUS_REGISTER_ACTION(copy_and_regrid);
 OCTOPUS_REGISTER_ACTION(refine);
-OCTOPUS_REGISTER_ACTION(require_refinement);
+OCTOPUS_REGISTER_ACTION(confirm_refinement);
+OCTOPUS_REGISTER_ACTION(receive_sync_for_refinement);
 
 #undef OCTOPUS_REGISTER_ACTION
 

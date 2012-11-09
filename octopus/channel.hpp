@@ -149,6 +149,12 @@ struct channel
         return boost::move(tmp);
     }
 
+    hpx::future<T> get_future()
+    {
+        OCTOPUS_ASSERT(data_);
+        return hpx::future<T>(data_);
+    }
+
     void post(BOOST_RV_REF(T) result)
     {
         OCTOPUS_ASSERT(data_);
@@ -184,7 +190,152 @@ struct channel
     bool ready() const
     {
         OCTOPUS_ASSERT(data_);
-        return data_->ready();
+        return data_->is_ready();
+    }
+};
+
+template <>
+struct channel<void>
+{
+  private:
+    typedef hpx::lcos::detail::future_data<void, hpx::util::unused_type>
+        future_data;
+
+    boost::intrusive_ptr<future_data> data_;
+
+    BOOST_COPYABLE_AND_MOVABLE(vector3d);
+
+  public:
+    typedef typename future_data::completed_callback_type
+        completed_callback_type;
+
+    channel() : data_(new future_data()) {}
+
+    channel(channel const& other) : data_(other.data_) {}
+
+    channel(BOOST_RV_REF(channel) other) : data_(boost::move(other.data_)) {}
+
+    ~channel()
+    {
+        if (data_)
+        {
+            if (data_->is_ready())
+            {
+                data_->set_error(hpx::broken_promise,
+                    "channel<T>::~channel",
+                    "deleting owner before channel value has been consumed");
+            }
+
+            data_->deleting_owner();
+        }
+    }
+
+    channel& operator=(BOOST_COPY_ASSIGN_REF(channel) other)
+    {
+        OCTOPUS_ASSERT(data_);
+
+        if (this != &other)
+        {
+            if (data_->is_ready())
+            {
+                data_->set_error(hpx::broken_promise,
+                    "channel<T>::operator=()",
+                    "deleting owner before channel value has been consumed");
+            }
+
+            data_->deleting_owner();
+
+            data_ = other.data_;
+        }
+
+        return *this;
+    }
+
+    channel& operator=(BOOST_RV_REF(channel) other)
+    {
+        OCTOPUS_ASSERT(data_);
+
+        if (this != &other)
+        {
+            if (data_->is_ready())
+            {
+                data_->set_error(hpx::broken_promise,
+                    "channel<T>::operator=()",
+                    "deleting owner before channel value has been consumed");
+            }
+
+            data_->deleting_owner();
+
+            data_ = boost::move(other.data_);
+            other.data_.reset();
+        }
+
+        return *this;
+    }
+
+    void swap(channel& other)
+    {
+        data_.swap(other.data_);
+    }
+
+    void reset()
+    {
+        OCTOPUS_ASSERT(data_);
+
+        if (data_->is_ready())
+        {
+            data_->set_error(hpx::broken_promise,
+                "channel<T>::clear()",
+                "clearing owner before channel value has been retrieved");
+        }
+
+        data_->deleting_owner();
+
+        data_->reset();
+   }
+
+    void get(hpx::error_code& ec = hpx::throws) const
+    {
+        OCTOPUS_ASSERT(data_);
+        hpx::util::unused_type tmp = data_->get_data(ec);
+    }
+
+    hpx::future<void, hpx::util::unused_type> get_future()
+    {
+        OCTOPUS_ASSERT(data_);
+        return hpx::future<void, hpx::util::unused_type>(data_);
+    }
+
+    void post()
+    {
+        OCTOPUS_ASSERT(data_);
+        if (data_->is_ready())
+            data_->move_data();
+        data_->set_data(hpx::util::unused);
+    }
+
+    template <typename F>
+    hpx::future<
+        typename boost::result_of<F(hpx::future<void, hpx::util::unused_type>)
+    >::type>
+    then_async(BOOST_FWD_REF(F) f)
+    {
+        OCTOPUS_ASSERT(data_);
+        return hpx::future<void, hpx::util::unused_type>(data_).when
+            (boost::forward<completed_callback_type>(f));
+    }
+
+    template <typename F>
+    void then_push(BOOST_FWD_REF(F) f)
+    {
+        OCTOPUS_ASSERT(data_);
+        data_->set_on_completed(boost::forward<completed_callback_type>(f));
+    }
+
+    bool ready() const
+    {
+        OCTOPUS_ASSERT(data_);
+        return data_->is_ready();
     }
 };
 

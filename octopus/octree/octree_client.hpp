@@ -135,7 +135,7 @@ struct OCTOPUS_EXPORT octree_client
     octree_client(hpx::id_type const& gid)
       : kind_(real_boundary)
       , gid_(gid)
-      , face_()
+      , face_(invalid_face)
       , index_()
       , offset_()
     {}
@@ -146,7 +146,7 @@ struct OCTOPUS_EXPORT octree_client
     octree_client(BOOST_RV_REF(hpx::id_type) gid)
       : kind_(real_boundary)
       , gid_(gid)
-      , face_()
+      , face_(invalid_face)
       , index_()
       , offset_()
     {}
@@ -357,6 +357,17 @@ struct OCTOPUS_EXPORT octree_client
     hpx::future<void> create_child_async(
         child_index kid
         ) const;
+
+    void require_child(
+        child_index kid
+        ) const
+    {
+        require_child_async(kid).get(); 
+    }
+
+    hpx::future<void> require_child_async(
+        child_index kid
+        ) const;
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
@@ -556,7 +567,7 @@ struct OCTOPUS_EXPORT octree_client
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
-    // {{{ Refinment 
+    // {{{ Refinement 
     void refine(boost::uint64_t limit) const
     {
         return refine_async(limit).get();
@@ -564,12 +575,14 @@ struct OCTOPUS_EXPORT octree_client
 
     hpx::future<void> refine_async(boost::uint64_t limit) const;
 
-    void require_refinement() const
+    void confirm_refinement() const
     {
-        require_refinement_async().get();
+        confirm_refinement_async().get();
     }
 
-    hpx::future<void> require_refinement_async() const;
+    hpx::future<void> confirm_refinement_async() const;
+
+    void receive_sync_for_refinement_push(face f) const;
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
