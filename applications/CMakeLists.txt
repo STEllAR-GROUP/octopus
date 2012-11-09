@@ -5,6 +5,7 @@
 
 set(subdirs
     3d_torus
+    sod_shock_tube
    )
 
 foreach(subdir ${subdirs})

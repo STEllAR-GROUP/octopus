@@ -38,7 +38,7 @@ struct config_data
     ///  reflection function is found.
     bool reflect_on_z;
 
-    ///< The spatial edge length of the problem. 
+    ///< Half of the spatial edge length of the problem. 
     double spatial_domain; // GRID_DIM, 1.5e-4 (Zach) and 1.0 (Dominic) 
 
     ///< The edge length of each grid node (units == discrete points aka zones) 
