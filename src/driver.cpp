@@ -72,7 +72,7 @@ int hpx_main(variables_map& vm)
 
         // FIXME: Sadly, distributing factory doesn't support constructor args
         // yet, so we have to do this by hand.
-        std::vector<hpx::future<hpx::id_type, hpx::naming::gid_type> > engines;    
+        std::vector<hpx::future<hpx::id_type> > engines;    
         engines.reserve(localities.size());
 
         ///////////////////////////////////////////////////////////////////////

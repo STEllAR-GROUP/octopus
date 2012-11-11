@@ -54,7 +54,7 @@ inline std::vector<hpx::id_type> const& localities()
 /// Concurrency Control: 1 atomic read and 1 atomic write to \a engine_server's
 ///                      round_robin_.
 /// Synchrony Gurantee:  Asynchronous.
-inline hpx::future<hpx::id_type, hpx::naming::gid_type> create_octree_async(
+inline hpx::future<hpx::id_type> create_octree_async(
     octree_init_data const& init
   , vector3d<std::vector<double> > const& parent_U
     )
@@ -63,7 +63,7 @@ inline hpx::future<hpx::id_type, hpx::naming::gid_type> create_octree_async(
     return engine_ptr->create_octree_async(init, parent_U);
 }
 
-inline hpx::future<hpx::id_type, hpx::naming::gid_type> create_octree_async(
+inline hpx::future<hpx::id_type> create_octree_async(
     octree_init_data const& init
   , BOOST_RV_REF(vector3d<std::vector<double> >) parent_U
     )

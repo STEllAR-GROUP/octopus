@@ -176,7 +176,7 @@ struct channel
     then_async(BOOST_FWD_REF(F) f)
     {
         OCTOPUS_ASSERT(data_);
-        return hpx::future<T>(data_).when
+        return hpx::future<T>(data_).then
             (boost::forward<completed_callback_type>(f));
     }
 
@@ -198,8 +198,7 @@ template <>
 struct channel<void>
 {
   private:
-    typedef hpx::lcos::detail::future_data<void, hpx::util::unused_type>
-        future_data;
+    typedef hpx::lcos::detail::future_data<void> future_data;
 
     boost::intrusive_ptr<future_data> data_;
 
@@ -300,10 +299,10 @@ struct channel<void>
         hpx::util::unused_type tmp = data_->get_data(ec);
     }
 
-    hpx::future<void, hpx::util::unused_type> get_future()
+    hpx::future<void> get_future()
     {
         OCTOPUS_ASSERT(data_);
-        return hpx::future<void, hpx::util::unused_type>(data_);
+        return hpx::future<void>(data_);
     }
 
     void post()
@@ -316,12 +315,12 @@ struct channel<void>
 
     template <typename F>
     hpx::future<
-        typename boost::result_of<F(hpx::future<void, hpx::util::unused_type>)
+        typename boost::result_of<F(hpx::future<void>)
     >::type>
     then_async(BOOST_FWD_REF(F) f)
     {
         OCTOPUS_ASSERT(data_);
-        return hpx::future<void, hpx::util::unused_type>(data_).when
+        return hpx::future<void>(data_).then
             (boost::forward<completed_callback_type>(f));
     }
 

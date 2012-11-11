@@ -448,8 +448,8 @@ hpx::future<void> octree_client::output_async() const
     begin_io_epoch_locally<false> begin_functor;
 
     hpx::future<void> begin = apply_leaf_async<void>(begin_functor);
-    hpx::future<void> out   = begin.when(output_continuation(*this, begin));
-    hpx::future<void> end   = out.when(end_io_epoch_continuation(*this, out));
+    hpx::future<void> out   = begin.then(output_continuation(*this, begin));
+    hpx::future<void> end   = out.then(end_io_epoch_continuation(*this, out));
  
     return end;
 }
@@ -462,8 +462,8 @@ hpx::future<void> octree_client::output_initial_async() const
     begin_io_epoch_locally<true> begin_functor;
 
     hpx::future<void> begin = apply_leaf_async<void>(begin_functor);
-    hpx::future<void> out   = begin.when(output_continuation(*this, begin));
-    hpx::future<void> end   = out.when(end_io_epoch_continuation(*this, out));
+    hpx::future<void> out   = begin.then(output_continuation(*this, begin));
+    hpx::future<void> end   = out.then(end_io_epoch_continuation(*this, out));
  
     return end;
 }

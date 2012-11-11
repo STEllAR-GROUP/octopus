@@ -75,12 +75,12 @@ struct OCTOPUS_EXPORT engine_server
         return localities_;
     }
 
-    hpx::future<hpx::id_type, hpx::naming::gid_type> create_octree_async(
+    hpx::future<hpx::id_type> create_octree_async(
         octree_init_data const& init
       , vector3d<std::vector<double> > const& parent_U
         );
 
-    hpx::future<hpx::id_type, hpx::naming::gid_type> create_octree_async(
+    hpx::future<hpx::id_type> create_octree_async(
         octree_init_data const& init
       , BOOST_RV_REF(vector3d<std::vector<double> >) parent_U
         );

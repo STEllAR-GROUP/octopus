@@ -710,7 +710,7 @@ void octree_server::communicate_ghost_zones(
         {
             keep_alive.emplace_back
                 (siblings_[i].send_ghost_zone_async(face(i)));
-            dependencies.emplace_back(keep_alive.back().when(boost::bind
+            dependencies.emplace_back(keep_alive.back().then(boost::bind
                 (&octree_server::add_interpolated_ghost_zone, this, face(i), _1))); 
         }
 
@@ -718,7 +718,7 @@ void octree_server::communicate_ghost_zones(
         {
             keep_alive.emplace_back
                 (siblings_[i].send_ghost_zone_async(face(i)));
-            dependencies.emplace_back(keep_alive.back().when(boost::bind
+            dependencies.emplace_back(keep_alive.back().then(boost::bind
                 (&octree_server::add_mapped_ghost_zone, this, face(i), _1))); 
         }
 
