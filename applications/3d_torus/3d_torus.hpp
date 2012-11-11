@@ -579,7 +579,7 @@ struct refine_by_density
     /// Returns true if we should refine the region that contains this point.
     bool refine(std::vector<double> const& state)
     {
-        if (rho(state) > min_refine_rho)
+        if (rho(state) >= min_refine_rho)
             return true;
         else
             return false;

@@ -42,7 +42,7 @@ struct OCTOPUS_EXPORT elementwise_refinement_criteria_base
                         = (bw + j) / 2 + idx.y() * ((gnx / 2) - bw);
                     boost::uint64_t const kd
                         = (bw + k) / 2 + idx.z() * ((gnx / 2) - bw);
-    
+   
                     if (derived().refine(e(id, jd, kd)))
                         return true;
                 }

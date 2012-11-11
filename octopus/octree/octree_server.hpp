@@ -76,8 +76,8 @@ struct OCTOPUS_EXPORT octree_server
     typedef array1d<channel<vector3d<std::vector<double> > >, 8>
         children_state_dependencies;
 
-    typedef array1d<channel<void>, 6>
-        sibling_sync_dependencies;
+    typedef array1d<channel<void>, 7>
+        refinement_sync_dependencies;
 
     // IMPLEMENT: This should totally be in the science table, along with like
     // 3k other lines of stuff in octree_server.
@@ -113,7 +113,7 @@ struct OCTOPUS_EXPORT octree_server
     // we don't have that child.
     std::vector<children_state_dependencies> adjust_flux_deps_;
 
-    sibling_sync_dependencies refinement_deps_;
+    refinement_sync_dependencies refinement_deps_;
 
     ///////////////////////////////////////////////////////////////////////////
     // From OctNode
@@ -676,6 +676,14 @@ struct OCTOPUS_EXPORT octree_server
 
     ///////////////////////////////////////////////////////////////////////////
     // Child -> parent injection of state.
+    void child_to_parent_injection(
+        boost::uint64_t phase
+      /*, mutex_type::scoped_lock& l*/
+        );
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                child_to_parent_injection,
+                                child_to_parent_injection_action);
 
   private:
     /// 0.) Unlock \a l.
@@ -683,7 +691,7 @@ struct OCTOPUS_EXPORT octree_server
     ///     the queue is ready.
     /// 2.) Relock \a l.
     /// 3.) Send a child -> parent injection up to our parent. 
-    void child_to_parent_injection(
+    void child_to_parent_injection_kernel(
         boost::uint64_t phase
       /*, mutex_type::scoped_lock& l*/
         );
@@ -777,6 +785,12 @@ struct OCTOPUS_EXPORT octree_server
                                 copy_and_regrid,
                                 copy_and_regrid_action);  
 
+    void mark();
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                mark,
+                                mark_action);  
+
     void refine(boost::uint64_t limit);
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
@@ -784,6 +798,8 @@ struct OCTOPUS_EXPORT octree_server
                                 refine_action);  
 
   private:
+    void mark_kernel();
+
     void refine_kernel();
 
   public:
@@ -795,14 +811,20 @@ struct OCTOPUS_EXPORT octree_server
                                 confirm_refinement_action);
 
   private:
-    void sync_for_refinement();
+    void sibling_refinement_signal();
 
   public:
-    void receive_sync_for_refinement(face f);
+    void receive_sibling_refinement_signal(face f);
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                receive_sync_for_refinement, 
-                                receive_sync_for_refinement_action);
+                                receive_sibling_refinement_signal, 
+                                receive_sibling_refinement_signal_action);
+
+    void receive_parent_refinement_signal();
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                receive_parent_refinement_signal, 
+                                receive_parent_refinement_signal_action);
 
     ///////////////////////////////////////////////////////////////////////////
     void output()
@@ -921,6 +943,7 @@ OCTOPUS_REGISTER_ACTION(send_ghost_zone);
 OCTOPUS_REGISTER_ACTION(send_interpolated_ghost_zone);
 OCTOPUS_REGISTER_ACTION(send_mapped_ghost_zone);
 
+OCTOPUS_REGISTER_ACTION(child_to_parent_injection);
 OCTOPUS_REGISTER_ACTION(receive_child_state);
 
 OCTOPUS_REGISTER_ACTION(apply);
@@ -929,9 +952,11 @@ OCTOPUS_REGISTER_ACTION(step);
 OCTOPUS_REGISTER_ACTION(step_recurse);
 
 OCTOPUS_REGISTER_ACTION(copy_and_regrid);
+OCTOPUS_REGISTER_ACTION(mark);
 OCTOPUS_REGISTER_ACTION(refine);
 OCTOPUS_REGISTER_ACTION(confirm_refinement);
-OCTOPUS_REGISTER_ACTION(receive_sync_for_refinement);
+OCTOPUS_REGISTER_ACTION(receive_sibling_refinement_signal);
+OCTOPUS_REGISTER_ACTION(receive_parent_refinement_signal);
 
 #undef OCTOPUS_REGISTER_ACTION
 

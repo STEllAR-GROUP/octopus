@@ -319,7 +319,7 @@ struct OCTOPUS_EXPORT octree_client
             case amr_boundary:
                 return false; 
             default:
-                break;
+                return false;
         };
 
         OCTOPUS_ASSERT_MSG(false, "invalid boundary kind");
@@ -540,6 +540,20 @@ struct OCTOPUS_EXPORT octree_client
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
+    // {{{ child_to_parent_injection
+    void child_to_parent_injection(
+        boost::uint64_t phase 
+        ) const
+    {
+        child_to_parent_injection_async(phase).get();
+    }
+
+    hpx::future<void> child_to_parent_injection_async(
+        boost::uint64_t phase 
+        ) const;
+    // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
     // {{{ receive_child_state
     void receive_child_state(
         boost::uint64_t step ///< For debugging purposes.
@@ -592,7 +606,9 @@ struct OCTOPUS_EXPORT octree_client
 
     hpx::future<void> confirm_refinement_async() const;
 
-    void receive_sync_for_refinement_push(face f) const;
+    void receive_sibling_refinement_signal_push(face f) const;
+
+    void receive_parent_refinement_signal_push() const;
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////

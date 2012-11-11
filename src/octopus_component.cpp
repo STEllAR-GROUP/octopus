@@ -47,6 +47,7 @@ OCTOPUS_REGISTER_ACTION(send_ghost_zone);
 OCTOPUS_REGISTER_ACTION(send_interpolated_ghost_zone);
 OCTOPUS_REGISTER_ACTION(send_mapped_ghost_zone);
 
+OCTOPUS_REGISTER_ACTION(child_to_parent_injection);
 OCTOPUS_REGISTER_ACTION(receive_child_state);
 
 OCTOPUS_REGISTER_ACTION(apply);
@@ -55,9 +56,11 @@ OCTOPUS_REGISTER_ACTION(step);
 OCTOPUS_REGISTER_ACTION(step_recurse);
 
 OCTOPUS_REGISTER_ACTION(copy_and_regrid);
+OCTOPUS_REGISTER_ACTION(mark);
 OCTOPUS_REGISTER_ACTION(refine);
 OCTOPUS_REGISTER_ACTION(confirm_refinement);
-OCTOPUS_REGISTER_ACTION(receive_sync_for_refinement);
+OCTOPUS_REGISTER_ACTION(receive_sibling_refinement_signal);
+OCTOPUS_REGISTER_ACTION(receive_parent_refinement_signal);
 
 #undef OCTOPUS_REGISTER_ACTION
 

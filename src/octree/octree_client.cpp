@@ -127,7 +127,6 @@ hpx::future<void> octree_client::require_child_async(
     child_index kid
     ) const
 {
-    ensure_real();
     return hpx::async<octree_server::require_child_action>(gid_, kid);
 }
 
@@ -310,6 +309,16 @@ void octree_client::receive_ghost_zone_push(
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+hpx::future<void> octree_client::child_to_parent_injection_async(
+    boost::uint64_t phase 
+    ) const
+{
+    ensure_real();
+    return hpx::async<octree_server::child_to_parent_injection_action>
+        (gid_, phase);
+}
+
+///////////////////////////////////////////////////////////////////////////////
 hpx::future<void> octree_client::receive_child_state_async(
     boost::uint64_t step ///< For debugging purposes.
   , boost::uint64_t phase 
@@ -472,10 +481,16 @@ hpx::future<void> octree_client::confirm_refinement_async() const
     return hpx::async<octree_server::confirm_refinement_action>(gid_, index_); 
 }
 
-void octree_client::receive_sync_for_refinement_push(face f) const
+void octree_client::receive_sibling_refinement_signal_push(face f) const
 {
     ensure_real();
-    hpx::apply<octree_server::receive_sync_for_refinement_action>(gid_, f); 
+    hpx::apply<octree_server::receive_sibling_refinement_signal_action>(gid_, f); 
+}
+
+void octree_client::receive_parent_refinement_signal_push() const
+{
+    ensure_real();
+    hpx::apply<octree_server::receive_parent_refinement_signal_action>(gid_); 
 }
 
 }
