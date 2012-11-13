@@ -468,9 +468,9 @@ struct OCTOPUS_EXPORT octree_server
                                        require_child_action);
 
   private:
-    void create_child_locked(
-        child_index kid
-      /*, mutex_type::scoped_lock& l*/
+    void link_child(
+        std::vector<hpx::future<void> >& links
+      , child_index kid
         );
 
   public:
@@ -791,40 +791,31 @@ struct OCTOPUS_EXPORT octree_server
                                 mark,
                                 mark_action);  
 
-    void refine(boost::uint64_t limit);
+  private:
+    void populate();
+
+    void link();
+
+  public:
+    void refine();
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                 refine,
                                 refine_action);  
 
   private:
-    void mark_kernel();
-
-    void refine_kernel();
-
-  public:
-    // Enforce the law.
-    void confirm_refinement(child_index idx);
-
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                confirm_refinement, 
-                                confirm_refinement_action);
-
-  private:
     void sibling_refinement_signal();
 
   public:
-    void receive_sibling_refinement_signal(face f);
+    void receive_sibling_refinement_signal(face f)
+    {
+        OCTOPUS_ASSERT(invalid_face != f);
+        refinement_deps_[f].post();
+    }
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                 receive_sibling_refinement_signal, 
                                 receive_sibling_refinement_signal_action);
-
-    void receive_parent_refinement_signal();
-
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                receive_parent_refinement_signal, 
-                                receive_parent_refinement_signal_action);
 
     ///////////////////////////////////////////////////////////////////////////
     void output()
@@ -952,11 +943,9 @@ OCTOPUS_REGISTER_ACTION(step);
 OCTOPUS_REGISTER_ACTION(step_recurse);
 
 OCTOPUS_REGISTER_ACTION(copy_and_regrid);
-OCTOPUS_REGISTER_ACTION(mark);
 OCTOPUS_REGISTER_ACTION(refine);
-OCTOPUS_REGISTER_ACTION(confirm_refinement);
+OCTOPUS_REGISTER_ACTION(mark);
 OCTOPUS_REGISTER_ACTION(receive_sibling_refinement_signal);
-OCTOPUS_REGISTER_ACTION(receive_parent_refinement_signal);
 
 #undef OCTOPUS_REGISTER_ACTION
 

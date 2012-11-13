@@ -592,23 +592,21 @@ struct OCTOPUS_EXPORT octree_client
 
     ///////////////////////////////////////////////////////////////////////////
     // {{{ Refinement 
-    void refine(boost::uint64_t limit) const
+    void refine() const
     {
-        return refine_async(limit).get();
+        return refine_async().get();
     }
 
-    hpx::future<void> refine_async(boost::uint64_t limit) const;
+    hpx::future<void> refine_async() const;
 
-    void confirm_refinement() const
+    void mark() const
     {
-        confirm_refinement_async().get();
+        return mark_async().get();
     }
 
-    hpx::future<void> confirm_refinement_async() const;
+    hpx::future<void> mark_async() const;
 
     void receive_sibling_refinement_signal_push(face f) const;
-
-    void receive_parent_refinement_signal_push() const;
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////

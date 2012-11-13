@@ -88,6 +88,11 @@ struct atomic_bitset : boost::noncopyable
         OCTOPUS_ASSERT(pos < Bits);
         return bits_.load() & (1 << pos);
     }
+
+    storage_type bits()
+    {
+        return bits_.load();
+    }
 }; 
 
 }

@@ -469,28 +469,22 @@ hpx::future<void> octree_client::output_initial_async() const
 }
 
 
-hpx::future<void> octree_client::refine_async(boost::uint64_t level) const
+hpx::future<void> octree_client::refine_async() const
 {
     ensure_real();
-    return hpx::async<octree_server::refine_action>(gid_, level);
+    return hpx::async<octree_server::refine_action>(gid_);
 }
 
-hpx::future<void> octree_client::confirm_refinement_async() const
+hpx::future<void> octree_client::mark_async() const
 {
-    OCTOPUS_ASSERT(amr_boundary == kind_);
-    return hpx::async<octree_server::confirm_refinement_action>(gid_, index_); 
+    ensure_real();
+    return hpx::async<octree_server::mark_action>(gid_);
 }
 
 void octree_client::receive_sibling_refinement_signal_push(face f) const
 {
     ensure_real();
     hpx::apply<octree_server::receive_sibling_refinement_signal_action>(gid_, f); 
-}
-
-void octree_client::receive_parent_refinement_signal_push() const
-{
-    ensure_real();
-    hpx::apply<octree_server::receive_parent_refinement_signal_action>(gid_); 
 }
 
 }

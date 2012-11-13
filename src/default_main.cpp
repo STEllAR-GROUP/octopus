@@ -29,7 +29,7 @@ int octopus_main(boost::program_options::variables_map& vm)
 
     root.apply(octopus::science().initialize);
 
-    root.refine(octopus::config().max_refinement_level);
+    root.refine();
 
 /* IMPLEMENT
     if (config().enable_output)

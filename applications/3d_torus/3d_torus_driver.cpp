@@ -79,7 +79,8 @@ struct stepper : octopus::trivial_serialization
     void operator()(octopus::octree_server& root) const
     {
         root.apply(octopus::science().initialize);
-   
+  
+/* 
         for ( boost::uint64_t i = 1
             ; i <= octopus::config().max_refinement_level 
             ; ++i)
@@ -89,8 +90,9 @@ struct stepper : octopus::trivial_serialization
             root.child_to_parent_injection(0);
             std::cout << "refined " << i << "\n";
         }
+*/
 
-        root.refine(octopus::config().max_refinement_level);
+        root.refine(/*octopus::config().max_refinement_level*/);
         root.child_to_parent_injection(0);
 
         root.output_initial();
