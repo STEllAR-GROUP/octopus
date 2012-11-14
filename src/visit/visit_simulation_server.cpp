@@ -40,17 +40,32 @@ void visit_simulation_server::start(
 
     bp::context ctx;
     ctx.environment = bp::self::get_environment(); 
+    ctx.stdout_behavior = boost::process::capture_stream();
+    ctx.stderr_behavior = boost::process::capture_stream();
 
     // Merge the current environment and the requested environment (complexity
     // ugh), overwriting variables in the current environment with variables
     // specified in the env argument.
-    env.insert(ctx.environment.begin(), ctx.environment.end());
-    env.swap(ctx.environment);
+//    env.insert(ctx.environment.begin(), ctx.environment.end());
+//    env.swap(ctx.environment);
+
+//    std::cout << "exe: " << exe << "\n";
 
     sim_.reset(new bp::child(bp::launch(exe, args, ctx)));
 
+/*
+    boost::process::pistream &is = (*sim_).get_stdout(); 
+    std::string line; 
+    while (std::getline(is, line)) 
+      std::cout << line << std::endl; 
+*/
+
+    std::cout << "Detecting input\n";
+
     VisItDetectInput(0, -1);
-     
+
+    std::cout << "Detected input\n";
+
     if (!VisItAttemptToCompleteConnection()) 
         OCTOPUS_ASSERT_MSG(false, "visit did not connect");
 }
@@ -67,8 +82,8 @@ void visit_simulation_server::terminate()
 {
     OCTOPUS_ASSERT(sim_);
 
-    VisItExecuteCommand("Close()");
-    VisItExecuteCommand("quit()");
+//    VisItExecuteCommand("Close()");
+//    VisItExecuteCommand("quit()");
 }
 
 }

@@ -13,6 +13,7 @@
 #include <octopus/filesystem.hpp>
 
 #include <hpx/runtime/components/client_base.hpp>
+#include <hpx/runtime/components/stubs/stub_base.hpp>
 
 namespace octopus
 {
@@ -20,12 +21,12 @@ namespace octopus
 struct visit_simulation_client
   : hpx::components::client_base<
         visit_simulation_client
-      , hpx::components::stubs_base<visit_simulation_server>
+      , hpx::components::stub_base<visit_simulation_server>
     >
 {
     typedef hpx::components::client_base<
         visit_simulation_client
-      , hpx::components::stubs_base<visit_simulation_server>
+      , hpx::components::stub_base<visit_simulation_server>
     > base_type;
 
     visit_simulation_client() : base_type() {}
@@ -39,10 +40,11 @@ struct visit_simulation_client
     {}
 
     visit_simulation_client& operator=(
-        BOOST_RV_REF(visit_simulation_client) other
+        BOOST_COPY_ASSIGN_REF(visit_simulation_client) other
         )
     {
         this->gid_ = other.gid_;
+        return *this;
     }
 
     visit_simulation_client& operator=(
@@ -50,6 +52,7 @@ struct visit_simulation_client
         )
     {
         this->gid_ = boost::move(other.gid_);
+        return *this;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -77,7 +80,8 @@ struct visit_simulation_client
       , std::string const& exe
         )
     {
-        std::vector<std::string> args { "-fullscreen", "-cli", "-o", sim_file };
+//        std::vector<std::string> args { "", "-fullscreen", "-cli", "-o", sim_file };
+        std::vector<std::string> args { "", "-o", sim_file };
         return start_async(name, sim_file, exe, args);  
     }
 
@@ -101,7 +105,7 @@ struct visit_simulation_client
         )
     {
         return hpx::async<visit_simulation_server::start_action>
-            (this->gid_, name, sim_file, exe, args, env);
+            (get_gid(), name, sim_file, exe, args, env);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -109,7 +113,7 @@ struct visit_simulation_client
         std::string const& name
         )
     {
-        start_async(name, sim_file).get();
+        start_async(name).get();
     }
 
     void start(
@@ -156,7 +160,7 @@ struct visit_simulation_client
     hpx::future<void> terminate_async()
     {
         return hpx::async<visit_simulation_server::terminate_action>
-            (this->gid_);
+            (get_gid());
     } 
 
     void terminate()
@@ -170,7 +174,7 @@ struct visit_simulation_client
     hpx::future<void> evaluate_async(std::string const& source)
     {
         return hpx::async<visit_simulation_server::evaluate_action>
-            (this->gid_, source);
+            (get_gid(), source);
     } 
 
     void evaluate(std::string const& source)

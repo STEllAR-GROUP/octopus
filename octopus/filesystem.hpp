@@ -33,12 +33,7 @@ inline std::string join_paths(
   , std::string const& c
     )
 {
-    namespace fs = boost::filesystem;
-
-    fs::path aa(a);
-    aa /= b;
-
-    return aa.string();
+    return join_paths(a, join_paths(b, c));
 }
 
 inline std::string current_path()

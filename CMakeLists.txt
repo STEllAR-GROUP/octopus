@@ -70,6 +70,8 @@ hpx_include(CompilerFlags)
 
 hpx_use_flag_if_available(-Werror=switch LANGUAGES CXX)
 
+add_definitions(-DHPX_LIMIT=6)
+
 ################################################################################
 add_subdirectory(src)
 

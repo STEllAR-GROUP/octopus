@@ -24,7 +24,7 @@ foreach(application ${applications})
 
   add_hpx_executable(${application} SOURCES ${sources} ${${application}_FLAGS}
                      COMPONENT_DEPENDENCIES octopus
-                                            ${${applications}_COMPONENT_DEPENDENCIES}
+                                            ${${application}_COMPONENT_DEPENDENCIES}
                      FOLDER "Applications")
 
   add_hpx_pseudo_target(applications.${application})
