@@ -7,6 +7,8 @@ from os.path import join
 
 OpenDatabase(join(DATA_DIRECTORY, "3d_torus.silo")) #opens data file
 
+#SetWindowArea(0, 0, 800, 800)
+
 HideToolbars()
 InvertBackgroundColor() #sets background to black
 Source(join(VISUALIZATION_DIRECTORY, "clear_annotation.py")) #clears annotations
@@ -55,4 +57,4 @@ MeshAtts.meshColor = (102, 102, 153, 255) #makes mesh purple
 MeshAtts.meshColorSource = MeshAtts.MeshCustom
 SetPlotOptions(MeshAtts)
 
-
+#SetActiveWindow(1)

@@ -82,8 +82,10 @@ void visit_simulation_server::terminate()
 {
     OCTOPUS_ASSERT(sim_);
 
-    VisItExecuteCommand("Close()");
-    VisItExecuteCommand("quit()");
+//    VisItExecuteCommand("Close()");
+//    VisItExecuteCommand("quit()");
+
+    sim_->terminate(true);
 }
 
 }

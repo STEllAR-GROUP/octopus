@@ -23,6 +23,8 @@
 
 #include <boost/atomic.hpp>
 
+#include <hpx/include/plain_actions.hpp>
+
 // FIXME: Move shared code from the drivers into a shared object/headers.
 // FIXME: Names.
 // FIXME: Proper configuration.
@@ -65,15 +67,22 @@ inline double& kappa(boost::uint64_t step)
     return KAPPA.at(step % octopus::config().temporal_prediction_gap);
 }
 
-struct update_kappa
+void update_kappa(double k)
+{
+    std::cout << "Updating kappa => " << k << "\n";
+    kappa_buffer.store(k);
+}
+HPX_PLAIN_ACTION(update_kappa, update_kappa_action);
+
+struct set_kappa_from_buffer
 {
   private:
     boost::uint64_t step_;
 
   public:
-    update_kappa() : step_() {}
+    set_kappa_from_buffer() : step_() {}
 
-    update_kappa(boost::uint64_t step) : step_(step) {}
+    set_kappa_from_buffer(boost::uint64_t step) : step_(step) {}
 
     void operator()() const
     {

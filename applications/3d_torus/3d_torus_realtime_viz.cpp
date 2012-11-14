@@ -98,6 +98,7 @@ void octopus_define_problem(
 
     sci.output = octopus::single_variable_silo_writer(0, "rho"
       , octopus::join_paths(data_directory, "3d_torus.silo").c_str()
+      , octopus::join_paths(data_directory, "3d_torus.silo").c_str()
         );
 }
 
@@ -132,14 +133,11 @@ struct stepper : octopus::trivial_serialization
         // Crude, temporary stepper.
     
         root.post_dt(root.apply_leaf(octopus::science().initial_timestep));
-        double next_output_time = octopus::config().output_frequency;
    
         octopus::visit_simulation_client vsc; 
         vsc.create(hpx::find_here());
  
         vsc.start("3d_torus");
-
-        std::cout << "started\n";
 
         std::string initialize_script =
             octopus::join_paths(visualization_directory, "initialize.py");
@@ -159,8 +157,6 @@ struct stepper : octopus::trivial_serialization
         // important. 
         hpx::set_error_handlers();
 
-        std::cout << "starting\n";
-
         while (root.get_time() < octopus::config().temporal_domain)
         {
             char const* fmt = "STEP %06u : TIME %.6e += %.6e : KAPPA %.6g\n";
@@ -175,7 +171,7 @@ struct stepper : octopus::trivial_serialization
     
             // Update kappa.
             hpx::wait_all(octopus::call_everywhere
-                (update_kappa(root.get_step() - 1)));
+                (set_kappa_from_buffer(root.get_step() - 1)));
 
             root.output();
 
@@ -191,7 +187,9 @@ struct stepper : octopus::trivial_serialization
             root.post_dt(prediction.next_dt);
         } 
 
-        vsc.terminate();
+        vsc.evaluate("Close()\n");
+
+//        vsc.terminate();
     }
 };
 
