@@ -64,8 +64,8 @@ struct visit_simulation_client
       , std::string const& exe
         )
     {
-        std::vector<std::string> args { "-cli", "-o", sim_file };
-//        std::vector<std::string> args { "-cli", "-fullscreen", "-o", sim_file };
+//        std::vector<std::string> args { "-cli", "-o", sim_file };
+        std::vector<std::string> args { "-fullscreen", "-cli", "-o", sim_file };
         return start_async(name, sim_file, exe, args);  
     }
 

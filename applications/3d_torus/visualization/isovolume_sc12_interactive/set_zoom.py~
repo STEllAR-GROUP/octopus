@@ -1,0 +1,4 @@
+def set_zoom(zoom):
+    c = View3DAttributes()
+    c.imageZoom(zoom)
+    SetView3D(c)

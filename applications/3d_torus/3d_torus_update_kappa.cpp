@@ -11,8 +11,9 @@
 #include <hpx/async.hpp>
 
 // Dummy.
-void update_kappa(double k) { OCTOPUS_ASSERT(false); }
+void update_kappa(double k) { BOOST_ASSERT(false); }
 HPX_PLAIN_ACTION(update_kappa, update_kappa_action);
+HPX_ACTION_HAS_CRITICAL_PRIORITY(update_kappa_action);
 
 ///////////////////////////////////////////////////////////////////////////////
 int hpx_main(boost::program_options::variables_map& vm)

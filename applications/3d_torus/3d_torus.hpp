@@ -73,6 +73,7 @@ void update_kappa(double k)
     kappa_buffer.store(k);
 }
 HPX_PLAIN_ACTION(update_kappa, update_kappa_action);
+HPX_ACTION_HAS_CRITICAL_PRIORITY(update_kappa_action);
 
 struct set_kappa_from_buffer
 {
