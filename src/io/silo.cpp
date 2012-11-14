@@ -99,7 +99,7 @@ void single_variable_silo_writer::stop_write_locked(mutex_type::scoped_lock& l)
 void start_write_locally(boost::uint64_t step, double time, bool initial)
 {
     science().output.cast<single_variable_silo_writer>()->start_write
-        (step, time, initial);
+        (step, time/2.3e-5, initial);
 }
 
 void stop_write_locally()
