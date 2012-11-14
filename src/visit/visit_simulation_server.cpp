@@ -49,7 +49,7 @@ void visit_simulation_server::start(
 //    env.insert(ctx.environment.begin(), ctx.environment.end());
 //    env.swap(ctx.environment);
 
-//    std::cout << "exe: " << exe << "\n";
+    std::cout << "exe: " << exe << "\n";
 
     sim_.reset(new bp::child(bp::launch(exe, args, ctx)));
 
@@ -82,8 +82,8 @@ void visit_simulation_server::terminate()
 {
     OCTOPUS_ASSERT(sim_);
 
-//    VisItExecuteCommand("Close()");
-//    VisItExecuteCommand("quit()");
+    VisItExecuteCommand("Close()");
+    VisItExecuteCommand("quit()");
 }
 
 }

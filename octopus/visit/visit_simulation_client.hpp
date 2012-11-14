@@ -32,28 +32,12 @@ struct visit_simulation_client
     visit_simulation_client() : base_type() {}
 
     visit_simulation_client(visit_simulation_client const& other)
-      : base_type(other.gid_)
+      : base_type(other)
     {}
 
     visit_simulation_client(BOOST_RV_REF(visit_simulation_client) other)
-      : base_type(boost::move(other.gid_))
+      : base_type(boost::move(other))
     {}
-
-    visit_simulation_client& operator=(
-        BOOST_COPY_ASSIGN_REF(visit_simulation_client) other
-        )
-    {
-        this->gid_ = other.gid_;
-        return *this;
-    }
-
-    visit_simulation_client& operator=(
-        BOOST_RV_REF(visit_simulation_client) other
-        )
-    {
-        this->gid_ = boost::move(other.gid_);
-        return *this;
-    }
 
     ///////////////////////////////////////////////////////////////////////////
     // {{{ start
@@ -80,8 +64,8 @@ struct visit_simulation_client
       , std::string const& exe
         )
     {
-//        std::vector<std::string> args { "", "-fullscreen", "-cli", "-o", sim_file };
-        std::vector<std::string> args { "", "-o", sim_file };
+//        std::vector<std::string> args { "-cli", "-o", sim_file};
+        std::vector<std::string> args { "-cli", "-o", sim_file };
         return start_async(name, sim_file, exe, args);  
     }
 
