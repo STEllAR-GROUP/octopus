@@ -13,6 +13,26 @@
 
 #include <hpx/lcos/wait_all.hpp>
 
+octopus::visit_simulation_client vsc; 
+
+bool loop_viz;
+
+void set_zoom(std::string const& arg)
+{
+    std::cout << "Setting zoom => " << arg << "\n";
+    vsc.evaluate("set_zoom(" + arg + ")\n"); 
+}
+HPX_PLAIN_ACTION(set_zoom, set_zoom_action);
+HPX_ACTION_HAS_CRITICAL_PRIORITY(set_zoom_action);
+
+void set_angle(std::string const& arg1, std::string const& arg2)
+{
+    std::cout << "Setting angle => (" << arg1 << ", " << arg2 << ")\n";
+    vsc.evaluate("set_angle(" + arg1 + ", " + arg2 + ")\n"); 
+}
+HPX_PLAIN_ACTION(set_angle, set_angle_action);
+HPX_ACTION_HAS_CRITICAL_PRIORITY(set_angle_action);
+
 void octopus_define_problem(
     boost::program_options::variables_map& vm
   , octopus::science_table& sci
@@ -68,6 +88,8 @@ void octopus_define_problem(
            % kappa0)
         << ( boost::format("rotional_direction          = %s\n")
            % rotation_direction_str)
+        << ( boost::format("loop                        = %i\n")
+           % loop_viz)
         << "\n";
 
     std::cout
@@ -134,7 +156,6 @@ struct stepper : octopus::trivial_serialization
     
         root.post_dt(root.apply_leaf(octopus::science().initial_timestep));
    
-        octopus::visit_simulation_client vsc; 
         vsc.create(hpx::find_here());
  
         vsc.start("3d_torus");
@@ -197,11 +218,26 @@ int octopus_main(boost::program_options::variables_map& vm)
 {
     octopus::octree_client root;
 
-    octopus::octree_init_data root_data;
-    root_data.dx = octopus::science().initial_spacestep();
-    root.create_root(hpx::find_here(), root_data);
+    if (loop_viz)
+    {
+        while (true)
+        {
+            octopus::octree_init_data root_data;
+            root_data.dx = octopus::science().initial_spacestep();
+            root.create_root(hpx::find_here(), root_data);
 
-    root.apply_leaf<void>(stepper());
+            root.apply_leaf<void>(stepper());
+        }
+    }
+
+    else
+    {
+        octopus::octree_init_data root_data;
+        root_data.dx = octopus::science().initial_spacestep();
+        root.create_root(hpx::find_here(), root_data);
+
+        root.apply_leaf<void>(stepper());
+    }
     
     return 0;
 }

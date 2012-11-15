@@ -13,7 +13,7 @@ PseudocolorAtts.minFlag = 1
 PseudocolorAtts.maxFlag = 1
 PseudocolorAtts.min = 0
 PseudocolorAtts.max = 14
-PseudocolorAtts.colorTableName = "orangehot"
+PseudocolorAtts.colorTableName = "hot"
 SetPlotOptions(PseudocolorAtts)
 
 AddOperator("Isovolume", 1)

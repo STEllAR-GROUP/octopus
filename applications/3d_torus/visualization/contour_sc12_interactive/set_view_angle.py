@@ -26,9 +26,9 @@ def set_view_angle(phi,theta):
 #    while up_theta > 180:
 #        up_theta = up_theta - 180    
 
-    print "phi =", phi
-    print "theta =", theta
-    print "up_theta =", up_theta
+#    print "phi =", phi
+#    print "theta =", theta
+#    print "up_theta =", up_theta
 
     #convert deg to radians
     phi = phi*math.pi/180
@@ -56,4 +56,4 @@ def set_view_angle(phi,theta):
     c0.perspective = 1
 
     SetView3D(c0)
-    print "done setting view"
+#    print "done setting view"

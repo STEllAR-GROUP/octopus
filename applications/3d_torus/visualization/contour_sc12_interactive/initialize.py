@@ -14,15 +14,15 @@ InvertBackgroundColor() #sets background to black
 Source(join(VISUALIZATION_DIRECTORY, "clear_annotation.py")) #clears annotations
 
 AddPlot("Contour", "rho_level_0", 1, 1)
-AddPlot("Mesh", "mesh_level_0", 1, 1)
-SetActivePlots(1) #making the mesh the active plot
-AddOperator("Slice", 0) #slicing the mesh
-SliceAtts = SliceAttributes()
-SliceAtts.normal = (0,0,1) #slice along the z-plane
-SliceAtts.axisType = SliceAtts.ZAxis 
-SliceAtts.project2d = 0 #don't project to 2D
-SliceAtts.meshName = "mesh_level_0"
-SetOperatorOptions(SliceAtts,0)
+#AddPlot("Mesh", "mesh_level_0", 1, 1)
+#SetActivePlots(1) #making the mesh the active plot
+#AddOperator("Slice", 0) #slicing the mesh
+#SliceAtts = SliceAttributes()
+#SliceAtts.normal = (0,0,1) #slice along the z-plane
+#SliceAtts.axisType = SliceAtts.ZAxis 
+#SliceAtts.project2d = 0 #don't project to 2D
+#SliceAtts.meshName = "mesh_level_0"
+#SetOperatorOptions(SliceAtts,0)
 
 SetActivePlots(0) #making the density the active plot
 AddOperator("Transform", 0) #raising the density above the mesh 
@@ -51,10 +51,14 @@ SetOperatorOptions(ClipAtts, 0)
 
 DrawPlots() 
 Source(join(VISUALIZATION_DIRECTORY, "set_view.py")) #sets view according to file
+Source(join(VISUALIZATION_DIRECTORY, "set_view_angle.py")) #sets view according to file
+Source(join(VISUALIZATION_DIRECTORY, "set_zoom.py")) #sets view according to file
+set_view_angle(70,135)
+set_zoom(2.5)
 
-MeshAtts = MeshAttributes()
-MeshAtts.meshColor = (102, 102, 153, 255) #makes mesh purple
-MeshAtts.meshColorSource = MeshAtts.MeshCustom
-SetPlotOptions(MeshAtts)
+#MeshAtts = MeshAttributes()
+#MeshAtts.meshColor = (102, 102, 153, 255) #makes mesh purple
+#MeshAtts.meshColorSource = MeshAtts.MeshCustom
+#SetPlotOptions(MeshAtts)
 
 #SetActiveWindow(1)
