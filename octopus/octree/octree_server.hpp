@@ -826,9 +826,9 @@ struct OCTOPUS_EXPORT octree_server
         client_from_this().output();
     }
 
-    void output_initial()
+    void output(std::string const& file)
     {
-        client_from_this().output_initial();
+        client_from_this().output(file);
     }
 
     ///////////////////////////////////////////////////////////////////////////

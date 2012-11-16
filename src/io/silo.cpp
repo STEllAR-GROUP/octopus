@@ -21,7 +21,7 @@ namespace octopus
 void single_variable_silo_writer::start_write_locked(
     boost::uint64_t step
   , double time
-  , bool initial
+  , std::string const& file
   , mutex_type::scoped_lock& l
     )
 {
@@ -33,37 +33,27 @@ void single_variable_silo_writer::start_write_locked(
     step_ = step;
     time_ = time; 
 
-    if (initial)
-    {    
+    try
+    {
+        file_ = DBCreate(boost::str( boost::format(file)
+                                   % hpx::get_locality_id() % step_).c_str() 
+                       , DB_CLOBBER, DB_LOCAL, NULL, DB_PDB);
+    }
+    // FIXME: Catch the specific boost.format exception.
+    catch (...)
+    {
         try
         {
-            file_ = DBCreate(boost::str( boost::format(initial_file_name_)
+            file_ = DBCreate(boost::str( boost::format(file)
                                        % hpx::get_locality_id()).c_str() 
                            , DB_CLOBBER, DB_LOCAL, NULL, DB_PDB);
         }
         // FIXME: Catch the specific boost.format exception.
         catch (...)
         {
-            file_ = DBCreate(initial_file_name_.c_str()
+            file_ = DBCreate(file.c_str()
                            , DB_CLOBBER, DB_LOCAL, NULL, DB_PDB);
         }
-    }
-
-    else
-    {
-        try
-        {
-            file_ = DBCreate(boost::str( boost::format(file_name_)
-                                       % hpx::get_locality_id() % step_).c_str() 
-                           , DB_CLOBBER, DB_LOCAL, NULL, DB_PDB);
-        }
-        // FIXME: Catch the specific boost.format exception.
-        catch (...)
-        {
-            file_ = DBCreate(file_name_.c_str()
-                           , DB_CLOBBER, DB_LOCAL, NULL, DB_PDB);
-        }
-
     }
  
     OCTOPUS_ASSERT(file_ != 0);
@@ -96,10 +86,14 @@ void single_variable_silo_writer::stop_write_locked(mutex_type::scoped_lock& l)
     merged_ = false;
 }
 
-void start_write_locally(boost::uint64_t step, double time, bool initial)
+void start_write_locally(
+    boost::uint64_t step
+  , double time
+  , std::string const& file
+    )
 {
     science().output.cast<single_variable_silo_writer>()->start_write
-        (step, time/2.3e-5, initial);
+        (step, time, file);
 }
 
 void stop_write_locally()
@@ -115,7 +109,10 @@ HPX_PLAIN_ACTION(octopus::stop_write_locally, stop_write_locally_action);
 namespace octopus
 {
 
-void single_variable_silo_writer::begin_epoch(octree_server& e, bool initial)
+void single_variable_silo_writer::begin_epoch(
+    octree_server& e
+  , std::string const& file
+    )
 {
     std::vector<hpx::id_type> const& targets = localities();
 
@@ -126,7 +123,7 @@ void single_variable_silo_writer::begin_epoch(octree_server& e, bool initial)
 
     for (boost::uint64_t i = 0; i < targets.size(); ++i)
         futures.push_back(hpx::async
-            (act, targets[i], e.get_step(), e.get_time(), initial));
+            (act, targets[i], e.get_step(), e.get_time(), file));
 
     hpx::wait(futures);
 }

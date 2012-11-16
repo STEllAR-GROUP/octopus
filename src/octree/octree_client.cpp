@@ -360,14 +360,28 @@ hpx::future<void> octree_client::step_async() const
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-template <bool Initial>
-struct begin_io_epoch_locally : trivial_serialization
+struct begin_io_epoch_locally
 {
     typedef void result_type;
 
+    std::string file_;
+
+    begin_io_epoch_locally() : file_() {}
+
+    begin_io_epoch_locally(std::string const& file) : file_(file) {}
+
     result_type operator()(octree_server& root) const
     {
-        science().output.begin_epoch(root, Initial);
+        if (file_.empty())
+            science().output.begin_epoch(root);
+        else
+            science().output.begin_epoch(root, file_);
+    }
+
+    template <typename Archive>
+    void serialize(Archive& ar, unsigned int)
+    {
+        ar & file_;
     }
 };
 
@@ -445,7 +459,7 @@ hpx::future<void> octree_client::output_async() const
 {
     ensure_real();
 
-    begin_io_epoch_locally<false> begin_functor;
+    begin_io_epoch_locally begin_functor;
 
     hpx::future<void> begin = apply_leaf_async<void>(begin_functor);
     hpx::future<void> out   = begin.then(output_continuation(*this, begin));
@@ -455,11 +469,11 @@ hpx::future<void> octree_client::output_async() const
 }
 
 // TODO: Make sure we are only called on the root node.
-hpx::future<void> octree_client::output_initial_async() const
+hpx::future<void> octree_client::output_async(std::string const& file) const
 {
     ensure_real();
 
-    begin_io_epoch_locally<true> begin_functor;
+    begin_io_epoch_locally begin_functor(file);
 
     hpx::future<void> begin = apply_leaf_async<void>(begin_functor);
     hpx::future<void> out   = begin.then(output_continuation(*this, begin));
