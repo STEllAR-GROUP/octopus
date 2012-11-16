@@ -126,7 +126,10 @@ struct OCTOPUS_EXPORT single_variable_silo_writer : writer_base
 
     void begin_epoch(octree_server& e, std::string const& file);
 
-    void begin_epoch(octree_server& e);
+    void begin_epoch(octree_server& e)
+    {
+        begin_epoch(e, file_name_);
+    }
 
     void end_epoch(octree_server& e);
 
