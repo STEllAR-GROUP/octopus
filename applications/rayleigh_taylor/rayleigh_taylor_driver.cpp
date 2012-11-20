@@ -74,12 +74,12 @@ inline double gravity(double x, double y, double z)
 {
 
     // TODO: This should be tunable at runtime.
-    double const g = 1.0;    
+    double const g = -1.0;    
 
     switch (Axis)
     {
         case octopus::x_axis:
-            return -g;
+            return g;
         case octopus::y_axis:
             return 0.0;
         case octopus::z_axis:
@@ -102,6 +102,10 @@ inline double gravity(boost::array<double, 3> const& v)
 // TODO: Make equation of state switch-able at runtime.
 double pressure(std::vector<double> const& state)
 {
+    OCTOPUS_ASSERT(total_energy(state) >= 0.0);
+    OCTOPUS_ASSERT(kinetic_energy(state) >= 0.0);
+    OCTOPUS_ASSERT(tau(state) >= 0.0);
+
     //Polytropic equation of state.
     //return KAPPA * std::pow(rho(state), GAMMA);
 
@@ -151,11 +155,13 @@ struct initialize : octopus::trivial_serialization
 
         double const x_min = octopus::config().spatial_domain;        
 
-        double const p_base = 1.0;        
+        std::cout << "x_min =" << x_min << "\n";
+
+        double const p_base = 5.0;        
 
         // TODO: This should be tunable at runtime. Also, this value
         // might be wrong.
-        double const g = 1.0;         
+        double const g = -1.0;         
 
         for (boost::uint64_t i = 0; i < gnx; ++i)
         {
@@ -167,20 +173,26 @@ struct initialize : octopus::trivial_serialization
                     double const y = U.y_center(j);
                     double const z = U.z_center(k);
 
+                    bool high = true;
                     
+                    if (x 
 
                     if (initial_position <= x)
                     {                        
                         rho(U(i, j, k))          = rho0;         
-                        double ei_here = (1.0/GAMMA)*p_base+rho0*g*(x-x_min);                        
+                        double ei_here = (1.0/GAMMA)*(p_base+rho0*g*(x-x_min));
+                        // std::cout << x << ei_here << "\n";
+                        // OCTOPUS_ASSERT(ei_here > 0.0);                        
                         total_energy(U(i, j, k)) = ei_here;
                         tau(U(i, j, k))          = pow(ei_here, 1.0 / GAMMA);
                     }
                     else
                     {
                         rho(U(i, j, k))          = rho1;
-                        double ei_here = (1.0/GAMMA)*p_base+rho0*g*(x-x_min)+
-                            rho1*g*(x-initial_position);                        
+                        double ei_here = (1.0/GAMMA)*(p_base+rho0*g*(x-x_min)+
+                            rho1*g*(x-initial_position));                        
+                        // std::cout << x << ei_here << "\n";
+                        // OCTOPUS_ASSERT(ei_here > 0.0);                        
                         total_energy(U(i, j, k)) = ei_here;
                         tau(U(i, j, k))          = pow(ei_here, 1.0 / GAMMA);
                     }
