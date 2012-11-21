@@ -22,6 +22,8 @@
 namespace octopus
 {
 
+struct OCTOPUS_EXPORT oid_type;
+
 struct OCTOPUS_EXPORT octree_server;
 
 /// The set of types in our type-punning system. We call these types "kinds",
@@ -440,6 +442,13 @@ struct OCTOPUS_EXPORT octree_client
 
     ///////////////////////////////////////////////////////////////////////////
     // {{{ get_siblings
+    oid_type get_oid() const;
+    
+    hpx::future<oid_type> get_oid_async() const;
+    // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
+    // {{{ get_siblings
     boost::array<octree_client, 6> get_siblings() const
     {
         return get_siblings_async().get();
@@ -605,6 +614,20 @@ struct OCTOPUS_EXPORT octree_client
     }
 
     hpx::future<void> mark_async() const;
+
+    void populate() const
+    {
+        return populate_async().get();
+    }
+
+    hpx::future<void> populate_async() const;
+
+    void link() const
+    {
+        return link_async().get();
+    }
+
+    hpx::future<void> link_async() const;
 
     hpx::future<void> receive_sibling_refinement_signal_async(
         boost::uint64_t phase

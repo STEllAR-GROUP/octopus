@@ -32,7 +32,7 @@ struct atomic_bitset : boost::noncopyable
     boost::atomic<storage_type> bits_;
 
   public:
-    atomic_bitset() : bits_() {}
+    atomic_bitset() : bits_(0) {}
 
     atomic_bitset& set()
     {

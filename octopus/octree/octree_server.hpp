@@ -46,10 +46,59 @@ struct managed_component_ctor_policy<octopus::octree_server>
 namespace octopus
 {
 
+struct OCTOPUS_EXPORT oid_type
+{
+  private:
+    boost::uint64_t level_;
+    boost::array<boost::int64_t, 3> location_;
+    hpx::id_type gid_;
+
+    friend std::ostream& operator<<(std::ostream& os, oid_type const& id);
+
+    friend class boost::serialization::access;
+
+    template <typename Archive>
+    void serialize(Archive& ar, const unsigned int version)
+    {
+        ar & level_;
+        ar & boost::serialization::make_array
+            (location_.data(), location_.size());
+        ar & gid_; 
+    }
+
+  public:
+    oid_type() : level_(0), gid_(hpx::invalid_id)
+    {
+        location_[0] = 0;
+        location_[1] = 0;
+        location_[2] = 0;
+    }
+
+    oid_type(oid_type const& other)
+      : level_(other.level_), location_(other.location_), gid_(other.gid_)
+    {}
+
+    oid_type(octree_server const& e);
+
+    oid_type& operator=(oid_type const& other)
+    {
+        level_ = other.level_;
+        location_ = other.location_;
+        gid_ = other.gid_;
+        return *this;
+    }
+
+    oid_type& operator=(octree_server const& e);
+};
+
+std::ostream& operator<<(std::ostream& os, oid_type const& id);
+
 struct OCTOPUS_EXPORT octree_server
   : hpx::components::managed_component_base<octree_server>
 {
   private:
+    friend struct oid_type;
+
     typedef hpx::components::managed_component_base<octree_server> base_type;
 
     typedef hpx::components::managed_component<octree_server>*
@@ -267,7 +316,7 @@ struct OCTOPUS_EXPORT octree_server
     /// Remote Operations:   No.
     /// Concurrency Control: No.
     /// Synchrony Gurantee:  Synchronous. 
-    hpx::id_type reference_from_this()
+    hpx::id_type reference_from_this() const
     {
         // We shouldn't need to lock here, I believe.
         hpx::id_type gid = get_gid();
@@ -285,7 +334,7 @@ struct OCTOPUS_EXPORT octree_server
     /// Remote Operations:   No.
     /// Concurrency Control: No.
     /// Synchrony Gurantee:  Synchronous. 
-    octree_client client_from_this()
+    octree_client client_from_this() const
     {
         // We shouldn't need to lock here, I believe.
         hpx::id_type gid = get_gid();
@@ -444,6 +493,11 @@ struct OCTOPUS_EXPORT octree_server
 
     double z_face(boost::uint64_t i) const;
 
+    std::ostream& debug() const
+    {
+        return std::cout << get_oid() << ": ";
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     /// \brief Create the \a kid child for this node.
     /// 
@@ -536,6 +590,16 @@ struct OCTOPUS_EXPORT octree_server
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                 tie_child_sibling,
                                 tie_child_sibling_action);
+
+    ///////////////////////////////////////////////////////////////////////////
+    oid_type get_oid() const
+    {
+        return oid_type(*this); 
+    }
+
+    HPX_DEFINE_COMPONENT_DIRECT_ACTION(octree_server,
+                                       get_oid,
+                                       get_oid_action);
 
     ///////////////////////////////////////////////////////////////////////////
     boost::array<octree_client, 6> get_siblings() 
@@ -787,12 +851,24 @@ struct OCTOPUS_EXPORT octree_server
                                 mark,
                                 mark_action);  
 
+    void populate();
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                populate,
+                                populate_action);  
+
+    void link();
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                link,
+                                link_action);  
+
   private:
     void mark_kernel();
 
-    void populate();
+    void populate_kernel();
 
-    void link();
+    void link_kernel();
 
     void link_child(
         std::vector<hpx::future<void> >& links
@@ -912,6 +988,20 @@ struct OCTOPUS_EXPORT octree_server
     // }}}
 };
 
+inline oid_type::oid_type(octree_server const& e)
+  : level_(e.level_)
+  , location_(e.location_)
+  , gid_(e.reference_from_this())
+{ }
+
+inline oid_type& oid_type::operator=(octree_server const& e)
+{
+    level_ = e.level_;
+    location_ = e.location_;
+    gid_ = e.reference_from_this();
+    return *this;
+}
+
 }
 
 #define OCTOPUS_REGISTER_ACTION(name)                                       \
@@ -928,6 +1018,7 @@ OCTOPUS_REGISTER_ACTION(tie_sibling);
 OCTOPUS_REGISTER_ACTION(set_child_sibling);
 OCTOPUS_REGISTER_ACTION(tie_child_sibling);
 
+OCTOPUS_REGISTER_ACTION(get_oid);
 OCTOPUS_REGISTER_ACTION(get_siblings);
 OCTOPUS_REGISTER_ACTION(get_offset);
 OCTOPUS_REGISTER_ACTION(get_location);
@@ -948,6 +1039,8 @@ OCTOPUS_REGISTER_ACTION(step_recurse);
 OCTOPUS_REGISTER_ACTION(copy_and_regrid);
 OCTOPUS_REGISTER_ACTION(refine);
 OCTOPUS_REGISTER_ACTION(mark);
+OCTOPUS_REGISTER_ACTION(populate);
+OCTOPUS_REGISTER_ACTION(link);
 OCTOPUS_REGISTER_ACTION(receive_sibling_refinement_signal);
 
 #undef OCTOPUS_REGISTER_ACTION

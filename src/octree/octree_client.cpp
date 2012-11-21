@@ -186,6 +186,17 @@ hpx::future<void> octree_client::tie_child_sibling_async(
     return hpx::async<octree_server::tie_child_sibling_action>
         (gid_, target_kid, target_f, target_sib);
 }
+
+///////////////////////////////////////////////////////////////////////////////
+oid_type octree_client::get_oid() const
+{
+    return get_oid_async().get();
+}
+
+hpx::future<oid_type> octree_client::get_oid_async() const
+{
+    return hpx::async<octree_server::get_oid_action>(gid_);
+}
     
 ///////////////////////////////////////////////////////////////////////////////
 hpx::future<boost::array<octree_client, 6> >
@@ -492,6 +503,18 @@ hpx::future<void> octree_client::mark_async() const
 {
     ensure_real();
     return hpx::async<octree_server::mark_action>(gid_);
+}
+
+hpx::future<void> octree_client::populate_async() const
+{
+    ensure_real();
+    return hpx::async<octree_server::populate_action>(gid_);
+}
+
+hpx::future<void> octree_client::link_async() const
+{
+    ensure_real();
+    return hpx::async<octree_server::link_action>(gid_);
 }
 
 hpx::future<void> octree_client::receive_sibling_refinement_signal_async(

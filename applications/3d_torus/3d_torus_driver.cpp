@@ -78,26 +78,20 @@ struct stepper : octopus::trivial_serialization
 {
     void operator()(octopus::octree_server& root) const
     {
-        root.apply(octopus::science().initialize);
-  
-/* 
-        for ( boost::uint64_t i = 1
-            ; i <= octopus::config().max_refinement_level 
+        for ( std::size_t i = 0
+            ; i < octopus::config().max_refinement_level
             ; ++i)
         {
-            root.refine(i);
-            root.apply(octopus::science().initialize);
-            root.child_to_parent_injection(0);
-            std::cout << "refined " << i << "\n";
-        }
-*/
+            std::cout << "Refining level " << i << "\n";
 
-        root.refine(/*octopus::config().max_refinement_level*/);
-        root.child_to_parent_injection(0);
+            root.apply(octopus::science().initialize);
+            root.refine();
+            root.child_to_parent_injection(0);
+
+            std::cout << "Refined level " << i << "\n";
+        }
 
         root.output("U_L%06u_initial.silo");
-    
-        //std::cout << "Initial state prepared\n";
     
         ///////////////////////////////////////////////////////////////////////
         // Crude, temporary stepper.
