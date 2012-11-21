@@ -482,7 +482,6 @@ hpx::future<void> octree_client::output_async(std::string const& file) const
     return end;
 }
 
-
 hpx::future<void> octree_client::refine_async() const
 {
     ensure_real();
@@ -495,10 +494,14 @@ hpx::future<void> octree_client::mark_async() const
     return hpx::async<octree_server::mark_action>(gid_);
 }
 
-void octree_client::receive_sibling_refinement_signal_push(face f) const
+hpx::future<void> octree_client::receive_sibling_refinement_signal_async(
+    boost::uint64_t phase
+  , face f
+    ) const
 {
     ensure_real();
-    hpx::apply<octree_server::receive_sibling_refinement_signal_action>(gid_, f); 
+    return hpx::async<octree_server::receive_sibling_refinement_signal_action>
+        (gid_, phase, f); 
 }
 
 }

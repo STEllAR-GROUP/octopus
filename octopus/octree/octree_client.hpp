@@ -606,7 +606,10 @@ struct OCTOPUS_EXPORT octree_client
 
     hpx::future<void> mark_async() const;
 
-    void receive_sibling_refinement_signal_push(face f) const;
+    hpx::future<void> receive_sibling_refinement_signal_async(
+        boost::uint64_t phase
+      , face f
+        ) const;
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////

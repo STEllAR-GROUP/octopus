@@ -55,12 +55,12 @@ struct OCTOPUS_EXPORT octree_server
     typedef hpx::components::managed_component<octree_server>*
         back_pointer_type;
 
-//    typedef hpx::lcos::local::mutex mutex_type;
+    typedef hpx::lcos::local::mutex mutex_type;
 
     ///< This event is triggered when we are first initialized. 
 //    hpx::lcos::local::event initialized_;
 
-//    mutable mutex_type mtx_; 
+    mutable mutex_type mtx_; 
 //    boost::uint8_t siblings_set_;
 //    bool state_received_;
 
@@ -76,7 +76,7 @@ struct OCTOPUS_EXPORT octree_server
     typedef array1d<channel<vector3d<std::vector<double> > >, 8>
         children_state_dependencies;
 
-    typedef array1d<channel<void>, 7>
+    typedef array1d<channel<void>, 6>
         sibling_sync_dependencies;
 
     // IMPLEMENT: This should totally be in the science table, along with like

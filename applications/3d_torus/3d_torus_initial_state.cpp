@@ -78,65 +78,20 @@ struct stepper : octopus::trivial_serialization
 {
     void operator()(octopus::octree_server& root) const
     {
-        root.apply(octopus::science().initialize);
-  
-/* 
-        for ( boost::uint64_t i = 1
-            ; i <= octopus::config().max_refinement_level 
+        for ( std::size_t i = 0
+            ; i < octopus::config().max_refinement_level
             ; ++i)
         {
-            root.refine(i);
+            std::cout << "Refining level " << i << "\n";
+
             root.apply(octopus::science().initialize);
+            root.refine();
             root.child_to_parent_injection(0);
-            std::cout << "refined " << i << "\n";
+
+            std::cout << "Refined level " << i << "\n";
         }
-*/
 
-        root.refine(/*octopus::config().max_refinement_level*/);
-        root.child_to_parent_injection(0);
-
-        root.output(");
-    
-        //std::cout << "Initial state prepared\n";
-    
-        ///////////////////////////////////////////////////////////////////////
-        // Crude, temporary stepper.
-    
-        root.post_dt(root.apply_leaf(octopus::science().initial_timestep));
-        double next_output_time = octopus::config().output_frequency;
-    
-        while (root.get_time() < octopus::config().temporal_domain)
-        {
-            char const* fmt = "STEP %06u : TIME %.6e += %.6e : KAPPA %.6g\n";
-
-            std::cout <<
-                ( boost::format(fmt)
-                % root.get_step() % root.get_time() % root.get_dt()
-                % kappa(root.get_step()) 
-                );
-    
-            root.step();
-    
-            // Update kappa.
-            hpx::wait_all(octopus::call_everywhere
-                (update_kappa(root.get_step() - 1)));
-
-            if (root.get_time() >= next_output_time)
-            {   
-                std::cout << "OUTPUT\n";
-                root.output();
-                next_output_time += octopus::config().output_frequency; 
-            }
-    
-            // IMPLEMENT: Futurize w/ continutation.
-            octopus::timestep_prediction prediction
-                = root.apply_leaf(octopus::science().predict_timestep);
-    
-            OCTOPUS_ASSERT(0.0 < prediction.next_dt);
-            OCTOPUS_ASSERT(0.0 < prediction.future_dt);
-    
-            root.post_dt(prediction.next_dt);
-        } 
+        root.output("U_L%06u_initial.silo");
     }
 };
 

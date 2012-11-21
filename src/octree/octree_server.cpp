@@ -109,7 +109,7 @@ void octree_server::initialize_queues()
         );
 
     // Just hard-code the size of the refinement queue.
-    refinement_deps_.resize(3, sibling_sync_dependencies); 
+    refinement_deps_.resize(3, sibling_sync_dependencies()); 
 } // }}}
 
 void octree_server::prepare_compute_queues()
@@ -435,7 +435,7 @@ void octree_server::set_sibling(
 { // {{{
     mutex_type::scoped_lock l(mtx_);
 
-    if (amr_boundary == siblings_[f] || sib.real())
+    if ((amr_boundary == siblings_[f].kind()) || sib.real())
     {
         if (siblings_[f].real() && sib.real())
             OCTOPUS_ASSERT(siblings_[f] == sib); 
@@ -474,6 +474,7 @@ void octree_server::set_child_sibling(
         children_[kid].set_sibling(f, sib);
     else
     {
+        // Exterior AMR boundary.
         octree_client bound(amr_boundary
                           , client_from_this()
                           , f 
@@ -492,19 +493,20 @@ void octree_server::tie_child_sibling(
   , octree_client const& target_sib
     )
 { // {{{
-    if (invalid_boundary != children_[kid].kind())
-        children_[kid].tie_sibling(f, sib);
+    if (invalid_boundary != children_[target_kid].kind())
+        children_[target_kid].tie_sibling(target_f, target_sib);
     else
     {
+        // Exterior AMR boundary.
         octree_client bound(amr_boundary
                           , client_from_this()
-                          , f 
-                          , kid
-                          , sib.get_offset() 
+                          , target_f 
+                          , target_kid
+                          , target_sib.get_offset() 
                           , get_offset()
                             ); 
 
-        sib.set_sibling(invert(f), bound);
+        target_sib.set_sibling(invert(target_f), bound);
     }
 } // }}} 
 
@@ -2811,8 +2813,13 @@ void octree_server::refine()
     link();
 } // }}}
 
-void octree_server::sibling_refinement_signal(boost::uint64_t phase)
+void octree_server::sibling_refinement_signal(
+    boost::uint64_t phase
+    )
 { // {{{
+    std::vector<hpx::future<void> > keepalive;
+    keepalive.reserve(6);
+
     std::vector<hpx::future<void> > dependencies;
     dependencies.reserve(6);
 
@@ -2820,10 +2827,12 @@ void octree_server::sibling_refinement_signal(boost::uint64_t phase)
     {
         if (siblings_[i].real())
         {
-            siblings_[i].receive_sibling_refinement_signal_push
-                (phase, invert(face(i)));
+            keepalive.emplace_back
+                (siblings_[i].receive_sibling_refinement_signal_async
+                    (phase, invert(face(i))));
 
-            dependencies.emplace_back(refinement_deps_[i].get_future());
+            dependencies.emplace_back
+                (refinement_deps_.at(phase)(i).get_future());
         }
     }
 
