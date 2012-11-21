@@ -79,9 +79,9 @@ inline double gravity(double x, double y, double z)
     switch (Axis)
     {
         case octopus::x_axis:
-            return g;
-        case octopus::y_axis:
             return 0.0;
+        case octopus::y_axis:
+            return g;
         case octopus::z_axis:
             return 0.0;       
         default: break;
@@ -141,27 +141,27 @@ struct initialize : octopus::trivial_serialization
 
         // "High" side.
         double const rho0 = 2.0;
-        double const ei0 = 1.0;
-        double const tau0 = pow(ei0, 1.0 / GAMMA);
         // "Low" side.
         double const rho1 = 1.0;
-        double const ei1 = 1.0;
-        double const tau1 = pow(ei1, 1.0 / GAMMA);
     
         // Initial position of the discontinuity.
         double const initial_position = 0.0; 
         
         boost::uint64_t const gnx = octopus::config().grid_node_length;
 
-        double const x_min = octopus::config().spatial_domain;        
-
-        std::cout << "x_min =" << x_min << "\n";
+        double const y_min = octopus::config().spatial_domain;        
+        double const x_min = y_min;
+        
+        std::cout << "y_min =" << y_min << "\n";
 
         double const p_base = 5.0;        
 
         // TODO: This should be tunable at runtime. Also, this value
         // might be wrong.
         double const g = -1.0;         
+        double const pi = M_PI;
+        double const big_a = 0.01;                    
+        double const h = 0.005;
 
         for (boost::uint64_t i = 0; i < gnx; ++i)
         {
@@ -174,28 +174,30 @@ struct initialize : octopus::trivial_serialization
                     double const z = U.z_center(k);
 
                     bool high = true;
-                    
-                    if (x 
 
                     if (initial_position <= x)
                     {                        
-                        rho(U(i, j, k))          = rho0;         
+//                        rho(U(i, j, k))          = rho0;         
                         double ei_here = (1.0/GAMMA)*(p_base+rho0*g*(x-x_min));
-                        // std::cout << x << ei_here << "\n";
-                        // OCTOPUS_ASSERT(ei_here > 0.0);                        
                         total_energy(U(i, j, k)) = ei_here;
                         tau(U(i, j, k))          = pow(ei_here, 1.0 / GAMMA);
                     }
                     else
                     {
-                        rho(U(i, j, k))          = rho1;
+//                        rho(U(i, j, k))          = rho1;
                         double ei_here = (1.0/GAMMA)*(p_base+rho0*g*(x-x_min)+
-                            rho1*g*(x-initial_position));                        
-                        // std::cout << x << ei_here << "\n";
-                        // OCTOPUS_ASSERT(ei_here > 0.0);                        
-                        total_energy(U(i, j, k)) = ei_here;
+                            rho1*g*(x-initial_position));                                              total_energy(U(i, j, k)) = ei_here;
                         tau(U(i, j, k))          = pow(ei_here, 1.0 / GAMMA);
                     }
+
+                    double const phi_here = (big_a/2.0)*(
+                        std::cos(pi*(x-x_min)/x_min)+
+                        std::cos(pi*(3.0*x_min-x)/x_min)+
+                        y_min);
+                    rho(U(i,j,k)) = rho1 + 0.5*(rho0-rho1)*(
+                        1.0+std::tanh((y-phi_here)/h));
+                    
+                        
 
                     momentum_x(U(i, j, k)) = 0.0; 
                     momentum_y(U(i, j, k)) = 0.0; 
