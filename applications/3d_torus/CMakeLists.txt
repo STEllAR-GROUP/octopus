@@ -9,9 +9,11 @@ set(applications
     3d_torus_driver
     3d_torus_update_kappa
     3d_torus_cli
+    3d_torus_initial_state
    )
 
 set(3d_torus_driver_FLAGS COMPONENT_DEPENDENCIES octopus)
+set(3d_torus_initial_state_FLAGS COMPONENT_DEPENDENCIES octopus)
 
 if(VISIT_DRIVER_FOUND AND VISIT_LIBSIM_FOUND)
   set(applications

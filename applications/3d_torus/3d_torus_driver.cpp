@@ -95,7 +95,7 @@ struct stepper : octopus::trivial_serialization
         root.refine(/*octopus::config().max_refinement_level*/);
         root.child_to_parent_injection(0);
 
-        root.output_initial();
+        root.output("U_L%06u_initial.silo");
     
         //std::cout << "Initial state prepared\n";
     

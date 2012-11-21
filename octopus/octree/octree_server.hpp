@@ -77,7 +77,7 @@ struct OCTOPUS_EXPORT octree_server
         children_state_dependencies;
 
     typedef array1d<channel<void>, 7>
-        refinement_sync_dependencies;
+        sibling_sync_dependencies;
 
     // IMPLEMENT: This should totally be in the science table, along with like
     // 3k other lines of stuff in octree_server.
@@ -113,7 +113,7 @@ struct OCTOPUS_EXPORT octree_server
     // we don't have that child.
     std::vector<children_state_dependencies> adjust_flux_deps_;
 
-    refinement_sync_dependencies refinement_deps_;
+    std::vector<sibling_sync_dependencies> refinement_deps_;
 
     ///////////////////////////////////////////////////////////////////////////
     // From OctNode
@@ -255,7 +255,9 @@ struct OCTOPUS_EXPORT octree_server
 
     void initialize_queues();
 
-    void prepare_queues();
+    void prepare_compute_queues();
+
+    void prepare_refinement_queues();
 
     ///////////////////////////////////////////////////////////////////////////
     /// \brief Get a reference to this node that is safe to pass to our
@@ -466,12 +468,6 @@ struct OCTOPUS_EXPORT octree_server
     HPX_DEFINE_COMPONENT_DIRECT_ACTION(octree_server,
                                        require_child,
                                        require_child_action);
-
-  private:
-    void link_child(
-        std::vector<hpx::future<void> >& links
-      , child_index kid
-        );
 
   public:
     ///////////////////////////////////////////////////////////////////////////
@@ -792,9 +788,16 @@ struct OCTOPUS_EXPORT octree_server
                                 mark_action);  
 
   private:
+    void mark_kernel();
+
     void populate();
 
     void link();
+
+    void link_child(
+        std::vector<hpx::future<void> >& links
+      , child_index kid
+        );
 
   public:
     void refine();
@@ -804,13 +807,13 @@ struct OCTOPUS_EXPORT octree_server
                                 refine_action);  
 
   private:
-    void sibling_refinement_signal();
+    void sibling_refinement_signal(boost::uint64_t phase);
 
   public:
-    void receive_sibling_refinement_signal(face f)
+    void receive_sibling_refinement_signal(boost::uint64_t phase, face f)
     {
         OCTOPUS_ASSERT(invalid_face != f);
-        refinement_deps_[f].post();
+        refinement_deps_.at(phase)(f).post();
     }
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
