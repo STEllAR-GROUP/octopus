@@ -79,7 +79,7 @@ struct stepper : octopus::trivial_serialization
     void operator()(octopus::octree_server& root) const
     {
         for ( std::size_t i = 0
-            ; i < octopus::config().max_refinement_level
+            ; i < octopus::config().levels_of_refinement
             ; ++i)
         {
             std::cout << "Refining level " << i << "\n";

@@ -66,7 +66,7 @@ std::ostream& operator<<(
     // NOTE: Last item should not have a newline after it.
     os
         << "[octopus]\n"
-        << OCTOPUS_FORMAT_OPTION(max_refinement_level) << "\n"
+        << OCTOPUS_FORMAT_OPTION(levels_of_refinement) << "\n"
 
         << OCTOPUS_FORMAT_OPTION(runge_kutta_order) << "\n"
         << OCTOPUS_FORMAT_OPTION(reflect_on_z) << "\n"
@@ -94,7 +94,7 @@ config_data config_from_ini()
     // FIXME: Math in INI would make this smoother, some of these settings
     // should default to a formula not a hard-coded value.
     reader
-        ("max_refinement_level", cfg.max_refinement_level, 0) 
+        ("levels_of_refinement", cfg.levels_of_refinement, 1) 
 
         ("runge_kutta_order", cfg.runge_kutta_order, 1) 
         ("reflect_on_z", cfg.reflect_on_z, true) 

@@ -600,7 +600,7 @@ struct stepper : octopus::trivial_serialization
         root.apply(octopus::science().initialize);
    
         for ( boost::uint64_t i = 1
-            ; i <= octopus::config().max_refinement_level 
+            ; i <= octopus::config().levels_of_refinement 
             ; ++i)
         {
             root.refine(i);

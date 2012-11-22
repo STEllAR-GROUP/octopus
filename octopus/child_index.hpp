@@ -66,7 +66,7 @@ struct child_index
 
     bool z() const
     {
-        return (packed_ >> 2) & 0x1;
+        return (packed_ >> 2) & 1;
     }
 
     void set_x(boost::uint64_t x_)

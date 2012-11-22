@@ -516,12 +516,23 @@ struct OCTOPUS_EXPORT octree_server
         child_index kid
         )
     {
-        marked_for_refinement_.set(kid, true);
+        debug() << "require_child(" << kid << ")\n";
+        // REVIEW: Lock here.
+        if (hpx::invalid_id == children_[kid])
+            marked_for_refinement_.set(kid, true);
     }
 
     HPX_DEFINE_COMPONENT_DIRECT_ACTION(octree_server,
                                        require_child,
                                        require_child_action);
+
+    void require_sibling(
+        face f
+        );
+
+    HPX_DEFINE_COMPONENT_DIRECT_ACTION(octree_server,
+                                       require_sibling,
+                                       require_sibling_action);
 
   public:
     ///////////////////////////////////////////////////////////////////////////
@@ -866,6 +877,8 @@ struct OCTOPUS_EXPORT octree_server
   private:
     void mark_kernel();
 
+    void propagate_kernel();
+
     void populate_kernel();
 
     void link_kernel();
@@ -1013,6 +1026,7 @@ inline oid_type& oid_type::operator=(octree_server const& e)
 // FIXME: Make sure this is in order.
 OCTOPUS_REGISTER_ACTION(create_child);
 OCTOPUS_REGISTER_ACTION(require_child);
+OCTOPUS_REGISTER_ACTION(require_sibling);
 OCTOPUS_REGISTER_ACTION(set_sibling);
 OCTOPUS_REGISTER_ACTION(tie_sibling);
 OCTOPUS_REGISTER_ACTION(set_child_sibling);

@@ -29,7 +29,7 @@ namespace octopus
 // config_from_init().
 struct config_data
 {
-    boost::uint64_t max_refinement_level; 
+    boost::uint64_t levels_of_refinement; 
 
     ///< Order of (TVD) Runge Kutta used..
     boost::uint16_t runge_kutta_order;
@@ -61,7 +61,7 @@ struct config_data
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int version)
     {
-        ar & max_refinement_level;
+        ar & levels_of_refinement;
 
         ar & runge_kutta_order;
         ar & reflect_on_z;

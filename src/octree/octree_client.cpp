@@ -131,6 +131,14 @@ hpx::future<void> octree_client::require_child_async(
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+hpx::future<void> octree_client::require_sibling_async(
+    face f
+    ) const
+{
+    return hpx::async<octree_server::require_sibling_action>(gid_, f);
+}
+
+///////////////////////////////////////////////////////////////////////////////
 hpx::future<void> octree_client::set_sibling_async(
     face f ///< Relative to us.
   , octree_client const& sib

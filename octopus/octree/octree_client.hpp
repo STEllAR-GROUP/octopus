@@ -370,6 +370,17 @@ struct OCTOPUS_EXPORT octree_client
     hpx::future<void> require_child_async(
         child_index kid
         ) const;
+
+    void require_sibling(
+        face f
+        ) const
+    {
+        require_sibling_async(f).get(); 
+    }
+
+    hpx::future<void> require_sibling_async(
+        face f
+        ) const;
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
