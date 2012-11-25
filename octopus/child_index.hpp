@@ -23,7 +23,7 @@ namespace octopus
 
 struct child_index
 {
-    child_index() : packed_() {}
+    child_index() : packed_(0) {}
 
     child_index(boost::uint64_t packed)
       : packed_(packed)
@@ -96,7 +96,7 @@ struct child_index
             packed_ |= 4;
     }
 
-    boost::array<boost::int64_t, 3> array()
+    boost::array<boost::int64_t, 3> array() const
     {
         boost::array<boost::int64_t, 3> a;
         a[0] = x();

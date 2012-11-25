@@ -50,12 +50,14 @@ struct channel
     {
         if (data_)
         {
+/*
             if (data_->is_ready())
             {
                 data_->set_error(hpx::broken_promise,
                     "channel<T>::~channel",
                     "deleting owner before channel value has been consumed");
             }
+*/
 
             data_->deleting_owner();
         }
@@ -67,12 +69,14 @@ struct channel
 
         if (this != &other)
         {
+/*
             if (data_->is_ready())
             {
                 data_->set_error(hpx::broken_promise,
                     "channel<T>::operator=()",
                     "deleting owner before channel value has been consumed");
             }
+*/
 
             data_->deleting_owner();
 
@@ -88,12 +92,14 @@ struct channel
 
         if (this != &other)
         {
+/*
             if (data_->is_ready())
             {
                 data_->set_error(hpx::broken_promise,
                     "channel<T>::operator=()",
                     "deleting owner before channel value has been consumed");
             }
+*/
 
             data_->deleting_owner();
 
@@ -113,12 +119,14 @@ struct channel
     {
         OCTOPUS_ASSERT(data_);
 
+/*
         if (data_->is_ready())
         {
             data_->set_error(hpx::broken_promise,
                 "channel<T>::clear()",
                 "clearing owner before channel value has been retrieved");
         }
+*/
 
         data_->deleting_owner();
 
@@ -218,12 +226,14 @@ struct channel<void>
     {
         if (data_)
         {
+/*
             if (data_->is_ready())
             {
                 data_->set_error(hpx::broken_promise,
                     "channel<T>::~channel",
                     "deleting owner before channel value has been consumed");
             }
+*/
 
             data_->deleting_owner();
         }
@@ -235,12 +245,14 @@ struct channel<void>
 
         if (this != &other)
         {
+/*
             if (data_->is_ready())
             {
                 data_->set_error(hpx::broken_promise,
                     "channel<T>::operator=()",
                     "deleting owner before channel value has been consumed");
             }
+*/
 
             data_->deleting_owner();
 
@@ -256,12 +268,14 @@ struct channel<void>
 
         if (this != &other)
         {
+/*
             if (data_->is_ready())
             {
                 data_->set_error(hpx::broken_promise,
                     "channel<T>::operator=()",
                     "deleting owner before channel value has been consumed");
             }
+*/
 
             data_->deleting_owner();
 
@@ -281,12 +295,14 @@ struct channel<void>
     {
         OCTOPUS_ASSERT(data_);
 
+/*
         if (data_->is_ready())
         {
             data_->set_error(hpx::broken_promise,
                 "channel<T>::clear()",
                 "clearing owner before channel value has been retrieved");
         }
+*/
 
         data_->deleting_owner();
 

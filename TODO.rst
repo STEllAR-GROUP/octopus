@@ -52,4 +52,4 @@ Long-term todo list
 * Implement default_main.
 * Replace hpx::wait() with continuations and hpx::wait_all().
 * Move back to a "state" class.
-
+* Improve memory usage WRT std::vector<>.reserve()

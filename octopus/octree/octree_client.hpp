@@ -348,6 +348,16 @@ struct OCTOPUS_EXPORT octree_client
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
+    // {{{ prepare_refinement_queues
+    void prepare_refinement_queues() const
+    {
+        prepare_refinement_queues_async().get(); 
+    }
+
+    hpx::future<void> prepare_refinement_queues_async() const;
+    // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
     // {{{ create_child
     void create_child(
         child_index kid
@@ -641,6 +651,11 @@ struct OCTOPUS_EXPORT octree_client
     hpx::future<void> link_async() const;
 
     hpx::future<void> receive_sibling_refinement_signal_async(
+        boost::uint64_t phase
+      , face f
+        ) const;
+
+    void receive_sibling_refinement_signal_push(
         boost::uint64_t phase
       , face f
         ) const;

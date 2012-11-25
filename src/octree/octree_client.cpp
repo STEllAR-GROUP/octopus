@@ -114,6 +114,13 @@ void octree_client::create_root(
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+hpx::future<void> octree_client::prepare_refinement_queues_async() const
+{
+    ensure_real();
+    return hpx::async<octree_server::prepare_refinement_queues_action>(gid_);
+}
+
+///////////////////////////////////////////////////////////////////////////////
 hpx::future<void> octree_client::create_child_async(
     child_index kid
     ) const
@@ -226,7 +233,6 @@ octree_client::get_offset_async() const
 hpx::future<boost::array<boost::int64_t, 3> >
 octree_client::get_location_async() const
 {
-    ensure_real();
     return hpx::async<octree_server::get_location_action>(gid_);
 }
 
@@ -532,6 +538,16 @@ hpx::future<void> octree_client::receive_sibling_refinement_signal_async(
 {
     ensure_real();
     return hpx::async<octree_server::receive_sibling_refinement_signal_action>
+        (gid_, phase, f); 
+}
+
+void octree_client::receive_sibling_refinement_signal_push(
+    boost::uint64_t phase
+  , face f
+    ) const
+{
+    ensure_real();
+    hpx::apply<octree_server::receive_sibling_refinement_signal_action>
         (gid_, phase, f); 
 }
 
