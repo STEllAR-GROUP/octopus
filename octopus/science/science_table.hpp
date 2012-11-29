@@ -141,6 +141,27 @@ struct science_table
 
     writer output;
 
+    science_table()
+     : state_size(0)
+     , physical_boundaries()
+     , reconstruct()
+     , ghost_zone_width(0)
+     , initialize()
+     , enforce_outflow()
+     , enforce_limits()
+     , reflect_z()
+     , max_eigenvalue()
+     , initial_spacestep()
+     , initial_timestep()
+     , predict_timestep()
+     , conserved_to_primitive()
+     , primitive_to_conserved()
+     , source()
+     , flux()
+     , refine_policy()
+     , output()
+    {}
+
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int version)
     {
