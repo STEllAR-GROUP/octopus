@@ -1,0 +1,8 @@
+Linearized GR solver - Linearized version of the Einstein field questions (4 degrees of freedom)
+Elements of Numerical Relativity - Z4 formalism for general relativity
+Appx 5000 timesteps per orbit at 5 levels of refinement
+Timestep sizes with GR solver are appx 10 orders of magnitude slower
+Jay Call's paper
+Run different simulations with different ranges of inaccuracies
+Start when the stream is optically thin
+Would have to figure out what mass transfer rate would give us an optically thin stream
