@@ -120,7 +120,6 @@ void octopus_define_problem(
 
     sci.output = octopus::single_variable_silo_writer(0, "rho"
       , octopus::join_paths(data_directory, "3d_torus.silo").c_str()
-      , octopus::join_paths(data_directory, "3d_torus.silo").c_str()
         );
 }
 
@@ -142,12 +141,20 @@ struct stepper : octopus::trivial_serialization
                                   , "tablet_interactive"))
         ;
 
-        root.apply(octopus::science().initialize);
+        for ( std::size_t i = 0
+            ; i < octopus::config().levels_of_refinement
+            ; ++i)
+        {
+            std::cout << "Refining level " << i << "\n";
 
-        root.refine();
-        root.child_to_parent_injection(0);
+            root.apply(octopus::science().initialize);
+            root.refine();
+            root.child_to_parent_injection(0);
 
-        root.output_initial();
+            std::cout << "Refined level " << i << "\n";
+        }
+
+        root.output("U_L%06u_initial.silo");
     
         //std::cout << "Initial state prepared\n";
     

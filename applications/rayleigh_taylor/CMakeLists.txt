@@ -9,13 +9,14 @@ set(applications
     rayleigh_taylor_driver
    )
 
+set(rayleigh_taylor_driver_FLAGS COMPONENT_DEPENDENCIES octopus)
+
 foreach(application ${applications})
   set(sources ${application}.cpp)
 
   source_group("Source Files" FILES ${sources})
 
   add_hpx_executable(${application} SOURCES ${sources} ${${application}_FLAGS}
-                     DEPENDENCIES octopus_component simV2
                      FOLDER "Applications")
 
   add_hpx_pseudo_target(applications.${application})

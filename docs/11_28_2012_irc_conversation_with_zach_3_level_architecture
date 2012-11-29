@@ -1,0 +1,40 @@
+2012.11.28_22.36.59<wash> I envision a three-level library architecture
+2012.11.28_22.37.09<zbyerly> i also envision that
+2012.11.28_22.42.28<wash> the bottom level is the core octopus infrastructure, the generic octree code, the octopus engine, the driver infrastructure and pluggable implementations of critical, non-physics subsystems (load balancing and I/O currently)
+2012.11.28_22.42.56<zbyerly> the middle level would be hydrodynamics stuff
+2012.11.28_22.43.03<zbyerly> and the top level would be problem-specific stuff
+2012.11.28_22.43.07<wash> Things in this level should never need to be touched by physicists
+2012.11.28_22.43.29<wash> Right
+2012.11.28_22.43.50<wash> the middle level would also be were, say, a full GR library would go.
+2012.11.28_22.43.57<wash> the top level isn't so much problem-specific stuff,
+2012.11.28_22.44.05<wash> the top level is policies
+2012.11.28_22.45.26<wash> the bottom level provides a generic framework for AMR; it is necessary but not sufficient for an application. middle level libraries provide solvers.
+2012.11.28_22.45.41<wash> both bottom and middle-level libraries are /policy/ driven.
+2012.11.28_22.46.55<wash> the middle level + the bottom level still is not enough to give you an application.
+2012.11.28_22.47.08<wash> because it is still generic.
+2012.11.28_22.47.53<wash> The top level provides sets of problem and domain specific policies which are completely abstracted away from the details of the solver and the amr framework.
+2012.11.28_22.48.40<wash> the generic amr framework + a solver + a set of policies = an application
+2012.11.28_22.49.22<wash> More specifically,
+2012.11.28_22.51.23<wash> the generic amr framework + a solver + (a selection of the appropiate generic policies + implementations of application-specific policies) = an application
+2012.11.28_22.51.33<zbyerly> that's too much jargon for me
+2012.11.28_22.51.38<zbyerly> what is policies?
+2012.11.28_22.52.33<wash> Policies are an abstract concept - allow me to explain
+2012.11.28_22.54.00<wash> A policy-centric library has customization points - places in the code where library users specify what the code should do.
+2012.11.28_22.54.08<wash> These specifications are called policies.
+2012.11.28_22.54.59<zbyerly> k
+2012.11.28_22.55.21<wash> For example, ideal gas law, this is a policy for the eulerian hydro solver.
+2012.11.28_22.55.45<wash> ideal gas law is almost certainly a policy that is generic, and should be included in a library of policies
+2012.11.28_22.55.55<wash> (e.g. so that you don't have to write it for every application)
+2012.11.28_22.56.05<wash> now, the polytropic equation of state for the torus,
+2012.11.28_22.56.15<wash> that's less generic
+2012.11.28_22.56.21<zbyerly> nah that is equally generic
+2012.11.28_22.56.48<wash> Alright, then, better example: initial states
+2012.11.28_22.57.06<wash> those are, in general, less generic, in most cases, they are application specific
+2012.11.28_22.57.09<zbyerly> yes
+2012.11.28_23.02.18<wash> This multi-tiered hierarchy will be important - we have at least 5 different applications between dominics code and octopus (sod, rayleigh, torus, binary, single, scf), we have two sets of governing equations (eulerian and linearized GR) and we have two solvers (plain hydro and hydro + poisson)
+2012.11.28_23.03.00<zbyerly> yeah
+2012.11.28_23.03.11<zbyerly> definitely
+2012.11.28_23.03.34<wash> If we do things in this three-tiered manner, we'll get an awesome benefit down the road,
+2012.11.28_23.04.23<zbyerly> i can see that
+2012.11.28_23.04.46<wash> which is that you'd be able to trivially switch between, say, eulerian and linearized GR, just by changing a few policies. 
+

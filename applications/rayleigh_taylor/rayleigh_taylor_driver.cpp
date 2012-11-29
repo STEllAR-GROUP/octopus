@@ -177,16 +177,15 @@ struct initialize : octopus::trivial_serialization
 
                     if (initial_position <= x)
                     {                        
-//                        rho(U(i, j, k))          = rho0;         
                         double ei_here = (1.0/GAMMA)*(p_base+rho0*g*(x-x_min));
                         total_energy(U(i, j, k)) = ei_here;
                         tau(U(i, j, k))          = pow(ei_here, 1.0 / GAMMA);
                     }
                     else
                     {
-//                        rho(U(i, j, k))          = rho1;
                         double ei_here = (1.0/GAMMA)*(p_base+rho0*g*(x-x_min)+
-                            rho1*g*(x-initial_position));                                              total_energy(U(i, j, k)) = ei_here;
+                                         rho1*g*(x-initial_position));                
+                        total_energy(U(i, j, k)) = ei_here;
                         tau(U(i, j, k))          = pow(ei_here, 1.0 / GAMMA);
                     }
 
@@ -194,10 +193,9 @@ struct initialize : octopus::trivial_serialization
                         std::cos(pi*(x-x_min)/x_min)+
                         std::cos(pi*(3.0*x_min-x)/x_min)+
                         y_min);
+
                     rho(U(i,j,k)) = rho1 + 0.5*(rho0-rho1)*(
                         1.0+std::tanh((y-phi_here)/h));
-                    
-                        
 
                     momentum_x(U(i, j, k)) = 0.0; 
                     momentum_y(U(i, j, k)) = 0.0; 
@@ -576,19 +574,20 @@ struct stepper : octopus::trivial_serialization
 {
     void operator()(octopus::octree_server& root) const
     {
-        root.apply(octopus::science().initialize);
-   
-        for ( boost::uint64_t i = 1
-            ; i <= octopus::config().max_refinement_level 
+        for ( std::size_t i = 0
+            ; i < octopus::config().levels_of_refinement
             ; ++i)
         {
-            root.refine(i);
+            std::cout << "Refining level " << i << "\n";
+
             root.apply(octopus::science().initialize);
+            root.refine();
+            root.child_to_parent_injection(0);
+
+            std::cout << "Refined level " << i << "\n";
         }
- 
-        root.output_initial();
-    
-        std::cout << "Initial state prepared\n";
+
+        root.output("U_L%06u_initial.silo");
     
         ///////////////////////////////////////////////////////////////////////
         // Crude, temporary stepper.
