@@ -159,6 +159,7 @@ octree_server::octree_server(
   , D_(config().grid_node_length, std::vector<double>(science().state_size))
   , DFO_(science().state_size)
 {
+    OCTOPUS_ASSERT(back_ptr);
     OCTOPUS_ASSERT(parent_ == hpx::invalid_id);
 
     initialize_queues();
@@ -204,6 +205,8 @@ octree_server::octree_server(
   , D_(config().grid_node_length, std::vector<double>(science().state_size))
   , DFO_(science().state_size)
 {
+    OCTOPUS_ASSERT(back_ptr);
+
     // Make sure our parent reference is not reference counted.
     OCTOPUS_ASSERT_MSG(
         init.parent.get_management_type() == hpx::id_type::unmanaged,

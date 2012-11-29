@@ -11,6 +11,7 @@
 #if !defined(OCTOPUS_58B04A8F_72F9_4B01_A8B3_941867802BA0)
 #define OCTOPUS_58B04A8F_72F9_4B01_A8B3_941867802BA0
 
+#include <hpx/traits.hpp>
 #include <hpx/runtime/components/server/managed_component_base.hpp>
 #include <hpx/lcos/local/mutex.hpp>
 #include <hpx/lcos/local/event.hpp>
@@ -316,6 +317,7 @@ struct OCTOPUS_EXPORT octree_server
     {
         // We shouldn't need to lock here, I believe.
         hpx::id_type gid = get_gid();
+        OCTOPUS_ASSERT(hpx::invalid_id != gid);
         OCTOPUS_ASSERT_MSG(
             gid.get_management_type() == hpx::id_type::unmanaged,
             "get_gid() should return an unmanaged GID");
@@ -334,6 +336,7 @@ struct OCTOPUS_EXPORT octree_server
     {
         // We shouldn't need to lock here, I believe.
         hpx::id_type gid = get_gid();
+        OCTOPUS_ASSERT(hpx::invalid_id != gid);
         OCTOPUS_ASSERT_MSG(
             gid.get_management_type() == hpx::id_type::unmanaged,
             "get_gid() should return an unmanaged GID");
@@ -620,7 +623,7 @@ struct OCTOPUS_EXPORT octree_server
         return oid_type(*this); 
     }
 
-    HPX_DEFINE_COMPONENT_DIRECT_ACTION(octree_server,
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                        get_oid,
                                        get_oid_action);
 
