@@ -20,9 +20,14 @@ struct OCTOPUS_EXPORT writer_base
 {
     virtual ~writer_base() {}
 
-    virtual void begin_epoch(octree_server& e, std::string const& file) { }
+    // FIXME: It'd be nicer to just have one begin_epoch function at this point.
 
-    virtual void begin_epoch(octree_server& e) { }
+    virtual void begin_epoch(
+        octree_server& e
+      , double time
+      , std::string const& file
+        )
+    { }
 
     virtual void end_epoch(octree_server& e) { }
 
@@ -58,14 +63,13 @@ struct writer
         return *this;
     }
 
-    void begin_epoch(octree_server& e, std::string const& file) const
+    void begin_epoch(
+        octree_server& e
+      , double time
+      , std::string const& file
+        )
     {
-        ptr_->begin_epoch(e, file);
-    }
-
-    void begin_epoch(octree_server& e) const
-    {
-        ptr_->begin_epoch(e);
+        ptr_->begin_epoch(e, time, file);
     }
 
     void end_epoch(octree_server& e) const

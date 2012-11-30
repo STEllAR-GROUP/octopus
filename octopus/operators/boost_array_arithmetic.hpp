@@ -29,10 +29,10 @@ namespace octopus { namespace operators
         return a;                                                             \
     }                                                                         \
                                                                               \
-    template <typename T, std::size_t Size>                                   \
-    boost::array<T, Size>& operator OP(                                       \
-        boost::array<T, Size>& a                                              \
-      , boost::array<T, Size> const& b                                        \
+    template <typename T0, typename T1, std::size_t Size>                     \
+    boost::array<T0, Size>& operator OP(                                      \
+        boost::array<T0, Size>& a                                             \
+      , boost::array<T1, Size> const& b                                       \
         )                                                                     \
     {                                                                         \
         for (std::size_t i = 0; i < Size; ++i)                                \
@@ -59,13 +59,13 @@ OCTOPUS_DEFINE_ARITHMETIC_ASSIGNMENT_OPERATOR(/=)
         return (tmp BOOST_PP_CAT(OP, =) b);                        \
     }                                                              \
                                                                    \
-    template <typename T, std::size_t Size>                        \
-    boost::array<T, Size> operator OP(                             \
-        boost::array<T, Size> const& a                             \
-      , boost::array<T, Size> const& b                             \
+    template <typename T0, typename T1, std::size_t Size>          \
+    boost::array<T0, Size> operator OP(                            \
+        boost::array<T0, Size> const& a                            \
+      , boost::array<T1, Size> const& b                            \
         )                                                          \
     {                                                              \
-        boost::array<T, Size> tmp = a;                             \
+        boost::array<T0, Size> tmp = a;                            \
         return (tmp BOOST_PP_CAT(OP, =) b);                        \
     }                                                              \
     /**/

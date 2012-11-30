@@ -629,7 +629,7 @@ void octree_server::communicate_ghost_zones(
 { // {{{
     //OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
 
-    debug() << "GZ" << phase << " started\n";
+//    debug() << "GZ" << phase << " started\n";
 
     OCTOPUS_ASSERT_FMT_MSG(
         phase < ghost_zone_deps_.size(),
@@ -651,8 +651,8 @@ void octree_server::communicate_ghost_zones(
     {
         if (siblings_[i].real())
         {
-            debug() << "GZ" << phase
-                    << " real boundary " << face(i) << "\n";
+//            debug() << "GZ" << phase
+//                    << " real boundary " << face(i) << "\n";
 
             // 0.) Send out ghost zone data to our siblings. 
             // NOTE: send_ghost_zone_locked is somewhat compute intensive.
@@ -677,8 +677,8 @@ void octree_server::communicate_ghost_zones(
 */
         else if (amr_boundary == siblings_[i].kind())
         {
-            debug() << "GZ" << phase
-                    << " amr boundary " << face(i) << "\n";
+//            debug() << "GZ" << phase
+//                    << " amr boundary " << face(i) << "\n";
 
             keep_alive.emplace_back
                 (siblings_[i].send_ghost_zone_async(face(i)));
@@ -689,8 +689,8 @@ void octree_server::communicate_ghost_zones(
 
         else if (physical_boundary == siblings_[i].kind())
         {
-            debug() << "GZ" << phase
-                    << " physical boundary " << face(i) << "\n";
+//            debug() << "GZ" << phase
+//                    << " physical boundary " << face(i) << "\n";
 
             keep_alive.emplace_back
                 (siblings_[i].send_ghost_zone_async(face(i)));
@@ -711,7 +711,7 @@ void octree_server::communicate_ghost_zones(
         // 2.) Block until out ghost zones for phase are ready.
         hpx::wait(dependencies);
 
-        debug() << "GZ" << phase << " finished\n";
+//        debug() << "GZ" << phase << " finished\n";
     } // 3.) Relock l.
 } // }}}
 
@@ -720,7 +720,7 @@ void octree_server::add_sibling_ghost_zone(
   , hpx::future<vector3d<std::vector<double> > > zone_f
     )
 { // {{{
-    debug() << "add_sibling_ghost_zone " << f << "\n";
+//    debug() << "add_sibling_ghost_zone " << f << "\n";
 
     add_ghost_zone(f, zone_f);
 } // }}}
@@ -730,7 +730,7 @@ void octree_server::add_interpolated_ghost_zone(
   , hpx::future<vector3d<std::vector<double> > > zone_f
     )
 { // {{{
-    debug() << "add_interpolated_ghost_zone " << f << "\n";
+//    debug() << "add_interpolated_ghost_zone " << f << "\n";
 
     add_ghost_zone(f, zone_f);
 } // }}}
@@ -740,7 +740,7 @@ void octree_server::add_mapped_ghost_zone(
   , hpx::future<vector3d<std::vector<double> > > zone_f
     )
 { // {{{
-    debug() << "add_mapped_ghost_zone " << f << "\n";
+//    debug() << "add_mapped_ghost_zone " << f << "\n";
 
     add_ghost_zone(f, zone_f);
 } // }}}
@@ -940,7 +940,7 @@ void octree_server::receive_ghost_zone(
 
     //mutex_type::scoped_lock l(mtx_);
 
-    debug() << "receive_ghost_zone " << f << " " << phase << "\n";
+//    debug() << "receive_ghost_zone " << f << " " << phase << "\n";
 
     OCTOPUS_ASSERT_MSG(step_ == step,
         "cross-timestep communication occurred, octree is ill-formed");
@@ -982,7 +982,7 @@ vector3d<std::vector<double> > octree_server::send_ghost_zone_locked(
 
 //    hpx::util::unlock_the_lock<mutex_type::scoped_lock> ul(l);
 
-    debug() << "send_ghost_zone " << f << "\n";
+//    debug() << "send_ghost_zone " << f << "\n";
  
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
@@ -1188,11 +1188,13 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
 
 //    mutex_type::scoped_lock l(mtx_);
 
+/*
     debug() << "send_interpolated_ghost_zone " << f
             << " (" << amr_offset[0] << ", "
                     << amr_offset[1] << ", "
                     << amr_offset[2]
             << ")\n";
+*/
 
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
@@ -1668,7 +1670,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
 
 //    mutex_type::scoped_lock l(mtx_);
 
-    debug() << "send_mapped_ghost_zone " << f << "\n";
+//    debug() << "send_mapped_ghost_zone " << f << "\n";
 
     switch (f)
     {

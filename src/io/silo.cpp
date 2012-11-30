@@ -8,12 +8,16 @@
 
 #include <hpx/include/actions.hpp>
 #include <hpx/lcos/future_wait.hpp>
+#include <hpx/runtime/threads/thread_helpers.hpp>
 
 #include <octopus/io/silo.hpp>
+#include <octopus/math.hpp>
 #include <octopus/engine/engine_interface.hpp>
 
 #include <boost/smart_ptr/scoped_array.hpp>
 #include <boost/ptr_container/ptr_vector.hpp>
+
+#include <cmath>
 
 namespace octopus
 {
@@ -35,18 +39,18 @@ void single_variable_silo_writer::start_write_locked(
 
     try
     {
-        file_ = DBCreate(boost::str( boost::format(file)
-                                   % hpx::get_locality_id() % step_).c_str() 
-                       , DB_CLOBBER, DB_LOCAL, NULL, DB_PDB);
+        std::string s = boost::str( boost::format(file)
+                                  % hpx::get_locality_id() % step_);
+        file_ = DBCreate(s.c_str(), DB_CLOBBER, DB_LOCAL, NULL, DB_PDB);
     }
     // FIXME: Catch the specific boost.format exception.
     catch (...)
     {
         try
         {
-            file_ = DBCreate(boost::str( boost::format(file)
-                                       % hpx::get_locality_id()).c_str() 
-                           , DB_CLOBBER, DB_LOCAL, NULL, DB_PDB);
+            std::string s = boost::str( boost::format(file)
+                                      % hpx::get_locality_id());
+            file_ = DBCreate(s.c_str(), DB_CLOBBER, DB_LOCAL, NULL, DB_PDB);
         }
         // FIXME: Catch the specific boost.format exception.
         catch (...)
@@ -55,7 +59,7 @@ void single_variable_silo_writer::start_write_locked(
                            , DB_CLOBBER, DB_LOCAL, NULL, DB_PDB);
         }
     }
- 
+
     OCTOPUS_ASSERT(file_ != 0);
 
     directory_names_.reserve(config().levels_of_refinement);
@@ -86,7 +90,7 @@ void single_variable_silo_writer::stop_write_locked(mutex_type::scoped_lock& l)
     merged_ = false;
 }
 
-void start_write_locally(
+void perform_start_write(
     boost::uint64_t step
   , double time
   , std::string const& file
@@ -96,21 +100,24 @@ void start_write_locally(
         (step, time, file);
 }
 
-void stop_write_locally()
+void perform_stop_write()
 {
     science().output.cast<single_variable_silo_writer>()->stop_write();
 }
 
 }
 
-HPX_PLAIN_ACTION(octopus::start_write_locally, start_write_locally_action);
-HPX_PLAIN_ACTION(octopus::stop_write_locally, stop_write_locally_action);
+HPX_PLAIN_ACTION(octopus::perform_start_write, perform_start_write_action);
+HPX_ACTION_USES_MEDIUM_STACK(perform_start_write_action);
+HPX_PLAIN_ACTION(octopus::perform_stop_write, perform_stop_write_action);
+HPX_ACTION_USES_MEDIUM_STACK(perform_stop_write_action);
 
 namespace octopus
 {
 
 void single_variable_silo_writer::begin_epoch(
     octree_server& e
+  , double time
   , std::string const& file
     )
 {
@@ -119,11 +126,17 @@ void single_variable_silo_writer::begin_epoch(
     std::vector<hpx::future<void> > futures;
     futures.reserve(targets.size());
 
-    start_write_locally_action act;
+    perform_start_write_action act;
 
     for (boost::uint64_t i = 0; i < targets.size(); ++i)
-        futures.push_back(hpx::async
-            (act, targets[i], e.get_step(), e.get_time(), file));
+    {
+        if (file.empty())
+            futures.emplace_back(hpx::async
+                (act, targets[i], e.get_step(), time, file_name_));
+        else
+            futures.emplace_back(hpx::async
+                (act, targets[i], e.get_step(), time, file));
+    }
 
     hpx::wait(futures);
 }
@@ -135,7 +148,7 @@ void single_variable_silo_writer::end_epoch(octree_server& e)
     std::vector<hpx::future<void> > futures;
     futures.reserve(targets.size());
 
-    stop_write_locally_action act;
+    perform_stop_write_action act;
 
     for (boost::uint64_t i = 0; i < targets.size(); ++i)
         futures.push_back(hpx::async(act, targets[i]));
@@ -143,30 +156,38 @@ void single_variable_silo_writer::end_epoch(octree_server& e)
     hpx::wait(futures);
 }
 
-void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
-{
-    OCTOPUS_ASSERT(l.owns_lock());
-
-    if (merged_ || !file_) return;
-  
-    for (boost::uint64_t level = 0; level < directory_names_.size(); ++level)
+void perform_merge(
+    channel<void>& sync
+  , DBfile* file 
+  , std::vector<std::string> const& directory_names
+  , std::string const& variable_name 
+  , boost::uint64_t& step
+  , double& time
+    )
+{ // {{{
+    for (boost::uint64_t level = 0; level < directory_names.size(); ++level)
     {
-        int error = DBSetDir(file_, directory_names_[level].c_str());
+        int error = DBSetDir(file, directory_names[level].c_str());
         OCTOPUS_ASSERT(error == 0);
     
         // Get a list of all the meshes and variables in that directory.
-        DBtoc* contents = DBGetToc(file_);
+        DBtoc* contents = DBGetToc(file);
 
         // Make the mesh and variable names.
         boost::ptr_vector<char> mesh_names(contents->nqmesh);
         boost::ptr_vector<char> variable_names(contents->nqmesh);
         
+        double grid_dim = config().spatial_domain;
+
+        for (boost::uint64_t i = 1; i < level; ++i)
+            grid_dim *= 0.5;
+
         for (boost::uint64_t j = 0; j < boost::uint64_t(contents->nqmesh); ++j)
         {
             std::string tmp;
 
             ///////////////////////////////////////////////////////////////////
-            tmp  = directory_names_[level];
+            tmp  = directory_names[level];
             tmp += "/";
             tmp += contents->qmesh_names[j];
 
@@ -175,7 +196,7 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
             std::strcpy(&mesh_names[j], tmp.c_str());
 
             ///////////////////////////////////////////////////////////////////
-            tmp  = directory_names_[level];
+            tmp  = directory_names[level];
             tmp += "/";
             tmp += contents->qvar_names[j];
 
@@ -187,7 +208,7 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
         // when we change directories below, "contents" will go out of scope
         boost::uint64_t nqmesh = contents->nqmesh;
 
-        error = DBSetDir(file_, "/");
+        error = DBSetDir(file, "/");
         OCTOPUS_ASSERT(error == 0);
 
         std::string multi_mesh_name
@@ -196,17 +217,17 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
 
         std::string multi_variable_name
             = boost::str( boost::format("%1%_level_%2%")
-                        % variable_name_ % level); 
+                        % variable_name % level); 
 
 
         {
             DBoptlist* optlist = DBMakeOptlist(4);
             DBObjectType type1 = DB_QUADRECT;
             DBAddOption(optlist, DBOPT_MB_BLOCK_TYPE, &type1);
-            DBAddOption(optlist, DBOPT_CYCLE, &step_);
-            DBAddOption(optlist, DBOPT_DTIME, &time_);
+            DBAddOption(optlist, DBOPT_CYCLE, &step);
+            DBAddOption(optlist, DBOPT_DTIME, &time);
 
-            error = DBPutMultimesh(file_
+            error = DBPutMultimesh(file
                                  , multi_mesh_name.c_str()
                                  , nqmesh
                                  , mesh_names.c_array()
@@ -218,12 +239,12 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
             DBoptlist* optlist = DBMakeOptlist(4);
             DBObjectType type1 = DB_QUADVAR;
             DBAddOption(optlist, DBOPT_MB_BLOCK_TYPE, &type1);
-            DBAddOption(optlist, DBOPT_CYCLE, &step_);
-            DBAddOption(optlist, DBOPT_DTIME, &time_);
+            DBAddOption(optlist, DBOPT_CYCLE, &step);
+            DBAddOption(optlist, DBOPT_DTIME, &time);
             int type2 = DB_ROWMAJOR;
             DBAddOption(optlist, DBOPT_MAJORORDER, &type2);
 
-            error = DBPutMultivar(file_
+            error = DBPutMultivar(file
                                 , multi_variable_name.c_str()
                                 , nqmesh
                                 , variable_names.c_array()
@@ -232,13 +253,47 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
         }
     }
 
+    sync.post();
+} // }}}
+
+void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
+{
+    OCTOPUS_ASSERT(l.owns_lock());
+
+    if (merged_ || !file_) return;
+
+    channel<void> sync;
+ 
+    hpx::applier::register_work_nullary(
+        boost::bind(&perform_merge
+                  , boost::ref(sync)
+                  , file_
+                  , boost::cref(directory_names_)
+                  , boost::cref(variable_name_)
+                  , boost::ref(step_)
+                  , boost::ref(time_)
+                    )
+      , "perform_merge"
+      , hpx::threads::pending
+      , hpx::threads::thread_priority_normal
+      , std::size_t(-1)
+      , hpx::threads::thread_stacksize_medium
+        );
+
+    sync.get(); 
+ 
     merged_ = true;
 }
 
-void single_variable_silo_writer::operator()(octree_server& e)
-{
-    mutex_type::scoped_lock l(mtx_);
-
+void perform_write(
+    channel<void>& sync
+  , octree_server& e
+  , DBfile* file 
+  , std::vector<std::string> const& directory_names
+  , std::string const& variable_name
+  , boost::uint64_t variable_index
+    )
+{ // {{{
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
 
@@ -280,21 +335,27 @@ void single_variable_silo_writer::operator()(octree_server& e)
                 boost::uint64_t index = (i - bw)
                                       + (j - bw) * nzones[0]
                                       + (k - bw) * nzones[0] * nzones[1];
-                variables[index] = e(i, j, k)[variable_index_];
+                variables[index] = e(i, j, k)[variable_index];
             }
 
+    boost::array<boost::uint64_t, 3> location = e.get_location();
+
     std::string mesh_name
-        = boost::str( boost::format("mesh_%016x%016x")
-                    % e.get_gid().get_msb()
-                    % e.get_gid().get_lsb());
+        = boost::str( boost::format("mesh_L%i_%i_%i_%i")
+                    % level
+                    % location[0]
+                    % location[1]
+                    % location[2]);
 
-    std::string variable_name
-        = boost::str( boost::format("%s_%016x%016x")
-                    % variable_name_
-                    % e.get_gid().get_msb()
-                    % e.get_gid().get_lsb());
+    std::string value_name
+        = boost::str( boost::format("%s_L%i_%i_%i_%i")
+                    % variable_name
+                    % level
+                    % location[0]
+                    % location[1]
+                    % location[2]);
 
-    int error = DBSetDir(file_, directory_names_[level].c_str());
+    int error = DBSetDir(file, directory_names[level].c_str());
     OCTOPUS_ASSERT(error == 0);
 
     {
@@ -302,7 +363,7 @@ void single_variable_silo_writer::operator()(octree_server& e)
         // REVIEW: Verify this.
         int type = DB_ROWMAJOR;
         DBAddOption(optlist, DBOPT_MAJORORDER, &type);
-        error = DBPutQuadmesh(file_
+        error = DBPutQuadmesh(file
                             , mesh_name.c_str()
                             //, coordinate_names
                             , NULL // SILO docs say this is ignored.
@@ -317,8 +378,8 @@ void single_variable_silo_writer::operator()(octree_server& e)
         // REVIEW: Verify this.
         int type = DB_ROWMAJOR;
         DBAddOption(optlist, DBOPT_MAJORORDER, &type);
-        error = DBPutQuadvar1(file_
-                            , variable_name.c_str()
+        error = DBPutQuadvar1(file
+                            , value_name.c_str()
                             , mesh_name.c_str()
                             , variables.get()
                             , nzones
@@ -329,6 +390,33 @@ void single_variable_silo_writer::operator()(octree_server& e)
     delete[] coordinates[0];
     delete[] coordinates[1];
     delete[] coordinates[2]; 
+
+    sync.post();
+} // }}}
+
+void single_variable_silo_writer::operator()(octree_server& e)
+{
+    mutex_type::scoped_lock l(mtx_);
+
+    channel<void> sync;
+
+    hpx::applier::register_work_nullary(
+        boost::bind(&perform_write
+                  , boost::ref(sync)
+                  , boost::ref(e)
+                  , file_
+                  , boost::cref(directory_names_)
+                  , boost::cref(variable_name_)
+                  , boost::cref(variable_index_)
+                    )
+      , "perform_write"
+      , hpx::threads::pending
+      , hpx::threads::thread_priority_normal
+      , std::size_t(-1)
+      , hpx::threads::thread_stacksize_medium
+        );
+
+    sync.get(); 
 }
 
 }

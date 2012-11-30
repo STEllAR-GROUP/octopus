@@ -490,12 +490,12 @@ struct OCTOPUS_EXPORT octree_client
 
     ///////////////////////////////////////////////////////////////////////////
     // {{{ get_location
-    boost::array<boost::int64_t, 3> get_location() const
+    boost::array<boost::uint64_t, 3> get_location() const
     {
         return get_location_async().get();
     }
 
-    hpx::future<boost::array<boost::int64_t, 3> > get_location_async() const;
+    hpx::future<boost::array<boost::uint64_t, 3> > get_location_async() const;
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
@@ -676,6 +676,16 @@ struct OCTOPUS_EXPORT octree_client
     }
 
     hpx::future<void> output_async(std::string const& file) const;
+
+    void output(double time, std::string const& file = "") const
+    {
+        return output_async(time, file).get();
+    }
+
+    hpx::future<void> output_async(
+        double time
+      , std::string const& file = ""
+        ) const;
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////

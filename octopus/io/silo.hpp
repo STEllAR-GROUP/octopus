@@ -112,24 +112,13 @@ struct OCTOPUS_EXPORT single_variable_silo_writer : writer_base
         start_write_locked(step, time, file, l);
     }
 
-    void start_write(boost::uint64_t step, double time)
-    {
-        mutex_type::scoped_lock l(mtx_);
-        start_write_locked(step, time, file_name_, l);
-    }
-
     void stop_write()
     {
         mutex_type::scoped_lock l(mtx_);
         stop_write_locked(l);
     }
 
-    void begin_epoch(octree_server& e, std::string const& file);
-
-    void begin_epoch(octree_server& e)
-    {
-        begin_epoch(e, file_name_);
-    }
+    void begin_epoch(octree_server& e, double time, std::string const& file);
 
     void end_epoch(octree_server& e);
 

@@ -27,9 +27,14 @@ int octopus_main(boost::program_options::variables_map& vm)
     root_data.dx = octopus::science().initial_spacestep();
     root.create_root(hpx::find_here(), root_data);
 
-    root.apply(octopus::science().initialize);
-
-    root.refine();
+    for ( std::size_t i = 0
+        ; i < octopus::config().levels_of_refinement
+        ; ++i)
+    {
+        root.apply(octopus::science().initialize);
+        root.refine();
+        root.child_to_parent_injection(0);
+    }
 
 /* IMPLEMENT
     if (config().enable_output)

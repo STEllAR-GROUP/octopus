@@ -20,6 +20,8 @@
 #include <octopus/trivial_serialization.hpp>
 #include <octopus/math.hpp>
 
+#include <boost/optional.hpp>
+
 namespace octopus
 {
 
@@ -230,7 +232,7 @@ octree_client::get_offset_async() const
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-hpx::future<boost::array<boost::int64_t, 3> >
+hpx::future<boost::array<boost::uint64_t, 3> >
 octree_client::get_location_async() const
 {
     return hpx::async<octree_server::get_location_action>(gid_);
@@ -389,25 +391,65 @@ struct begin_io_epoch_locally
 {
     typedef void result_type;
 
+    boost::optional<double> time_;
     std::string file_;
 
-    begin_io_epoch_locally() : file_() {}
+    begin_io_epoch_locally() : time_(), file_() {}
 
-    begin_io_epoch_locally(std::string const& file) : file_(file) {}
+    begin_io_epoch_locally(
+        std::string const& file
+        )
+      : time_()
+      , file_(file)
+    {}
+
+    begin_io_epoch_locally(
+        double time  
+      , std::string const& file
+        )
+      : time_(time)
+      , file_(file)
+    {}
 
     result_type operator()(octree_server& root) const
     {
-        if (file_.empty())
-            science().output.begin_epoch(root);
+        if (time_)
+            science().output.begin_epoch(root, *time_, file_ );
         else
-            science().output.begin_epoch(root, file_);
+            science().output.begin_epoch(root, root.get_time(), file_);
     }
 
     template <typename Archive>
-    void serialize(Archive& ar, unsigned int)
+    void save(Archive& ar, unsigned int) const
     {
+        bool has_time = (time_ ? true : false);
+
+        ar & has_time;
+
+        if (time_)
+            ar & *time_;
+            
         ar & file_;
     }
+
+    template <typename Archive>
+    void load(Archive& ar, unsigned int)
+    {
+        bool has_time = false;
+
+        ar & has_time;
+
+        if (has_time)
+        {
+            double time = 0.0;
+            ar & time;
+            time_.reset(time);
+        }
+ 
+        ar & file_;
+    }
+
+    BOOST_SERIALIZATION_SPLIT_MEMBER();
 };
 
 struct end_io_epoch_locally : trivial_serialization
@@ -499,6 +541,23 @@ hpx::future<void> octree_client::output_async(std::string const& file) const
     ensure_real();
 
     begin_io_epoch_locally begin_functor(file);
+
+    hpx::future<void> begin = apply_leaf_async<void>(begin_functor);
+    hpx::future<void> out   = begin.then(output_continuation(*this, begin));
+    hpx::future<void> end   = out.then(end_io_epoch_continuation(*this, out));
+ 
+    return end;
+}
+
+// TODO: Make sure we are only called on the root node.
+hpx::future<void> octree_client::output_async(
+    double time 
+  , std::string const& file
+    ) const
+{
+    ensure_real();
+
+    begin_io_epoch_locally begin_functor(time, file);
 
     hpx::future<void> begin = apply_leaf_async<void>(begin_functor);
     hpx::future<void> out   = begin.then(output_continuation(*this, begin));

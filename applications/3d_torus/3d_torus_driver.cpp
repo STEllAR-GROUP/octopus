@@ -115,8 +115,19 @@ struct stepper : octopus::trivial_serialization
             hpx::wait_all(octopus::call_everywhere
                 (set_kappa_from_buffer(root.get_step() - 1)));
 
-            if (root.get_time() >= next_output_time)
+            if (  root.get_time() >= next_output_time
+               || (root.get_step() == 1))
             {   
+                for ( std::size_t i = 0
+                    ; i < octopus::config().levels_of_refinement
+                    ; ++i)
+                {
+                    std::cout << "REGRID LEVEL " << i << "\n";
+        
+                    root.refine();
+                    root.child_to_parent_injection(0);
+                }
+
                 std::cout << "OUTPUT\n";
                 root.output();
                 next_output_time += octopus::config().output_frequency; 

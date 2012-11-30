@@ -51,7 +51,7 @@ struct OCTOPUS_EXPORT oid_type
 {
   private:
     boost::uint64_t level_;
-    boost::array<boost::int64_t, 3> location_;
+    boost::array<boost::uint64_t, 3> location_;
     hpx::id_type gid_;
 
     friend std::ostream& operator<<(std::ostream& os, oid_type const& id);
@@ -171,8 +171,7 @@ struct OCTOPUS_EXPORT octree_server
     boost::array<octree_client, 8> children_;
     boost::array<octree_client, 6> siblings_; 
     boost::uint64_t level_;
-    boost::array<boost::int64_t, 3> location_; ///< NOTE: Not sure if this needs
-                                               /// to be signed.
+    boost::array<boost::uint64_t, 3> location_; 
 
     ///////////////////////////////////////////////////////////////////////////
     // From Grid/GridNode (mostly)
@@ -655,7 +654,7 @@ struct OCTOPUS_EXPORT octree_server
 
     ///////////////////////////////////////////////////////////////////////////
     // Purely for debugging. 
-    boost::array<boost::int64_t, 3> get_location() const
+    boost::array<boost::uint64_t, 3> get_location() const
     {
         return location_;
     }
