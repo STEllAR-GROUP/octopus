@@ -118,8 +118,8 @@ struct stepper
         while (root.get_time() < octopus::config().temporal_domain)
         {
             char const* fmt = "STEP %06u : TIME %.6e += %.6e "
-                                       " : ORBITS %.6e += %.6e "
-                                       " : KAPPA %.6g\n";
+                                        ": ORBITS %.6g += %.6g "
+                                        ": KAPPA %.6g\n";
 
             std::cout <<
                 ( boost::format(fmt)
