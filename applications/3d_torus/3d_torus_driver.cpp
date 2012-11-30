@@ -107,7 +107,7 @@ struct stepper
             std::cout << "REFINED LEVEL " << i << "\n";
         }
 
-        root.output("U_L%06u_initial.silo");
+        root.output(root.get_time() / period_, "U_L%06u_initial.silo");
     
         ///////////////////////////////////////////////////////////////////////
         // Crude, temporary stepper.
@@ -117,11 +117,15 @@ struct stepper
     
         while (root.get_time() < octopus::config().temporal_domain)
         {
-            char const* fmt = "STEP %06u : TIME %.6e += %.6e : KAPPA %.6g\n";
+            char const* fmt = "STEP %06u : TIME %.6e += %.6e "
+                                       " : ORBITS %.6e += %.6e "
+                                       " : KAPPA %.6g\n";
 
             std::cout <<
                 ( boost::format(fmt)
-                % root.get_step() % root.get_time() % root.get_dt()
+                % root.get_step()
+                % root.get_time() % root.get_dt()
+                % (root.get_time() / period_) % (root.get_dt() / period_)
                 % kappa(root.get_step()) 
                 );
     
@@ -134,13 +138,11 @@ struct stepper
             if (  root.get_time() >= next_output_time
                || (root.get_step() == 1))
             {   
-                std::cout << "REGRID\n"; 
-        
                 root.refine();
                 root.child_to_parent_injection(0);
 
-                std::cout << "OUTPUT\n";
-                root.output();
+                std::cout << "REGRID AND OUTPUT\n";
+                root.output(root.get_time() / period_);
                 next_output_time += octopus::config().output_frequency; 
             }
     

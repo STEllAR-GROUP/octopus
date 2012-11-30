@@ -935,6 +935,11 @@ struct OCTOPUS_EXPORT octree_server
         client_from_this().output(file);
     }
 
+    void output(double time, std::string const& file = "")
+    {
+        client_from_this().output(time, file);
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // {{{ apply - definitions are out-of-line in octree_apply.hpp.
     void apply(
