@@ -23,12 +23,16 @@ void octopus_define_problem(
     octopus::config_reader reader("octopus.3d_torus");
 
     double kappa0 = 0.0;
+    double eps = 0.0; 
+    double R_outer = 0.0; 
 
     reader
         ("max_dt_growth", max_dt_growth, 1.25)
         ("temporal_prediction_limiter", temporal_prediction_limiter, 0.5)
-        ("kappa", kappa0, 1.0)
         ("rotation_direction", rotation_direction_str, "counterclockwise")
+        ("kappa", kappa0, 1.0)
+        ("eps", eps, 0.4)
+        ("outer_radius", R_outer, 1.0747e-4)
     ;
 
     kappa_buffer.store(kappa0);
@@ -47,15 +51,19 @@ void octopus_define_problem(
            % max_dt_growth)
         << ( boost::format("temporal_prediction_limiter = %i\n")
            % temporal_prediction_limiter)
-        << ( boost::format("kappa                       = %.6g\n")
-           % kappa0)
         << ( boost::format("rotional_direction          = %s\n")
            % rotation_direction_str)
+        << ( boost::format("kappa                       = %.6g\n")
+           % kappa0)
+        << ( boost::format("epsilon                     = %.6g\n")
+           % eps)
+        << ( boost::format("outer_radius                = %.6g\n")
+           % R_outer)
         << "\n";
 
     sci.state_size = 6;
 
-    sci.initialize = initialize();
+    sci.initialize = initialize(eps, R_outer);
     sci.enforce_outflow = enforce_outflow();
     sci.reflect_z = reflect_z();
     sci.max_eigenvalue = max_eigenvalue();
@@ -82,13 +90,13 @@ struct stepper : octopus::trivial_serialization
             ; i < octopus::config().levels_of_refinement
             ; ++i)
         {
-            std::cout << "Refining level " << i << "\n";
+            std::cout << "REFINING LEVEL " << i << "\n";
 
             root.apply(octopus::science().initialize);
             root.refine();
             root.child_to_parent_injection(0);
 
-            std::cout << "Refined level " << i << "\n";
+            std::cout << "REFINED LEVEL " << i << "\n";
         }
 
         root.output("U_L%06u_initial.silo");

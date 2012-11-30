@@ -22,6 +22,7 @@
 #include <octopus/math.hpp>
 
 #include <boost/atomic.hpp>
+#include <boost/math/constants/constants.hpp>
 
 #include <hpx/include/plain_actions.hpp>
 
@@ -81,7 +82,7 @@ struct set_kappa_from_buffer
     boost::uint64_t step_;
 
   public:
-    set_kappa_from_buffer() : step_() {}
+    set_kappa_from_buffer() : step_(0) {}
 
     set_kappa_from_buffer(boost::uint64_t step) : step_(step) {}
 
@@ -174,10 +175,36 @@ double speed_of_sound(std::vector<double> const& state, boost::uint64_t step)
     return std::sqrt(GAMMA * pressure(state, step) / rho(state)); 
 }
 
+double orbital_period(double eps, double R_outer)
+{
+    double const R_inner = R_outer*(1.0 - eps)/(1.0 + eps);
+    double const h = sqrt(2.0*G*M_C*R_inner*R_outer/(R_inner + R_outer));
+    //double const R_max = h*h/(G*M_C);
+    double const omega_R_max = (G*M_C)*(G*M_C)/(h*h*h);
+    double const pi = boost::math::constants::pi<double>();
+
+    return 2.0*pi/omega_R_max; 
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Kernels.
-struct initialize : octopus::trivial_serialization
+struct initialize 
 { // {{{
+  private:
+    double eps_;
+    double R_outer_;
+
+  public:
+    initialize() : eps_(0.0), R_outer_(0.0) {}
+
+    initialize(
+        double eps
+      , double R_outer
+        )
+      : eps_(eps)
+      , R_outer_(R_outer)
+    {}
+
     void operator()(octopus::octree_server& U) const
     {
         using std::pow;
@@ -191,11 +218,9 @@ struct initialize : octopus::trivial_serialization
         double const ei1 = internal_energy_floor;
         double const tau1 = pow(ei1, 1.0 / GAMMA);
     
-        double const eps = 0.4;
-        double const R_outer = 1.0747e-4;
-        double const R_inner = R_outer*(1.0 - eps)/(1.0 + eps);
+        double const R_inner = R_outer_*(1.0 - eps_)/(1.0 + eps_);
 
-        double const h = sqrt(2.0*G*M_C*R_inner*R_outer/(R_inner + R_outer));
+        double const h = sqrt(2.0*G*M_C*R_inner*R_outer_/(R_inner + R_outer_));
 
         double const C = 0.5*pow(h/R_inner, 2) - G*M_C/R_inner;    
   
@@ -217,9 +242,9 @@ struct initialize : octopus::trivial_serialization
                     // DEBUGGING
                     //std::cout << "r       = " << r       << "\n"
                     //          << "R_inner = " << R_inner << "\n"
-                    //          << "R_outer = " << R_outer << "\n";
+                    //          << "R_outer = " << R_outer_ << "\n";
     
-                    if ((R_inner <= r) && (R_outer >= r))
+                    if ((R_inner <= r) && (R_outer_ >= r))
                     {
                         double const z_max =
                             sqrt(pow(G*M_C/(0.5*pow(h/r, 2) - C), 2) - r*r);
@@ -290,6 +315,13 @@ struct initialize : octopus::trivial_serialization
                 }
             }
         }
+    }
+
+    template <typename Archive>
+    void serialize(Archive& ar, unsigned int)
+    {
+        ar & eps_;
+        ar & R_outer_;
     }
 }; // }}}
 
@@ -435,7 +467,7 @@ struct cfl_predict_timestep
     double fudge_factor_;
 
   public:
-    cfl_predict_timestep() {}
+    cfl_predict_timestep() : max_dt_growth_(0.0), fudge_factor_(0.0) {}
 
     cfl_predict_timestep(
         double max_dt_growth
