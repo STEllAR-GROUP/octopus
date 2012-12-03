@@ -14,10 +14,9 @@
 #include <hpx/traits.hpp>
 #include <hpx/runtime/components/server/managed_component_base.hpp>
 #include <hpx/lcos/local/mutex.hpp>
-#include <hpx/lcos/local/event.hpp>
+#include <hpx/lcos/local/channel.hpp>
 
 #include <octopus/array1d.hpp>
-#include <octopus/channel.hpp>
 #include <octopus/octree/octree_init_data.hpp>
 #include <octopus/octree/octree_client.hpp>
 #include <octopus/atomic_bitset.hpp>
@@ -120,13 +119,15 @@ struct OCTOPUS_EXPORT octree_server
  
     atomic_bitset<8> marked_for_refinement_;
  
-    typedef array1d<channel<vector3d<std::vector<double> > >, 6>
-        sibling_state_dependencies;
+    typedef array1d<
+        hpx::lcos::local::channel<vector3d<std::vector<double> > >, 6
+    > sibling_state_dependencies;
   
-    typedef array1d<channel<vector3d<std::vector<double> > >, 8>
-        children_state_dependencies;
+    typedef array1d<
+        hpx::lcos::local::channel<vector3d<std::vector<double> > >, 8
+    > children_state_dependencies;
 
-    typedef array1d<channel<void>, 6>
+    typedef array1d<hpx::lcos::local::channel<void>, 6>
         sibling_sync_dependencies;
 
     // IMPLEMENT: This should totally be in the science table, along with like
@@ -185,7 +186,7 @@ struct OCTOPUS_EXPORT octree_server
     // other. Computing the CFL is an implicit global barrier, so I figured I
     // might as well utilize this point of synchronization to reduce memory
     // usage. P.S., only used by the root of each timestep currently. 
-    channel<double> dt_;
+    hpx::lcos::local::channel<double> dt_;
     
     double time_; ///< The current (physics?) time.
                   ///  NOTE: Confirmation needed from Dominic.

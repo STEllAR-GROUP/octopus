@@ -157,7 +157,7 @@ void single_variable_silo_writer::end_epoch(octree_server& e)
 }
 
 void perform_merge(
-    channel<void>& sync
+    hpx::lcos::local::channel<void>& sync
   , DBfile* file 
   , std::vector<std::string> const& directory_names
   , std::string const& variable_name 
@@ -262,7 +262,7 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
 
     if (merged_ || !file_) return;
 
-    channel<void> sync;
+    hpx::lcos::local::channel<void> sync;
  
     hpx::applier::register_work_nullary(
         boost::bind(&perform_merge
@@ -286,7 +286,7 @@ void single_variable_silo_writer::merge_locked(mutex_type::scoped_lock& l)
 }
 
 void perform_write(
-    channel<void>& sync
+    hpx::lcos::local::channel<void>& sync
   , octree_server& e
   , DBfile* file 
   , std::vector<std::string> const& directory_names
@@ -398,7 +398,7 @@ void single_variable_silo_writer::operator()(octree_server& e)
 {
     mutex_type::scoped_lock l(mtx_);
 
-    channel<void> sync;
+    hpx::lcos::local::channel<void> sync;
 
     hpx::applier::register_work_nullary(
         boost::bind(&perform_write
