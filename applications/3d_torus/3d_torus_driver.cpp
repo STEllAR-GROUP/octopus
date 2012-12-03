@@ -117,14 +117,12 @@ struct stepper
     
         while (root.get_time() < octopus::config().temporal_domain)
         {
-            char const* fmt = "STEP %06u : TIME %.6e += %.6e "
-                                        ": ORBITS %.6g += %.6g "
-                                        ": KAPPA %.6g\n";
+            char const* fmt = "STEP %06u : ORBITS %.5g %|33t| += %.5g "
+                                  "%|50t|: KAPPA %.6g\n";
 
             std::cout <<
                 ( boost::format(fmt)
                 % root.get_step()
-                % root.get_time() % root.get_dt()
                 % (root.get_time() / period_) % (root.get_dt() / period_)
                 % kappa(root.get_step()) 
                 );
@@ -135,15 +133,13 @@ struct stepper
             hpx::wait_all(octopus::call_everywhere
                 (set_kappa_from_buffer(root.get_step() - 1)));
 
-            if (  root.get_time() >= next_output_time
-               || (root.get_step() == 1))
+            if (root.get_time() >= next_output_time)
             {   
-                root.refine();
-                root.child_to_parent_injection(0);
-
-                std::cout << "REGRID AND OUTPUT\n";
+                std::cout << "OUTPUT AND REGRID\n";
                 root.output(root.get_time() / period_);
                 next_output_time += octopus::config().output_frequency; 
+
+                root.refine();
             }
     
             // IMPLEMENT: Futurize w/ continutation.
