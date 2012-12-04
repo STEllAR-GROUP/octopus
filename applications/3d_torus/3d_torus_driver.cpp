@@ -98,17 +98,19 @@ struct stepper
             ; i < octopus::config().levels_of_refinement
             ; ++i)
         {
-            std::cout << "REFINING LEVEL " << i << "\n";
-
             root.apply(octopus::science().initialize);
             root.refine();
             root.child_to_parent_injection(0);
 
-            std::cout << "REFINED LEVEL " << i << "\n";
+            std::cout << "REFINED LEVEL " << (i + 1) << "\n";
         }
 
         root.output(root.get_time() / period_, "U_L%06u_initial.silo");
-    
+  
+        std::ofstream dt_file("dt.csv");
+ 
+        dt_file << "step, time [orbits], dt [orbits]\n";
+ 
         ///////////////////////////////////////////////////////////////////////
         // Crude, temporary stepper.
     
@@ -126,7 +128,12 @@ struct stepper
                 % (root.get_time() / period_) % (root.get_dt() / period_)
                 % kappa(root.get_step()) 
                 );
-    
+  
+            // Record timestep size.
+            dt_file << root.get_step() << ", "
+                    << (root.get_time() / period_) << ", "
+                    << (root.get_dt() / period_) << "\n"; 
+
             root.step();
     
             // Update kappa.
@@ -135,10 +142,11 @@ struct stepper
 
             if (root.get_time() >= next_output_time)
             {   
-                std::cout << "OUTPUT AND REGRID\n";
+                std::cout << "OUTPUT\n";
                 root.output(root.get_time() / period_);
                 next_output_time += octopus::config().output_frequency; 
 
+                std::cout << "REGRID\n";
                 root.refine();
             }
     

@@ -26,6 +26,8 @@ struct OCTOPUS_EXPORT oid_type;
 
 struct OCTOPUS_EXPORT octree_server;
 
+struct OCTOPUS_EXPORT interpolation_data;
+
 /// The set of types in our type-punning system. We call these types "kinds",
 /// to distinguish them from C++ types.
 // REVIEW: Should this have a serialization version?
@@ -98,6 +100,7 @@ struct OCTOPUS_EXPORT octree_client
     BOOST_COPYABLE_AND_MOVABLE(octree_client);
 
     friend struct octree_server;
+    friend struct interpolation_data;
 
     friend class boost::serialization::access;
 
@@ -369,7 +372,10 @@ struct OCTOPUS_EXPORT octree_client
     hpx::future<void> create_child_async(
         child_index kid
         ) const;
+    // }}}
 
+    ///////////////////////////////////////////////////////////////////////////
+    // {{{ require_child
     void require_child(
         child_index kid
         ) const
@@ -380,16 +386,21 @@ struct OCTOPUS_EXPORT octree_client
     hpx::future<void> require_child_async(
         child_index kid
         ) const;
+    // }}}
 
-    void require_sibling(
-        face f
+    ///////////////////////////////////////////////////////////////////////////
+    // {{{ remove_nephew
+    void remove_nephew(
+        octree_client const& nephew
+      , face f
         ) const
     {
-        require_sibling_async(f).get(); 
+        remove_nephew_async(nephew, f).get(); 
     }
 
-    hpx::future<void> require_sibling_async(
-        face f
+    hpx::future<void> remove_nephew_async(
+        octree_client const& nephew
+      , face f
         ) const;
     // }}}
 

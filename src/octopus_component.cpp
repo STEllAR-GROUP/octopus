@@ -35,7 +35,7 @@ OCTOPUS_REGISTER_ACTION(prepare_refinement_queues);
 
 OCTOPUS_REGISTER_ACTION(create_child);
 OCTOPUS_REGISTER_ACTION(require_child);
-OCTOPUS_REGISTER_ACTION(require_sibling);
+OCTOPUS_REGISTER_ACTION(remove_nephew);
 OCTOPUS_REGISTER_ACTION(set_sibling);
 OCTOPUS_REGISTER_ACTION(tie_sibling);
 OCTOPUS_REGISTER_ACTION(set_child_sibling);

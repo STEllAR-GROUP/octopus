@@ -140,11 +140,12 @@ hpx::future<void> octree_client::require_child_async(
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-hpx::future<void> octree_client::require_sibling_async(
-    face f
+hpx::future<void> octree_client::remove_nephew_async(
+    octree_client const& nephew
+  , face f
     ) const
 {
-    return hpx::async<octree_server::require_sibling_action>(gid_, f);
+    return hpx::async<octree_server::remove_nephew_action>(gid_, nephew, f);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

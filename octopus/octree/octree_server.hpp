@@ -93,6 +93,61 @@ struct OCTOPUS_EXPORT oid_type
 
 std::ostream& operator<<(std::ostream& os, oid_type const& id);
 
+struct OCTOPUS_EXPORT interpolation_data
+{
+    octree_client subject;
+    face direction;
+    boost::array<boost::int64_t, 3> offset;
+
+    interpolation_data() : subject(), direction()
+    {
+        offset[0] = 0;
+        offset[1] = 1;
+        offset[2] = 2;
+    }
+
+    interpolation_data(interpolation_data const& other)
+      : subject(other.subject), direction(other.direction), offset(other.offset)
+    {}
+
+    interpolation_data(
+        octree_client const& s
+      , face d
+      , boost::array<boost::int64_t, 3> o
+        )
+      : subject(s), direction(d), offset(o)
+    {}
+
+    interpolation_data(
+        octree_client const& s
+      , face d
+        )
+      : subject(s), direction(d), offset()
+    {
+        offset[0] = 0;
+        offset[1] = 0;
+        offset[2] = 0;
+    }
+
+    bool operator<(interpolation_data const& rhs) const
+    {
+        using hpx::naming::strip_credit_from_cgid;
+        return std::make_pair(strip_credit_from_cgid(subject.gid_.get_gid())
+                            , direction)
+             < std::make_pair(strip_credit_from_cgid(rhs.subject.gid_.get_gid())
+                            , rhs.direction);
+    }
+
+    bool operator==(interpolation_data const& rhs) const
+    {
+        using hpx::naming::strip_credit_from_cgid;
+        return std::make_pair(strip_credit_from_cgid(subject.gid_.get_gid())
+                            , direction)
+            == std::make_pair(strip_credit_from_cgid(rhs.subject.gid_.get_gid())
+                            , rhs.direction);
+    }
+};
+
 struct OCTOPUS_EXPORT octree_server
   : hpx::components::managed_component_base<octree_server>
 {
@@ -171,6 +226,7 @@ struct OCTOPUS_EXPORT octree_server
     octree_client parent_; 
     boost::array<octree_client, 8> children_;
     boost::array<octree_client, 6> siblings_; 
+    std::set<interpolation_data> nephews_;
     boost::uint64_t level_;
     boost::array<boost::uint64_t, 3> location_; 
 
@@ -528,12 +584,14 @@ struct OCTOPUS_EXPORT octree_server
         child_index kid
         )
     {
-        debug() << "require_child(" << kid << ")\n";
+        //debug() << "require_child(" << kid << ")\n";
         // REVIEW: Lock here.
+        mutex_type::scoped_lock l(mtx_);
+
         if (hpx::invalid_id == children_[kid])
         {
             marked_for_refinement_.set(kid, true);
-            propagate(kid);
+            propagate_locked(kid, l);
         }
     }
 
@@ -541,13 +599,19 @@ struct OCTOPUS_EXPORT octree_server
                                 require_child,
                                 require_child_action);
 
-    void require_sibling(
-        face f
-        );
+    void remove_nephew(
+        octree_client const& nephew
+      , face f
+        )
+    {
+        mutex_type::scoped_lock l(mtx_);
+        bool erased = nephews_.erase(interpolation_data(nephew.gid_, f));
+        OCTOPUS_ASSERT(erased); 
+    }
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                require_sibling,
-                                require_sibling_action);
+                                remove_nephew,
+                                remove_nephew_action);
 
   public:
     ///////////////////////////////////////////////////////////////////////////
@@ -893,7 +957,7 @@ struct OCTOPUS_EXPORT octree_server
     void mark_kernel();
 
 //    void propagate_kernel();
-    void propagate(child_index kid);
+    void propagate_locked(child_index kid, mutex_type::scoped_lock &l);
 
     void populate_kernel();
 
@@ -1049,7 +1113,7 @@ OCTOPUS_REGISTER_ACTION(prepare_refinement_queues);
 
 OCTOPUS_REGISTER_ACTION(create_child);
 OCTOPUS_REGISTER_ACTION(require_child);
-OCTOPUS_REGISTER_ACTION(require_sibling);
+OCTOPUS_REGISTER_ACTION(remove_nephew);
 OCTOPUS_REGISTER_ACTION(set_sibling);
 OCTOPUS_REGISTER_ACTION(tie_sibling);
 OCTOPUS_REGISTER_ACTION(set_child_sibling);
