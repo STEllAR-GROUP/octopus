@@ -7,7 +7,6 @@ add_definitions(-DOCTOPUS_CURRENT_SOURCE_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}"
 
 set(applications
     3d_torus_driver
-    3d_torus_update_kappa
     3d_torus_cli
     3d_torus_initial_state
    )
