@@ -446,6 +446,8 @@ struct OCTOPUS_EXPORT octree_server
 
     void post_dt(double dt) 
     {
+        OCTOPUS_ASSERT(0 == level_);
+        dt_.reset();
         dt_.post(dt);
     }
 
@@ -764,14 +766,14 @@ struct OCTOPUS_EXPORT octree_server
     /// Callback used to wait for a particular ghost zone. 
     void add_mapped_ghost_zone(
         face f ///< Bound parameter.
-      , hpx::future<vector3d<std::vector<double> > > zone_f
+      , BOOST_RV_REF(vector3d<std::vector<double> >) zone
         );
 
     // FIXME: Rvalue reference kung-fo must be applied here.
     /// Callback used to wait for a particular ghost zone. 
     void add_ghost_zone(
         face f ///< Bound parameter.
-      , hpx::future<vector3d<std::vector<double> > > zone_f
+      , BOOST_RV_REF(vector3d<std::vector<double> >) zone
         );
 
   public:
@@ -981,6 +983,12 @@ struct OCTOPUS_EXPORT octree_server
   public:
     void receive_sibling_refinement_signal(boost::uint64_t phase, face f)
     {
+/*
+        debug() << "received sibling refinement signal for "
+                << f << " (phase " << phase << ")\n" << std::flush;
+*/
+        mutex_type::scoped_lock l(mtx_);
+
         OCTOPUS_ASSERT(invalid_face != f);
         refinement_deps_.at(phase)(f).post();
     }
@@ -1040,18 +1048,22 @@ struct OCTOPUS_EXPORT octree_server
     void add_reduce(
         T& result
       , hpx::util::function<T(T const&, T const&)> const& reducer
-      , std::size_t 
-      , T const& value
+      , hpx::future<T> value
         )
     {
-        result = reducer(result, value); 
+        T tmp = reducer(result, value.get()); 
+
+        mutex_type::scoped_lock l(mtx_);
+        result = boost::move(tmp);
     }
 
   public:
+    // Initial should be an identity.
     template <typename T>
     T reduce(
         hpx::util::function<T(octree_server&)> const& f
       , hpx::util::function<T(T const&, T const&)> const& reducer
+      , T const& initial = T()
         );
 
     template <typename T>
@@ -1059,17 +1071,19 @@ struct OCTOPUS_EXPORT octree_server
       : hpx::actions::make_action<
             T (octree_server::*)
                 ( hpx::util::function<T(octree_server&)> const&
-                , hpx::util::function<T(T const&, T const&)> const&)
+                , hpx::util::function<T(T const&, T const&)> const&
+                , T const&)
           , &octree_server::template reduce<T>
           , reduce_action<T>
         >
     {};
 
+    // Initial should be an identity.
     template <typename T>
     T reduce_zonal(
         hpx::util::function<T(std::vector<double>&)> const& f
       , hpx::util::function<T(T const&, T const&)> const& reducer
-      , T const& initial
+      , T const& initial = T()
         );
 
     template <typename T>

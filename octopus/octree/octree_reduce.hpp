@@ -14,6 +14,8 @@
 #include <octopus/engine/engine_interface.hpp>
 #include <octopus/octree/octree_server.hpp>
 
+// Reimplement with when_all
+
 namespace octopus
 {
 
@@ -21,28 +23,39 @@ template <typename T>
 inline T octree_server::reduce(
     hpx::util::function<T(octree_server&)> const& f
   , hpx::util::function<T(T const&, T const&)> const& reducer
+  , T const& initial
     ) 
 {
     // Make sure that we are initialized.
     //initialized_.wait();
 
-    std::vector<hpx::future<T> > recursion_is_parallelism;
+    std::vector<hpx::future<T> > keep_alive;
+    keep_alive.reserve(8);
+
+    std::vector<hpx::future<void> > recursion_is_parallelism;
     recursion_is_parallelism.reserve(8);
+
+    T result = initial;
 
     // Start recursively executing the ourself on our children.
     for (boost::uint64_t i = 0; i < 8; ++i)
         if (hpx::invalid_id != children_[i])
-            recursion_is_parallelism.push_back
-                (children_[i].template reduce_async<T>(f, reducer)); 
+        {
+            keep_alive.emplace_back
+                (children_[i].template reduce_async<T>(f, reducer, initial));
 
-    T result = f(*this);
+            // Reduce the results from our children.
+            recursion_is_parallelism.emplace_back(
+                keep_alive.back().then(boost::bind(
+                    &octree_server::template add_reduce<T>
+                  , this, boost::ref(result), reducer, _1))); 
+        }
 
-    // Reduce the results from our children.
-    hpx::wait(recursion_is_parallelism,
-        boost::bind(&octree_server::template add_reduce<T>
-                  , this, boost::ref(result), reducer, _1, _2)); 
+    T local_result = f(*this);
 
-    return result;
+    hpx::wait(recursion_is_parallelism);
+
+    return reducer(result, local_result);
 }
 
 template <typename T>
@@ -55,52 +68,64 @@ inline T octree_server::reduce_zonal(
     // Make sure that we are initialized.
     //initialized_.wait();
 
-    std::vector<hpx::future<T> > recursion_is_parallelism;
+    std::vector<hpx::future<T> > keep_alive;
+    keep_alive.reserve(8);
+
+    std::vector<hpx::future<void> > recursion_is_parallelism;
     recursion_is_parallelism.reserve(8);
+
+    T result = initial;
 
     // Start recursively executing the ourself on our children.
     for (boost::uint64_t i = 0; i < 8; ++i)
         if (hpx::invalid_id != children_[i])
-            recursion_is_parallelism.push_back
+        {
+            keep_alive.emplace_back
                 (children_[i].template reduce_zonal_async<T>
                     (f, reducer, initial)); 
+
+            // Reduce the results from our children.
+            recursion_is_parallelism.emplace_back(
+                keep_alive.back().then(boost::bind(
+                    &octree_server::template add_reduce<T>
+                  , this, boost::ref(result), reducer, _1))); 
+        }
 
     boost::uint64_t bw = science().ghost_zone_width;
     boost::uint64_t gnx = config().grid_node_length;
 
-    T result = initial;
+    T local_result = initial;
 
     for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
         for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
             for (boost::uint64_t k = bw; k < (gnx - bw); ++k)
-                result = reducer(result, f(U_(i, j, k))); 
+                local_result = reducer(local_result, f(U_(i, j, k))); 
 
-    // Reduce the results from our children.
-    hpx::wait(recursion_is_parallelism,
-        boost::bind(&octree_server::template add_reduce<T>
-                  , this, boost::ref(result), reducer, _1, _2)); 
+    hpx::wait(recursion_is_parallelism);
 
-    return result;
+    return reducer(result, local_result);
 }
 
 template <typename T>
 inline T octree_client::reduce(
     hpx::util::function<T(octree_server&)> const& f
   , hpx::util::function<T(T const&, T const&)> const& reducer
+  , T const& initial 
     ) const
 {
-    return reduce_async<T>(f, reducer).get();
+    return reduce_async<T>(f, reducer, initial).get();
 }
 
 template <typename T>
 inline hpx::future<T> octree_client::reduce_async(
     hpx::util::function<T(octree_server&)> const& f
   , hpx::util::function<T(T const&, T const&)> const& reducer
+  , T const& initial 
     ) const
 {
     ensure_real();
     typedef octopus::octree_server::reduce_action<T> action_type;
-    return hpx::async<action_type>(gid_, f, reducer); 
+    return hpx::async<action_type>(gid_, f, reducer, initial); 
 }
 
 template <typename T>

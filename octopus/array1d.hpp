@@ -37,10 +37,10 @@ struct array1d
     }
 
   public:
-    array1d()
+    array1d() : data_()
     {
         for (size_type i = 0; i < Size; ++i)
-            data_[i] = boost::move(T());
+            data_[i] = T();
     }
 
     array1d(array1d const& other)

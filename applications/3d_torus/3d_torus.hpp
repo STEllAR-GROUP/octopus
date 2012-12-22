@@ -179,7 +179,6 @@ double orbital_period(double eps, double R_outer)
 {
     double const R_inner = R_outer*(1.0 - eps)/(1.0 + eps);
     double const h = sqrt(2.0*G*M_C*R_inner*R_outer/(R_inner + R_outer));
-    //double const R_max = h*h/(G*M_C);
     double const omega_R_max = (G*M_C)*(G*M_C)/(h*h*h);
     double const pi = boost::math::constants::pi<double>();
 
@@ -455,7 +454,8 @@ struct cfl_initial_timestep : octopus::trivial_serialization
     double operator()(octopus::octree_server& root) const
     {
         return 0.01 * root.reduce<double>(cfl_treewise_compute_timestep()
-                                        , octopus::minimum_functor());
+                                        , octopus::minimum_functor()
+                                        , 100.0);
     }
 };
 
@@ -477,7 +477,7 @@ struct cfl_predict_timestep
       , fudge_factor_(fudge_factor)
     {}
 
-    /// Returns the tuple (timestep N + 1 size, timestep N+gap size)
+    /// Returns the tuple (timestep N + 1 size, timestep N + gap size)
     octopus::timestep_prediction operator()(
         octopus::octree_server& root
         ) const
@@ -487,12 +487,9 @@ struct cfl_predict_timestep
 
         OCTOPUS_ASSERT(0 == root.get_level());
 
-        double next_dt = (std::min)(
-            // get_dt may block
-            root.get_dt() * max_dt_growth_
-          , root.reduce<double>(cfl_treewise_compute_timestep()
-                              , octopus::minimum_functor())
-        );
+        double next_dt = root.reduce<double>(cfl_treewise_compute_timestep()
+                                           , octopus::minimum_functor()
+                                           , root.get_dt() * max_dt_growth_);
 
         return octopus::timestep_prediction(next_dt, fudge_factor_ * next_dt); 
     }

@@ -732,12 +732,14 @@ struct OCTOPUS_EXPORT octree_client
     T reduce(
         hpx::util::function<T(octree_server&)> const& f
       , hpx::util::function<T(T const&, T const&)> const& reducer
+      , T const& initial = T()
         ) const;
 
     template <typename T>
     hpx::future<T> reduce_async(
         hpx::util::function<T(octree_server&)> const& f
       , hpx::util::function<T(T const&, T const&)> const& reducer
+      , T const& initial = T()
         ) const;
 
     template <typename T>

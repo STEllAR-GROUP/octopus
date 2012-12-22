@@ -203,7 +203,7 @@ struct stepper : octopus::trivial_serialization
             root.step();
     
             // Update kappa.
-            hpx::wait_all(octopus::call_everywhere
+            hpx::wait(octopus::call_everywhere
                 (set_kappa_from_buffer(root.get_step() - 1)));
 
             root.output();

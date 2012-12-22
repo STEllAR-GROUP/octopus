@@ -100,7 +100,9 @@ struct stepper
         {
             root.apply(octopus::science().initialize);
             root.refine();
+
             root.child_to_parent_injection(0);
+            root.prepare_compute_queues();
 
             std::cout << "REFINED LEVEL " << (i + 1) << "\n";
         }
@@ -120,12 +122,13 @@ struct stepper
         while (root.get_time() < octopus::config().temporal_domain)
         {
             char const* fmt = "STEP %06u : ORBITS %.5g %|33t| += %.5g "
-                                  "%|50t|: KAPPA %.6g\n";
+                                  "%|50t|: TIME %.5g %|70t|: KAPPA %.6g %|85t|";
 
             std::cout <<
                 ( boost::format(fmt)
                 % root.get_step()
                 % (root.get_time() / period_) % (root.get_dt() / period_)
+                % root.get_time()
                 % kappa(root.get_step()) 
                 );
   
@@ -135,21 +138,27 @@ struct stepper
                     << (root.get_dt() / period_) << "\n"; 
 
             root.step();
-    
+   
+//            std::cout << "STEPPED\n" << std::flush;
+ 
             // Update kappa.
-            hpx::wait_all(octopus::call_everywhere
-                (set_kappa_from_buffer(root.get_step() - 1)));
+//            hpx::wait(octopus::call_everywhere
+//                (set_kappa_from_buffer(root.get_step() - 1)));
 
             if (root.get_time() >= next_output_time)
             {   
-                std::cout << "OUTPUT\n";
+                std::cout << ": OUTPUT ";
                 root.output(root.get_time() / period_);
                 next_output_time += octopus::config().output_frequency; 
 
-                std::cout << "REGRID\n";
+                std::cout << ": REGRID";
                 root.refine();
             }
-    
+  
+            std::cout << "\n";
+ 
+//            std::cout << "PREDICT\n" << std::flush;
+
             // IMPLEMENT: Futurize w/ continutation.
             octopus::timestep_prediction prediction
                 = root.apply_leaf(octopus::science().predict_timestep);
@@ -157,6 +166,8 @@ struct stepper
             OCTOPUS_ASSERT(0.0 < prediction.next_dt);
             OCTOPUS_ASSERT(0.0 < prediction.future_dt);
     
+//            std::cout << "POST\n" << std::flush;
+
             root.post_dt(prediction.next_dt);
         } 
     }
