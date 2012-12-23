@@ -102,10 +102,10 @@ config_data config_from_ini()
         ("spatial_domain", cfg.spatial_domain, 1.5e-4) 
         ("grid_node_length", cfg.grid_node_length, 12) 
 
-        ("temporal_domain", cfg.temporal_domain, 1.0e-6) 
+        ("temporal_domain", cfg.temporal_domain, 1.0) 
         ("temporal_prediction_gap", cfg.temporal_prediction_gap, 10) 
         
-        ("output_frequency", cfg.output_frequency, 1.0e-7)
+        ("output_frequency", cfg.output_frequency, 0.005)
     ;
 
     return cfg;

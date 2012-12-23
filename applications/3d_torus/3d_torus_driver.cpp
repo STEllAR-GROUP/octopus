@@ -8,7 +8,7 @@
 
 #include "3d_torus.hpp"
 
-#include <hpx/lcos/wait_all.hpp>
+#include <hpx/util/high_resolution_timer.hpp>
 
 void octopus_define_problem(
     boost::program_options::variables_map& vm
@@ -109,33 +109,42 @@ struct stepper
 
         root.output(root.get_time() / period_, "U_L%06u_initial.silo");
   
-        std::ofstream dt_file("dt.csv");
+        std::ofstream dt_file("dt.csv", std::ios_base::trunc);
+        std::ofstream speed_file("speed.csv", std::ios_base::trunc);
  
-        dt_file << "step, time [orbits], dt [orbits]\n";
+        dt_file    << "step, time [orbits], dt [orbits]\n";
+        speed_file << "step, speed [orbits/hours]\n";
  
         ///////////////////////////////////////////////////////////////////////
         // Crude, temporary stepper.
     
         root.post_dt(root.apply_leaf(octopus::science().initial_timestep));
-        double next_output_time = octopus::config().output_frequency;
-    
-        while (root.get_time() < octopus::config().temporal_domain)
+        double next_output_time = octopus::config().output_frequency * period_;
+   
+        hpx::util::high_resolution_timer clock;
+ 
+        while ((root.get_time() / period_) <= octopus::config().temporal_domain)
         {
-            char const* fmt = "STEP %06u : ORBITS %.5g %|33t| += %.5g "
-                                  "%|50t|: TIME %.5g %|70t|: KAPPA %.6g %|85t|";
+            char const* fmt = "STEP %06u : ORBITS %.7g %|34t| += %.7g "
+                              "%|52t|: SPEED %.7g %|76t| [orbits/hour] ";
+
+            double const speed =
+                ((root.get_time() / period_) / (clock.elapsed() / 3600));
 
             std::cout <<
                 ( boost::format(fmt)
                 % root.get_step()
-                % (root.get_time() / period_) % (root.get_dt() / period_)
-                % root.get_time()
-                % kappa(root.get_step()) 
+                % (root.get_time() / period_)
+                % (root.get_dt() / period_)
+                % speed 
                 );
   
             // Record timestep size.
             dt_file << root.get_step() << ", "
                     << (root.get_time() / period_) << ", "
                     << (root.get_dt() / period_) << "\n"; 
+
+            speed_file << root.get_step() << ", " << speed << "\n";
 
             root.step();
    
@@ -149,7 +158,8 @@ struct stepper
             {   
                 std::cout << ": OUTPUT ";
                 root.output(root.get_time() / period_);
-                next_output_time += octopus::config().output_frequency; 
+                next_output_time +=
+                    (octopus::config().output_frequency * period_); 
 
                 std::cout << ": REGRID";
                 root.refine();
