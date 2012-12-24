@@ -31,7 +31,7 @@ HPX_REGISTER_MINIMAL_COMPONENT_FACTORY(
         BOOST_PP_CAT(octopus_octree_server_, BOOST_PP_CAT(name, _action)))  \
     /**/
 
-OCTOPUS_REGISTER_ACTION(prepare_refinement_queues);
+OCTOPUS_REGISTER_ACTION(clear_refinement_marks);
 
 OCTOPUS_REGISTER_ACTION(create_child);
 OCTOPUS_REGISTER_ACTION(require_child);

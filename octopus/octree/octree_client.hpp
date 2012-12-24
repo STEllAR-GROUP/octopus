@@ -351,13 +351,13 @@ struct OCTOPUS_EXPORT octree_client
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
-    // {{{ prepare_refinement_queues
-    void prepare_refinement_queues() const
+    // {{{ clear_refinement_marks
+    void clear_refinement_marks() const
     {
-        prepare_refinement_queues_async().get(); 
+        clear_refinement_marks_async().get(); 
     }
 
-    hpx::future<void> prepare_refinement_queues_async() const;
+    hpx::future<void> clear_refinement_marks_async() const;
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////

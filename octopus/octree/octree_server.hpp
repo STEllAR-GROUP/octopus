@@ -182,8 +182,9 @@ struct OCTOPUS_EXPORT octree_server
         hpx::lcos::local::channel<vector3d<std::vector<double> > >, 8
     > children_state_dependencies;
 
-    typedef array1d<hpx::lcos::local::channel<void>, 6>
-        sibling_sync_dependencies;
+    typedef array1d<
+        hpx::lcos::local::channel<void>, 6
+    > sibling_sync_dependencies;
 
     // IMPLEMENT: This should totally be in the science table, along with like
     // 3k other lines of stuff in octree_server.
@@ -225,7 +226,8 @@ struct OCTOPUS_EXPORT octree_server
     // From OctNode
     octree_client parent_; 
     boost::array<octree_client, 8> children_;
-    boost::array<octree_client, 6> siblings_; 
+    boost::array<octree_client, 6> siblings_; // FIXME: Misleading, should be
+                                              // neighbors.
     std::set<interpolation_data> nephews_;
     boost::uint64_t level_;
     boost::array<boost::uint64_t, 3> location_; 
@@ -558,14 +560,14 @@ struct OCTOPUS_EXPORT octree_server
     ///////////////////////////////////////////////////////////////////////////
     void prepare_compute_queues();
 
-    void prepare_refinement_queues();
+    void clear_refinement_marks();
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                prepare_refinement_queues,
-                                prepare_refinement_queues_action);
+                                clear_refinement_marks,
+                                clear_refinement_marks_action);
 
   private:
-    void prepare_refinement_queues_kernel();
+    void clear_refinement_marks_kernel();
 
   public:
     ///////////////////////////////////////////////////////////////////////////
@@ -735,46 +737,27 @@ struct OCTOPUS_EXPORT octree_server
     // NOTE: This was contained in enforce_boundaries in the original code.
 
   private:
-    /// 0.) Send out ghost zone data to our siblings. 
-    /// 1.) Unlock \a l.
-    /// 2.) Block until out ghost zones for \a phase are ready.
-    /// 3.) Relock \a l.
-    /// 
-    /// Remote Operations:   Possibly.
-    /// Concurrency Control: Unlocks mtx_, relocks mtx_ before returning.
-    /// Synchrony Gurantee:  Fire-and-Forget.
+    // REVIEW: I think step 2.) can come before step 1.).
+    /// 0.) Push ghost zone data to our siblings and determine which ghost zones
+    ///     we will receive.
+    /// 1.) Wait for our ghost zones to be delivered by our siblings.
+    /// 2.) Push ghost zone data to our nephews.
     void communicate_ghost_zones(
         boost::uint64_t phase
-      /*, mutex_type::scoped_lock& l*/
         );
 
-    // FIXME: Rvalue reference kung-fo must be applied here.
-    /// Callback used to wait for a particular ghost zone. 
-    void add_sibling_ghost_zone(
-        face f ///< Bound parameter.
-      , hpx::future<vector3d<std::vector<double> > > zone_f
-        );
-
-    // FIXME: Rvalue reference kung-fo must be applied here.
-    /// Callback used to wait for a particular ghost zone. 
-    void add_interpolated_ghost_zone(
-        face f ///< Bound parameter.
-      , hpx::future<vector3d<std::vector<double> > > zone_f
-        );
-
-    // FIXME: Rvalue reference kung-fo must be applied here.
-    /// Callback used to wait for a particular ghost zone. 
-    void add_mapped_ghost_zone(
-        face f ///< Bound parameter.
-      , BOOST_RV_REF(vector3d<std::vector<double> >) zone
-        );
-
-    // FIXME: Rvalue reference kung-fo must be applied here.
-    /// Callback used to wait for a particular ghost zone. 
     void add_ghost_zone(
-        face f ///< Bound parameter.
+        face f
       , BOOST_RV_REF(vector3d<std::vector<double> >) zone
         );
+
+    void add_ghost_zone_callback(
+        face f ///< Bound parameter.
+      , hpx::future<vector3d<std::vector<double> > > zone_f
+        )
+    {
+        add_ghost_zone(f, boost::move(zone_f.move()));
+    }
 
   public:
     // FIXME: Rvalue reference kung-fo must be applied here.
@@ -784,7 +767,25 @@ struct OCTOPUS_EXPORT octree_server
       , boost::uint64_t phase 
       , face f ///< Relative to caller.
       , vector3d<std::vector<double> > const& zone
-        );
+        )
+    {
+        mutex_type::scoped_lock l(mtx_);
+
+        OCTOPUS_ASSERT_MSG(step_ == step,
+            "cross-timestep communication occurred, octree is ill-formed");
+
+        OCTOPUS_ASSERT_FMT_MSG(
+            phase < ghost_zone_deps_.size(),
+            "phase (%1%) is greater than the ghost zone queue length (%2%)",
+            phase % ghost_zone_deps_.size());
+
+        OCTOPUS_ASSERT(f != invalid_face);
+
+        // NOTE (wash): boost::move should be safe here, zone is a temporary,
+        // even if we're local to the caller. Plus, ATM set_value requires the
+        // value to be moved to it.
+        ghost_zone_deps_.at(phase)(f).post(zone);
+    }
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                 receive_ghost_zone,
@@ -863,7 +864,25 @@ struct OCTOPUS_EXPORT octree_server
       , boost::uint64_t phase 
       , child_index idx 
       , vector3d<std::vector<double> > const& state
-        );
+        )
+    { // {{{
+        mutex_type::scoped_lock l(mtx_);
+
+        OCTOPUS_ASSERT_MSG(step_ == step,
+            "cross-timestep communication occurred, octree is ill-formed");
+
+        OCTOPUS_ASSERT_FMT_MSG(
+            phase < children_state_deps_.size(),
+            "phase (%1%) is greater than the children state queue length (%2%)",
+            phase % children_state_deps_.size());
+
+        OCTOPUS_ASSERT(boost::uint64_t(idx) < 8);
+
+        // NOTE (wash): boost::move should be safe here, zone is a temporary,
+        // even if we're local to the caller. Plus, ATM set_value requires the
+        // value to be moved to it.
+        children_state_deps_.at(phase)(idx).post(state);
+    } // }}}
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                 receive_child_state,
@@ -1123,7 +1142,7 @@ inline oid_type& oid_type::operator=(octree_server const& e)
     /**/
 
 // FIXME: Make sure this is in order.
-OCTOPUS_REGISTER_ACTION(prepare_refinement_queues);
+OCTOPUS_REGISTER_ACTION(clear_refinement_marks);
 
 OCTOPUS_REGISTER_ACTION(create_child);
 OCTOPUS_REGISTER_ACTION(require_child);

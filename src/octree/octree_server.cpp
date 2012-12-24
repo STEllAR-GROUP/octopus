@@ -218,8 +218,6 @@ octree_server::octree_server(
     initialize_queues();
 
     parent_to_child_injection(parent_U);
-
-//    debug() << "created (parent " << parent_.get_oid() << ")\n";
 } // }}}
 
 // NOTE: Should be thread-safe, offset_ and origin_ are only read, and never
@@ -233,7 +231,6 @@ double octree_server::x_face(boost::uint64_t i) const
 
     return double(offset_[0] + i) * dx_ - grid_dim - bw * dx0_ - origin_[0];
 } // }}}
-
 
 // NOTE: Should be thread-safe, offset_ and origin_ are only read, and never
 // written to.
@@ -280,45 +277,23 @@ void octree_server::prepare_compute_queues()
             adjust_flux_deps_.at(i)(j).reset();
 } // }}}
 
-void octree_server::prepare_refinement_queues()
+void octree_server::clear_refinement_marks()
 { // {{{
-//    if ((level_ + 1) == config().levels_of_refinement)
-//        return;
-
-//    debug() << "has been reset\n";
-
     std::vector<hpx::future<void> > recursion_is_parallelism;
     recursion_is_parallelism.reserve(8);
 
     for (std::size_t i = 0; i < 8; ++i)
-        if (  (hpx::invalid_id != children_[i]) )
-//           && (level_ + 2) != config().levels_of_refinement)
+        if (  (hpx::invalid_id != children_[i])
+           && (level_ + 2) != config().levels_of_refinement)
             recursion_is_parallelism.push_back
-                (children_[i].prepare_refinement_queues_async());
+                (children_[i].clear_refinement_marks_async());
 
-    prepare_refinement_queues_kernel();
+    marked_for_refinement_.reset();
 
     hpx::wait(recursion_is_parallelism);
 } // }}}
 
-void octree_server::prepare_refinement_queues_kernel()
-{ // {{{
-    marked_for_refinement_.reset();
-
-//    debug() << "refinement_deps_ size is " 
-//            << refinement_deps_.size()
-//            << "\n";
-
-/*
-    for (boost::uint64_t i = 0; i < refinement_deps_.size(); ++i)
-        for (boost::uint64_t j = 0; j < 6; ++j)
-        {
-            refinement_deps_.at(i)(j).reset();
-            OCTOPUS_ASSERT(!refinement_deps_.at(i)(j).ready());
-        }
-*/
-} // }}}
-
+// Internal utility class.
 struct relatives
 { // {{{
     // Exterior/interior is relative to the new child.
@@ -481,22 +456,11 @@ void octree_server::set_sibling(
 { // {{{
     mutex_type::scoped_lock l(mtx_);
 
-/*
-    debug() << "set_sibling(" << f << ", "
-            << sib.kind_ << ", " 
-            << sib.get_oid() << ")\n";
-*/
-
     if (amr_boundary == siblings_[f].kind() && sib.real())
     {
         octree_client old = siblings_[f];
         siblings_[f] = sib; 
-/*
-        debug() << "set_sibling(" << f << "), new == "
-                << sib.get_oid() << ", " << sib.kind_
-                << ", old == " << old.get_oid() << ", " << old.kind_
-                << "\n";
-*/
+
         hpx::util::unlock_the_lock<mutex_type::scoped_lock> ul(l);
         old.remove_nephew(reference_from_this(), invert(f));
     }
@@ -545,21 +509,11 @@ void octree_server::set_child_sibling(
     }
 
     if (invalid_boundary != child.kind())
-    {
-/*
-        debug() << "creating " << f << " nephew bindings from "
-                << sib.get_oid() << " to "
-                << children_[kid].get_oid() << "\n";
-*/
+        // Locks.
         child.set_sibling(f, sib);
-    }
+
     else if (!marked_for_refinement_.test(kid))
     {
-/*
-        debug() << "creating " << f << " AMR bindings for "
-                << sib.get_oid() << "\n";
-*/
-
         // Exterior AMR boundary.
         octree_client bound(amr_boundary
                           , client_from_this()
@@ -574,6 +528,7 @@ void octree_server::set_child_sibling(
             nephews_.insert(interpolation_data(sib, f, bound.offset_));
         }
 
+        // Locks.
         sib.set_sibling(invert(f), bound);
     }
 } // }}}
@@ -592,22 +547,11 @@ void octree_server::tie_child_sibling(
     }
 
     if (invalid_boundary != child.kind())
-    {
-/*
-        debug() << "creating " << target_f << " nephew bindings from "
-                << target_sib.get_oid() << " to "
-                << children_[target_kid].get_oid() << "\n";
-*/
-
+        // Locks.
         child.tie_sibling(target_f, target_sib);
-    }
+
     else if (!marked_for_refinement_.test(target_kid))
     {
-/*
-        debug() << "creating " << target_f << " AMR bindings for "
-                << target_sib.get_oid() << "\n";
-*/
-
         // Exterior AMR boundary.
         octree_client bound(amr_boundary
                           , client_from_this()
@@ -623,6 +567,7 @@ void octree_server::tie_child_sibling(
                 interpolation_data(target_sib, target_f, bound.offset_));
         }
 
+        // Locks.
         target_sib.set_sibling(invert(target_f), bound);
     }
 } // }}} 
@@ -665,155 +610,87 @@ void octree_server::tie_child_sibling(
 ///             U(i, j, k) = sibling[ZU].U(i, j, -GNX - 2 * BW + k) 
 // }}}
 
-/// 0.) Send out ghost zone data to our siblings. 
-/// 1.) Unlock \a l.
-/// 2.) Block until out ghost zones for \a phase are ready.
-/// 3.) Relock \a l.
+// REVIEW: I think step 2.) can come before step 1.).
+/// 0.) Push ghost zone data to our siblings and determine which ghost zones we
+///     will receive.
+/// 1.) Wait for our ghost zones to be delivered by our siblings.
+/// 2.) Push ghost zone data to our nephews.
 void octree_server::communicate_ghost_zones(
     boost::uint64_t phase
-//  , mutex_type::scoped_lock& l
     )
 { // {{{
-    //OCTOPUS_ASSERT_MSG(l.owns_lock(), "mutex is not locked");
-
-//    debug() << "GZ" << phase << " started\n";
-
     OCTOPUS_ASSERT_FMT_MSG(
         phase < ghost_zone_deps_.size(),
         "phase (%1%) is greater than the ghost zone queue length (%2%)",
         phase % ghost_zone_deps_.size());
 
-
-    // FIXME: After HPX update, switch to a boost array here.
-    //boost::array<hpx::future<void>, 6> dependencies;
-
-    // FIXME: Workaround for an HPX bug.
-/*
-    std::vector<hpx::future<vector3d<std::vector<double> > > > keep_alive0;
-    keep_alive0.reserve(6);
-
-    std::vector<hpx::future<void> > keep_alive1;
-    keep_alive1.reserve(6);
-*/
-
     std::vector<hpx::future<void> > dependencies;
     dependencies.reserve(6);
 
+    ///////////////////////////////////////////////////////////////////////////
+    // Push ghost zone data to our siblings and determine which ghost zones we
+    // will receive.
     for (boost::uint64_t i = 0; i < 6; ++i)
     {
+        face const fi = face(i);
+
+        OCTOPUS_ASSERT(invalid_boundary != siblings_[i].kind());
+
         if (siblings_[i].real())
         {
-//            debug() << "GZ" << phase
-//                    << " real boundary " << face(i) << "\n";
-
-            // 0.) Send out ghost zone data to our siblings. 
-            // NOTE: send_ghost_zone_locked is somewhat compute intensive.
-            siblings_[i].receive_ghost_zone_push(step_, phase, invert(face(i)),
-                send_ghost_zone_locked(invert(face(i))/*, l*/));
-//            keep_alive1.push_back(siblings_[i].receive_ghost_zone_async
-//                (step_, phase, invert(face(i)),
-//                    send_ghost_zone_locked(invert(face(i))/*, l*/)));
-//
+            // Set up a callback which adds the ghost zones to our state
+            // when they arrive. 
             dependencies.push_back( 
-                ghost_zone_deps_.at(phase)(i).then_async(
-                    boost::bind(&octree_server::add_sibling_ghost_zone,
-                        this, face(i), _1))); 
+                ghost_zone_deps_.at(phase)(i).then(
+                    boost::bind(&octree_server::add_ghost_zone_callback,
+                        this, fi, _1))); 
+
+            // Send out ghost zone data for our neighbors.
+            // FIXME: send_ghost_zone is somewhat compute intensive,
+            // parallelize?
+            siblings_[i].receive_ghost_zone_push(step_, phase, invert(fi),
+                send_ghost_zone(invert(fi)));
         }
 
-/*
-        // A boundary, so we pull.
-        else 
-        {
-            keep_alive.push_back
-                (siblings_[i].send_ghost_zone_async(face(i)));
-            dependencies.push_back(keep_alive.back().when(boost::bind
-                (&octree_server::add_ghost_zone, this, invert(face(i)), _1))); 
-        }
-*/
         else if (amr_boundary == siblings_[i].kind())
         {
-//            debug() << "GZ" << phase
-//                    << " amr boundary " << face(i) << "\n";
-
-//            keep_alive.push_back
-//                (siblings_[i].send_ghost_zone_async(face(i)));
-            // FIXME: May need to be inverted.
+            // Set up a callback which adds the ghost zones to our state
+            // when they arrive. 
             dependencies.push_back(
-                ghost_zone_deps_.at(phase)(i).then_async(boost::bind
-                    (&octree_server::add_interpolated_ghost_zone,
-                        this, face(i), _1))); 
+                ghost_zone_deps_.at(phase)(i).then(boost::bind
+                    (&octree_server::add_ghost_zone_callback, this, fi, _1))); 
         }
-
-        else if (physical_boundary != siblings_[i].kind())
-            OCTOPUS_ASSERT(false);
     }
 
+    // Handle physical boundaries.
+    // FIXME: Optimize.
     for (boost::uint64_t i = 0; i < 6; ++i)
     {
+        face const fi = face(i);
+
         if (physical_boundary == siblings_[i].kind())
-        {
-            // TODO: Optimize
-            add_mapped_ghost_zone(face(i),
-                boost::move(send_mapped_ghost_zone(face(i))));
-        }
+            add_ghost_zone(fi, boost::move(send_mapped_ghost_zone(fi)));
     }
 
+    ///////////////////////////////////////////////////////////////////////////
+    // Wait for our ghost zones to be delivered by our siblings.
     for (boost::uint64_t i = 0; i < dependencies.size(); ++i)
         dependencies[i].move();
 
-//    hpx::wait(dependencies);
-
+    ///////////////////////////////////////////////////////////////////////////
+    // Push ghost zone data to our nephews.
     std::vector<hpx::future<void> > nephews;
     nephews.reserve(nephews_.size());
 
     BOOST_FOREACH(interpolation_data const& nephew, nephews_) 
     {
-/*
-        debug() << "sending to " << nephew.direction
-                << " nephew " << nephew.subject.get_oid() << "\n";
-*/
         nephews.push_back(nephew.subject.receive_ghost_zone_async
             (step_, phase, invert(nephew.direction),
                 send_interpolated_ghost_zone(nephew.direction
                                            , nephew.offset)));
     }
 
-//    for (boost::uint64_t i = 0; i < 6; ++i)
-//        ghost_zone_deps_.at(phase)(i).reset();
-
     hpx::wait(nephews);
-
-//    debug() << "GZ" << phase << " finished\n";
-} // }}}
-
-void octree_server::add_sibling_ghost_zone(
-    face f ///< Bound parameter.
-  , hpx::future<vector3d<std::vector<double> > > zone_f
-    )
-{ // {{{
-//    debug() << "add_sibling_ghost_zone " << f << "\n";
-
-    add_ghost_zone(f, zone_f.move());
-} // }}}
-
-void octree_server::add_interpolated_ghost_zone(
-    face f ///< Bound parameter.
-  , hpx::future<vector3d<std::vector<double> > > zone_f
-    )
-{ // {{{
-//    debug() << "add_interpolated_ghost_zone " << f << "\n";
-
-    add_ghost_zone(f, zone_f.move());
-} // }}}
-
-void octree_server::add_mapped_ghost_zone(
-    face f ///< Bound parameter.
-  , BOOST_RV_REF(vector3d<std::vector<double> >) zone
-    )
-{ // {{{
-//    debug() << "add_mapped_ghost_zone " << f << "\n";
-
-    add_ghost_zone(f, boost::move(zone));
 } // }}}
 
 void octree_server::add_ghost_zone(
@@ -823,16 +700,6 @@ void octree_server::add_ghost_zone(
 { // {{{
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
-
-    // Make sure that we are initialized.
-//    initialized_.wait();
-
-//    mutex_type::scoped_lock l(mtx_);
-
-    //OCTOPUS_ASSERT(zone_f.is_ready());
-
-    // FIXME: move() instead of get().
-//    vector3d<std::vector<double> > zone(zone_f.move());
 
     // The index of the futures in the vector is the face.
     switch (f)
@@ -998,36 +865,6 @@ void octree_server::add_ghost_zone(
             OCTOPUS_ASSERT_MSG(false, "face shouldn't be out-of-bounds");
         }
     }; 
-} // }}} 
-
-void octree_server::receive_ghost_zone(
-    boost::uint64_t step ///< For debugging purposes.
-  , boost::uint64_t phase 
-  , face f ///< Relative to caller.
-  , vector3d<std::vector<double> > const& zone
-    )
-{ // {{{
-    // Make sure that we are initialized.
-//    initialized_.wait();
-
-    mutex_type::scoped_lock l(mtx_);
-
-//    debug() << "receive_ghost_zone " << f << " " << phase << "\n";
-
-    OCTOPUS_ASSERT_MSG(step_ == step,
-        "cross-timestep communication occurred, octree is ill-formed");
-
-    OCTOPUS_ASSERT_FMT_MSG(
-        phase < ghost_zone_deps_.size(),
-        "phase (%1%) is greater than the ghost zone queue length (%2%)",
-        phase % ghost_zone_deps_.size());
-
-    OCTOPUS_ASSERT(f != invalid_face);
-
-    // NOTE (wash): boost::move should be safe here, zone is a temporary, even
-    // if we're local to the caller. Plus, ATM set_value requires the value to
-    // be moved to it.
-    ghost_zone_deps_.at(phase)(f).post(zone);
 } // }}} 
 
 vector3d<std::vector<double> > octree_server::send_ghost_zone(
@@ -2048,7 +1885,7 @@ void octree_server::child_to_parent_injection_kernel(
         for (boost::uint64_t i = 0; i < 8; ++i)
             if (children_[i] != hpx::invalid_id)
                 dependencies.push_back(
-                    children_state_deps_.at(phase)(i).then_async(
+                    children_state_deps_.at(phase)(i).then(
                         boost::bind(&octree_server::add_child_state,
                             this, child_index(i), _1))); 
     }
@@ -2113,31 +1950,6 @@ void octree_server::add_child_state(
 
                 U_(id, jd, kd) = state(i, j, k); 
             }
-} // }}}
-
-void octree_server::receive_child_state(
-    boost::uint64_t step ///< For debugging purposes.
-  , boost::uint64_t phase 
-  , child_index idx 
-  , vector3d<std::vector<double> > const& state
-    )
-{ // {{{
-    mutex_type::scoped_lock l(mtx_);
-
-    OCTOPUS_ASSERT_MSG(step_ == step,
-        "cross-timestep communication occurred, octree is ill-formed");
-
-    OCTOPUS_ASSERT_FMT_MSG(
-        phase < children_state_deps_.size(),
-        "phase (%1%) is greater than the children state queue length (%2%)",
-        phase % children_state_deps_.size());
-
-    OCTOPUS_ASSERT(boost::uint64_t(idx) < 8);
-
-    // NOTE (wash): boost::move should be safe here, zone is a temporary, even
-    // if we're local to the caller. Plus, ATM set_value requires the value to
-    // be moved to it.
-    children_state_deps_.at(phase)(idx).post(state);
 } // }}}
 
 vector3d<std::vector<double> > octree_server::send_child_state_locked(
@@ -3203,7 +3015,7 @@ void octree_server::refine()
 { // {{{
     OCTOPUS_ASSERT(0 == level_);
 
-    prepare_refinement_queues();
+    clear_refinement_marks();
 
     mark();
 

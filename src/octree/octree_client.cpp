@@ -116,10 +116,10 @@ void octree_client::create_root(
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-hpx::future<void> octree_client::prepare_refinement_queues_async() const
+hpx::future<void> octree_client::clear_refinement_marks_async() const
 {
     ensure_real();
-    return hpx::async<octree_server::prepare_refinement_queues_action>(gid_);
+    return hpx::async<octree_server::clear_refinement_marks_action>(gid_);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
