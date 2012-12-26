@@ -889,9 +889,8 @@ struct OCTOPUS_EXPORT octree_server
                                 receive_child_state_action);
 
   private:
-    vector3d<std::vector<double> > send_child_state_locked(
-        /*mutex_type::scoped_lock& l*/
-        );
+    vector3d<std::vector<double> > send_child_state();
+
   public:
     ///////////////////////////////////////////////////////////////////////////
     void step_recurse(double dt);
@@ -909,43 +908,32 @@ struct OCTOPUS_EXPORT octree_server
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                 step,
                                 step_action);  
+
   private:
-    void step_kernel(
-        double dt
-      /*, mutex_type::scoped_lock& l*/
-        );
+    void step_kernel(double dt);
 
-    void sub_step_kernel(
-        boost::uint64_t phase
-      , double dt
-      , double beta
-      /*, mutex_type::scoped_lock& l*/
-        );
+    void sub_step_kernel(boost::uint64_t phase, double dt, double beta);
 
-    void add_differentials_kernel(
-        double dt
-      , double beta
-      /*, mutex_type::scoped_lock& l*/
-        ); 
+    void add_differentials_kernel(double dt, double beta); 
 
-    void prepare_differentials_kernel(/*mutex_type::scoped_lock& l*/); 
+    void prepare_differentials_kernel(); 
 
-    // NOTE: Operations on each axis overlap each other.
-    void compute_flux_kernel(/*mutex_type::scoped_lock& l*/);
+    // Operations on each axis overlap each other.
+    void compute_flux_kernel();
 
-    // NOTE: Reads from U_, writes to FX_.
-    void compute_x_flux_kernel(/*mutex_type::scoped_lock& l*/);
+    // Reads from U_, writes to FX_.
+    void compute_x_flux_kernel();
 
-    // NOTE: Reads from U_, writes to FY_.
-    void compute_y_flux_kernel(/*mutex_type::scoped_lock& l*/);
+    // Reads from U_, writes to FY_.
+    void compute_y_flux_kernel();
 
-    // NOTE: Reads from U_, writes to FZ_.
-    void compute_z_flux_kernel(/*mutex_type::scoped_lock& l*/);
+    // Reads from U_, writes to FZ_.
+    void compute_z_flux_kernel();
 
     // IMPLEMENT 
-    void adjust_flux_kernel(/*mutex_type::scoped_lock& l*/);
+    void adjust_flux_kernel();
 
-    void sum_differentials_kernel(/*mutex_type::scoped_lock& l*/);
+    void sum_differentials_kernel();
 
   public:
     ///////////////////////////////////////////////////////////////////////////
@@ -977,7 +965,6 @@ struct OCTOPUS_EXPORT octree_server
   private:
     void mark_kernel();
 
-//    void propagate_kernel();
     void propagate_locked(child_index kid, mutex_type::scoped_lock &l);
 
     void populate_kernel();
@@ -1002,13 +989,10 @@ struct OCTOPUS_EXPORT octree_server
   public:
     void receive_sibling_refinement_signal(boost::uint64_t phase, face f)
     {
-/*
-        debug() << "received sibling refinement signal for "
-                << f << " (phase " << phase << ")\n" << std::flush;
-*/
         mutex_type::scoped_lock l(mtx_);
 
         OCTOPUS_ASSERT(invalid_face != f);
+
         refinement_deps_.at(phase)(f).post();
     }
 
