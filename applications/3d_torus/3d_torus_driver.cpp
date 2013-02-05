@@ -94,6 +94,8 @@ struct stepper
 
     void operator()(octopus::octree_server& root) const
     {
+        hpx::util::high_resolution_timer global_clock;
+   
         for ( std::size_t i = 0
             ; i < octopus::config().levels_of_refinement
             ; ++i)
@@ -109,66 +111,41 @@ struct stepper
 
         root.output(root.get_time() / period_, "U_L%06u_initial.silo");
   
-        std::ofstream dt_file("dt.csv", std::ios_base::trunc);
-        std::ofstream speed_file("speed.csv", std::ios_base::trunc);
+        std::ofstream dt_file("dt.csv");
+        std::ofstream speed_file("speed.csv");
  
-        dt_file    << "step, time [orbits], dt [orbits]\n";
-        speed_file << "step, speed [orbits/hours]\n";
+        dt_file    << "step, time [orbits], dt [orbits], output & refine?\n";
+        speed_file << "step, speed [orbits/hours], output & refine?\n";
  
         ///////////////////////////////////////////////////////////////////////
         // Crude, temporary stepper.
     
         root.post_dt(root.apply_leaf(octopus::science().initial_timestep));
         double next_output_time = octopus::config().output_frequency * period_;
-   
-        hpx::util::high_resolution_timer clock;
- 
+
         while ((root.get_time() / period_) <= octopus::config().temporal_domain)
         {
-            char const* fmt = "STEP %06u : ORBITS %.7g %|34t| += %.7g "
-                              "%|52t|: SPEED %.7g %|76t| [orbits/hour] ";
+            hpx::util::high_resolution_timer local_clock;
 
-            double const speed =
-                ((root.get_time() / period_) / (clock.elapsed() / 3600));
-
-            std::cout <<
-                ( boost::format(fmt)
-                % root.get_step()
-                % (root.get_time() / period_)
-                % (root.get_dt() / period_)
-                % speed 
-                );
-  
-            // Record timestep size.
-            dt_file << root.get_step() << ", "
-                    << (root.get_time() / period_) << ", "
-                    << (root.get_dt() / period_) << "\n"; 
-
-            speed_file << root.get_step() << ", " << speed << "\n";
+            boost::uint64_t const this_step = root.get_step();
+            double const this_dt = root.get_dt();
+            double const this_time = root.get_time();
 
             root.step();
    
-//            std::cout << "STEPPED\n" << std::flush;
- 
-            // Update kappa.
-//            hpx::wait(octopus::call_everywhere
-//                (set_kappa_from_buffer(root.get_step() - 1)));
+            bool output_and_refine = false;
 
             if (root.get_time() >= next_output_time)
             {   
-                std::cout << ": OUTPUT ";
+                output_and_refine = true;
+
                 root.output(root.get_time() / period_);
                 next_output_time +=
                     (octopus::config().output_frequency * period_); 
 
-                std::cout << ": REGRID";
                 root.refine();
             }
   
-            std::cout << "\n";
- 
-//            std::cout << "PREDICT\n" << std::flush;
-
             // IMPLEMENT: Futurize w/ continutation.
             octopus::timestep_prediction prediction
                 = root.apply_leaf(octopus::science().predict_timestep);
@@ -176,10 +153,45 @@ struct stepper
             OCTOPUS_ASSERT(0.0 < prediction.next_dt);
             OCTOPUS_ASSERT(0.0 < prediction.future_dt);
     
-//            std::cout << "POST\n" << std::flush;
-
             root.post_dt(prediction.next_dt);
-        } 
+
+            ///////////////////////////////////////////////////////////////////
+            // I/O of stats
+            char const* fmt = "STEP %06u : ORBITS %.7g %|34t| += %.7g "
+                              "%|52t|: SPEED %.7g %|76t| [orbits/hour] ";
+
+            double const speed =
+                ((this_dt / period_) / (local_clock.elapsed() / 3600));
+
+            std::cout <<
+                ( boost::format(fmt)
+                % this_step
+                % (this_time / period_)
+                % (this_dt / period_)
+                % speed 
+                );
+ 
+            if (output_and_refine)
+                std::cout << ": OUTPUT & REFINE";
+
+            std::cout << "\n";
+ 
+            // Record timestep size.
+            dt_file << this_step << ", "
+                    << (this_time / period_) << ", "
+                    << (this_dt / period_) << ", "
+                    << output_and_refine << std::endl; 
+
+            // Record speed. 
+            speed_file << this_step << ", "
+                       << speed << ", "
+                       << output_and_refine << std::endl;
+        }
+
+        std::cout << "\n"
+                  << "ELAPSED WALLTIME "
+                  << global_clock.elapsed()
+                  << " [seconds]\n"; 
     }
 
     template <typename Archive>
