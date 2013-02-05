@@ -131,19 +131,19 @@ struct OCTOPUS_EXPORT interpolation_data
 
     bool operator<(interpolation_data const& rhs) const
     {
-        using hpx::naming::strip_credit_from_cgid;
-        return std::make_pair(strip_credit_from_cgid(subject.gid_.get_gid())
+        using hpx::naming::strip_credit_from_gid;
+        return std::make_pair(strip_credit_from_gid(subject.gid_.get_gid())
                             , direction)
-             < std::make_pair(strip_credit_from_cgid(rhs.subject.gid_.get_gid())
+             < std::make_pair(strip_credit_from_gid(rhs.subject.gid_.get_gid())
                             , rhs.direction);
     }
 
     bool operator==(interpolation_data const& rhs) const
     {
-        using hpx::naming::strip_credit_from_cgid;
-        return std::make_pair(strip_credit_from_cgid(subject.gid_.get_gid())
+        using hpx::naming::strip_credit_from_gid;
+        return std::make_pair(strip_credit_from_gid(subject.gid_.get_gid())
                             , direction)
-            == std::make_pair(strip_credit_from_cgid(rhs.subject.gid_.get_gid())
+            == std::make_pair(strip_credit_from_gid(rhs.subject.gid_.get_gid())
                             , rhs.direction);
     }
 };
