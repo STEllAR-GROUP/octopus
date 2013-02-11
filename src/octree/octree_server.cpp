@@ -87,14 +87,14 @@ void octree_server::parent_to_child_injection(
 
             // FIXME: The little DSEL makes for clean syntax, but I need to
             // check with Joel Falcou/Heller about how copy intensive this is.
-            U_(i + 0, j + 0, k + 0) = u - (s1 + s2 + s3) * 0.25;
-            U_(i + 1, j + 0, k + 0) = u + (s1 - s2 - s3) * 0.25;
-            U_(i + 0, j + 1, k + 0) = u - (s1 - s2 + s3) * 0.25;
-            U_(i + 1, j + 1, k + 0) = u + (s1 + s2 - s3) * 0.25;
-            U_(i + 0, j + 0, k + 1) = u - (s1 + s2 - s3) * 0.25;
-            U_(i + 1, j + 0, k + 1) = u + (s1 - s2 + s3) * 0.25;
-            U_(i + 0, j + 1, k + 1) = u - (s1 - s2 - s3) * 0.25;
-            U_(i + 1, j + 1, k + 1) = u + (s1 + s2 + s3) * 0.25;
+            (*U_)(i + 0, j + 0, k + 0) = u - (s1 + s2 + s3) * 0.25;
+            (*U_)(i + 1, j + 0, k + 0) = u + (s1 - s2 - s3) * 0.25;
+            (*U_)(i + 0, j + 1, k + 0) = u - (s1 - s2 + s3) * 0.25;
+            (*U_)(i + 1, j + 1, k + 0) = u + (s1 + s2 - s3) * 0.25;
+            (*U_)(i + 0, j + 0, k + 1) = u - (s1 + s2 - s3) * 0.25;
+            (*U_)(i + 1, j + 0, k + 1) = u + (s1 - s2 + s3) * 0.25;
+            (*U_)(i + 0, j + 1, k + 1) = u - (s1 - s2 - s3) * 0.25;
+            (*U_)(i + 1, j + 1, k + 1) = u + (s1 + s2 + s3) * 0.25;
         }
     }
 } // }}}
@@ -132,8 +132,8 @@ octree_server::octree_server(
 // {{{
   : base_type(back_ptr)
   , mtx_()
-  , future_self_(init.future_self)
-  , past_self_(init.past_self)
+  , future_self_(hpx::invalid_id)
+  , past_self_(hpx::invalid_id)
   , marked_for_refinement_()
   , ghost_zone_deps_()
   , children_state_deps_()
@@ -150,12 +150,14 @@ octree_server::octree_server(
   , offset_(init.offset)
   , origin_(init.origin)
   , step_(0)
-  , U_(config().grid_node_length, std::vector<double>(science().state_size))
+  , U_(new vector3d<std::vector<double> >(
+        config().grid_node_length
+      , std::vector<double>(science().state_size)))
   , U0_()
   , FX_(config().grid_node_length, std::vector<double>(science().state_size))
   , FY_(config().grid_node_length, std::vector<double>(science().state_size))
   , FZ_(config().grid_node_length, std::vector<double>(science().state_size))
-  , FO_(science().state_size)
+  , FO_(new std::vector<double>(science().state_size))
   , FO0_()
   , D_(config().grid_node_length, std::vector<double>(science().state_size))
   , DFO_(science().state_size)
@@ -175,13 +177,13 @@ octree_server::octree_server(
 octree_server::octree_server(
     back_pointer_type back_ptr
   , octree_init_data const& init
-  , vector3d<std::vector<double> > const& parent_U
+  , boost::shared_ptr<vector3d<std::vector<double> > > const& parent_U
     )
 // {{{
   : base_type(back_ptr)
   , mtx_()
-  , future_self_(init.future_self)
-  , past_self_(init.past_self)
+  , future_self_(hpx::invalid_id)
+  , past_self_(hpx::invalid_id)
   , marked_for_refinement_()
   , ghost_zone_deps_()
   , children_state_deps_()
@@ -198,12 +200,14 @@ octree_server::octree_server(
   , offset_(init.offset)
   , origin_(init.origin)
   , step_(init.step)
-  , U_(config().grid_node_length, std::vector<double>(science().state_size))
+  , U_(new vector3d<std::vector<double> >(
+        config().grid_node_length
+      , std::vector<double>(science().state_size)))
   , U0_()
   , FX_(config().grid_node_length, std::vector<double>(science().state_size))
   , FY_(config().grid_node_length, std::vector<double>(science().state_size))
   , FZ_(config().grid_node_length, std::vector<double>(science().state_size))
-  , FO_(science().state_size)
+  , FO_(new std::vector<double>(science().state_size))
   , FO0_()
   , D_(config().grid_node_length, std::vector<double>(science().state_size))
   , DFO_(science().state_size)
@@ -217,7 +221,7 @@ octree_server::octree_server(
 
     initialize_queues();
 
-    parent_to_child_injection(parent_U);
+    parent_to_child_injection(*parent_U);
 } // }}}
 
 // NOTE: Should be thread-safe, offset_ and origin_ are only read, and never
@@ -725,7 +729,7 @@ void octree_server::add_ghost_zone(
                         boost::uint64_t const jj = j - bw;
                         boost::uint64_t const kk = k - bw; 
 
-                        U_(i, j, k) = zone(ii, jj, kk);
+                        (*U_)(i, j, k) = zone(ii, jj, kk);
                     }
 
             return;
@@ -750,7 +754,7 @@ void octree_server::add_ghost_zone(
                         boost::uint64_t const jj = j - bw;
                         boost::uint64_t const kk = k - bw; 
 
-                        U_(i, j, k) = zone(ii, jj, kk);
+                        (*U_)(i, j, k) = zone(ii, jj, kk);
                     }
 
             return;
@@ -777,7 +781,7 @@ void octree_server::add_ghost_zone(
                         boost::uint64_t const jj = j;
                         boost::uint64_t const kk = k - bw; 
 
-                        U_(i, j, k) = zone(ii, jj, kk);
+                        (*U_)(i, j, k) = zone(ii, jj, kk);
                     }
 
             return;
@@ -802,7 +806,7 @@ void octree_server::add_ghost_zone(
                         boost::uint64_t const jj = j - (gnx - bw);
                         boost::uint64_t const kk = k - bw; 
 
-                        U_(i, j, k) = zone(ii, jj, kk);
+                        (*U_)(i, j, k) = zone(ii, jj, kk);
                     }
 
             return;
@@ -829,7 +833,7 @@ void octree_server::add_ghost_zone(
                         boost::uint64_t const jj = j - bw; 
                         boost::uint64_t const kk = k;
 
-                        U_(i, j, k) = zone(ii, jj, kk);
+                        (*U_)(i, j, k) = zone(ii, jj, kk);
                     }
 
             return;
@@ -854,7 +858,7 @@ void octree_server::add_ghost_zone(
                         boost::uint64_t const jj = j - bw; 
                         boost::uint64_t const kk = k - (gnx - bw);
 
-                        U_(i, j, k) = zone(ii, jj, kk);
+                        (*U_)(i, j, k) = zone(ii, jj, kk);
                     }
 
             return;
@@ -902,7 +906,7 @@ vector3d<std::vector<double> > octree_server::send_ghost_zone(
                         boost::uint64_t const jj = j - bw;
                         boost::uint64_t const kk = k - bw; 
 
-                        zone(ii, jj, kk) = U_(gnx - 2 * bw + i, j, k);
+                        zone(ii, jj, kk) = (*U_)(gnx - 2 * bw + i, j, k);
                     }
 
             return zone;
@@ -930,7 +934,7 @@ vector3d<std::vector<double> > octree_server::send_ghost_zone(
                         boost::uint64_t const jj = j - bw;
                         boost::uint64_t const kk = k - bw; 
 
-                        zone(ii, jj, kk) = U_(-gnx + 2 * bw + i, j, k);
+                        zone(ii, jj, kk) = (*U_)(-gnx + 2 * bw + i, j, k);
                     }
 
             return zone;
@@ -961,7 +965,7 @@ vector3d<std::vector<double> > octree_server::send_ghost_zone(
                         boost::uint64_t const jj = j;
                         boost::uint64_t const kk = k - bw; 
 
-                        zone(ii, jj, kk) = U_(i, gnx - 2 * bw + j, k);
+                        zone(ii, jj, kk) = (*U_)(i, gnx - 2 * bw + j, k);
                     }
 
             return zone;
@@ -989,7 +993,7 @@ vector3d<std::vector<double> > octree_server::send_ghost_zone(
                         boost::uint64_t const jj = j - (gnx - bw);
                         boost::uint64_t const kk = k - bw; 
 
-                        zone(ii, jj, kk) = U_(i, -gnx + 2 * bw + j, k);
+                        zone(ii, jj, kk) = (*U_)(i, -gnx + 2 * bw + j, k);
                     }
 
             return zone;
@@ -1019,7 +1023,7 @@ vector3d<std::vector<double> > octree_server::send_ghost_zone(
                         boost::uint64_t const jj = j - bw; 
                         boost::uint64_t const kk = k;
 
-                        zone(ii, jj, kk) = U_(i, j, gnx - 2 * bw + k);
+                        zone(ii, jj, kk) = (*U_)(i, j, gnx - 2 * bw + k);
                     }
 
             return zone;
@@ -1047,7 +1051,7 @@ vector3d<std::vector<double> > octree_server::send_ghost_zone(
                         boost::uint64_t const jj = j - bw; 
                         boost::uint64_t const kk = k - (gnx - bw);
 
-                        zone(ii, jj, kk) = U_(i, j, -gnx + 2 * bw + k);
+                        zone(ii, jj, kk) = (*U_)(i, j, -gnx + 2 * bw + k);
                     }
 
             return zone;
@@ -1111,15 +1115,15 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const j_in = (amr_offset[1] + j) / 2;
                         boost::uint64_t const k_in = (amr_offset[2] + k) / 2;
 
-                        std::vector<double> u = U_(i_in, j_in, k_in); 
+                        std::vector<double> u = (*U_)(i_in, j_in, k_in); 
 
-                        u = minmod(U_(i_in + 1, j_in, k_in) - u
-                                 , u - U_(i_in - 1, j_in, k_in));
+                        u = minmod((*U_)(i_in + 1, j_in, k_in) - u
+                                 , u - (*U_)(i_in - 1, j_in, k_in));
 
                         if (1 == i0)
                             u = -u;
 
-                        output(i_out, j_out, k_out)  = U_(i_in, j_in, k_in);
+                        output(i_out, j_out, k_out)  = (*U_)(i_in, j_in, k_in);
                         output(i_out, j_out, k_out) -= u * 0.25;
 
                         // FIXME: This is too specific to Dominic/Zach's
@@ -1162,15 +1166,15 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const j_in = (amr_offset[1] + j) / 2;
                         boost::uint64_t const k_in = (amr_offset[2] + k) / 2;
 
-                        std::vector<double> u = U_(i_in, j_in, k_in); 
+                        std::vector<double> u = (*U_)(i_in, j_in, k_in); 
 
-                        u = minmod(U_(i_in + 1, j_in, k_in) - u
-                                 , u - U_(i_in - 1, j_in, k_in));
+                        u = minmod((*U_)(i_in + 1, j_in, k_in) - u
+                                 , u - (*U_)(i_in - 1, j_in, k_in));
 
                         if (1 == i0)
                             u = -u;
 
-                        output(i_out, j_out, k_out)  = U_(i_in, j_in, k_in);
+                        output(i_out, j_out, k_out)  = (*U_)(i_in, j_in, k_in);
                         output(i_out, j_out, k_out) -= u * 0.25;
 
                         // FIXME: This is too specific to Dominic/Zach's
@@ -1215,15 +1219,15 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const j_in = (amr_offset[1] + j) / 2;
                         boost::uint64_t const k_in = (amr_offset[2] + k) / 2;
 
-                        std::vector<double> u = U_(i_in, j_in, k_in); 
+                        std::vector<double> u = (*U_)(i_in, j_in, k_in); 
 
-                        u = minmod(U_(i_in, j_in + 1, k_in) - u
-                                 , u - U_(i_in, j_in - 1, k_in));
+                        u = minmod((*U_)(i_in, j_in + 1, k_in) - u
+                                 , u - (*U_)(i_in, j_in - 1, k_in));
 
                         if (1 == j0)
                             u = -u;
 
-                        output(i_out, j_out, k_out)  = U_(i_in, j_in, k_in);
+                        output(i_out, j_out, k_out)  = (*U_)(i_in, j_in, k_in);
                         output(i_out, j_out, k_out) -= u * 0.25;
 
                         // FIXME: This is too specific to Dominic/Zach's
@@ -1265,15 +1269,15 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const j_in = (amr_offset[1] + j) / 2;
                         boost::uint64_t const k_in = (amr_offset[2] + k) / 2;
 
-                        std::vector<double> u = U_(i_in, j_in, k_in); 
+                        std::vector<double> u = (*U_)(i_in, j_in, k_in); 
 
-                        u = minmod(U_(i_in, j_in + 1, k_in) - u
-                                 , u - U_(i_in, j_in - 1, k_in));
+                        u = minmod((*U_)(i_in, j_in + 1, k_in) - u
+                                 , u - (*U_)(i_in, j_in - 1, k_in));
 
                         if (1 == j0)
                             u = -u;
 
-                        output(i_out, j_out, k_out)  = U_(i_in, j_in, k_in);
+                        output(i_out, j_out, k_out)  = (*U_)(i_in, j_in, k_in);
                         output(i_out, j_out, k_out) -= u * 0.25;
 
                         // FIXME: This is too specific to Dominic/Zach's
@@ -1318,15 +1322,15 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const j_in = (amr_offset[1] + j) / 2;
                         boost::uint64_t const k_in = (amr_offset[2] + k) / 2;
 
-                        std::vector<double> u = U_(i_in, j_in, k_in); 
+                        std::vector<double> u = (*U_)(i_in, j_in, k_in); 
 
-                        u = minmod(U_(i_in, j_in, k_in + 1) - u
-                                 , u - U_(i_in, j_in, k_in - 1));
+                        u = minmod((*U_)(i_in, j_in, k_in + 1) - u
+                                 , u - (*U_)(i_in, j_in, k_in - 1));
 
                         if (1 == k0)
                             u = -u;
 
-                        output(i_out, j_out, k_out)  = U_(i_in, j_in, k_in);
+                        output(i_out, j_out, k_out)  = (*U_)(i_in, j_in, k_in);
                         output(i_out, j_out, k_out) -= u * 0.25;
 
                         // FIXME: This is too specific to Dominic/Zach's
@@ -1369,15 +1373,15 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const j_in = (amr_offset[1] + j) / 2;
                         boost::uint64_t const k_in = (amr_offset[2] + k) / 2;
 
-                        std::vector<double> u = U_(i_in, j_in, k_in); 
+                        std::vector<double> u = (*U_)(i_in, j_in, k_in); 
 
-                        u = minmod(U_(i_in, j_in, k_in + 1) - u
-                                 , u - U_(i_in, j_in, k_in - 1));
+                        u = minmod((*U_)(i_in, j_in, k_in + 1) - u
+                                 , u - (*U_)(i_in, j_in, k_in - 1));
 
                         if (1 == k0)
                             u = -u;
 
-                        output(i_out, j_out, k_out)  = U_(i_in, j_in, k_in);
+                        output(i_out, j_out, k_out)  = (*U_)(i_in, j_in, k_in);
                         output(i_out, j_out, k_out) -= u * 0.25;
 
                         // FIXME: This is too specific to Dominic/Zach's
@@ -1485,7 +1489,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                         boost::uint64_t const jj = j - bw;
                         boost::uint64_t const kk = k - bw; 
 
-                        zone(ii, jj, kk) = U_(v);
+                        zone(ii, jj, kk) = (*U_)(v);
 
                         science().enforce_outflow
                             (f, x_face_coords(v[0] + 1, v[1], v[2]));
@@ -1518,7 +1522,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                         boost::uint64_t const jj = j - bw;
                         boost::uint64_t const kk = k - bw; 
 
-                        zone(ii, jj, kk) = U_(v);
+                        zone(ii, jj, kk) = (*U_)(v);
 
                         science().enforce_outflow
                             (f, x_face_coords(v[0], v[1], v[2]));
@@ -1553,7 +1557,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                         boost::uint64_t const jj = j;
                         boost::uint64_t const kk = k - bw; 
 
-                        zone(ii, jj, kk) = U_(v);
+                        zone(ii, jj, kk) = (*U_)(v);
 
                         science().enforce_outflow
                             (f, y_face_coords(v[0], v[1] + 1, v[2]));
@@ -1586,7 +1590,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                         boost::uint64_t const jj = j - (gnx - bw);
                         boost::uint64_t const kk = k - bw; 
 
-                        zone(ii, jj, kk) = U_(v);
+                        zone(ii, jj, kk) = (*U_)(v);
 
                         science().enforce_outflow
                             (f, y_face_coords(v[0], v[1], v[2]));
@@ -1621,7 +1625,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                         boost::uint64_t const jj = j - bw; 
                         boost::uint64_t const kk = k;
 
-                        zone(ii, jj, kk) = U_(v);
+                        zone(ii, jj, kk) = (*U_)(v);
 
                         if (config().reflect_on_z)
                             science().reflect_z(zone(ii, jj, kk));
@@ -1659,7 +1663,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                         boost::uint64_t const jj = j - bw; 
                         boost::uint64_t const kk = k - (gnx - bw);
 
-                        zone(ii, jj, kk) = U_(v);
+                        zone(ii, jj, kk) = (*U_)(v);
 
                         if (config().reflect_on_z)
                             science().reflect_z(zone(ii, jj, kk));
@@ -1793,7 +1797,7 @@ void octree_server::add_child_state(
                 boost::uint64_t const kd
                     = k + bw + idx.z() * ((gnx / 2) - bw);
 
-                U_(id, jd, kd) = state(i, j, k); 
+                (*U_)(id, jd, kd) = state(i, j, k); 
             }
 } // }}}
 
@@ -1822,14 +1826,14 @@ vector3d<std::vector<double> > octree_server::send_child_state()
 
                 using namespace octopus::operators;
 
-                state(ii, jj, kk)  = U_(i + 0, j + 0, k + 0);
-                state(ii, jj, kk) += U_(i + 1, j + 0, k + 0);
-                state(ii, jj, kk) += U_(i + 0, j + 1, k + 0);
-                state(ii, jj, kk) += U_(i + 1, j + 1, k + 0);
-                state(ii, jj, kk) += U_(i + 0, j + 0, k + 1);
-                state(ii, jj, kk) += U_(i + 1, j + 0, k + 1);
-                state(ii, jj, kk) += U_(i + 0, j + 1, k + 1);
-                state(ii, jj, kk) += U_(i + 1, j + 1, k + 1);
+                state(ii, jj, kk)  = (*U_)(i + 0, j + 0, k + 0);
+                state(ii, jj, kk) += (*U_)(i + 1, j + 0, k + 0);
+                state(ii, jj, kk) += (*U_)(i + 0, j + 1, k + 0);
+                state(ii, jj, kk) += (*U_)(i + 1, j + 1, k + 0);
+                state(ii, jj, kk) += (*U_)(i + 0, j + 0, k + 1);
+                state(ii, jj, kk) += (*U_)(i + 1, j + 0, k + 1);
+                state(ii, jj, kk) += (*U_)(i + 0, j + 1, k + 1);
+                state(ii, jj, kk) += (*U_)(i + 1, j + 1, k + 1);
                 state(ii, jj, kk) *= 0.125;
             }
 
@@ -1883,8 +1887,8 @@ void octree_server::step_recurse(double dt)
 
 void octree_server::step_kernel(double dt)
 { // {{{
-    U0_ = U_;
-    FO0_ = FO_;
+    U0_.reset(new vector3d<std::vector<double> >(*U_));
+    FO0_.reset(new std::vector<double>(*FO_));
 
     // We do TVD RK3.
     switch (config().runge_kutta_order)
@@ -1956,20 +1960,21 @@ void octree_server::add_differentials_kernel(double dt, double beta)
         for (boost::uint64_t j = bw; j < gnx - bw; ++j)
             for (boost::uint64_t k = bw; k < gnx - bw; ++k)
             {
-                boost::array<double, 3> coords = center_coords(i, j, k);
+                boost::array<double, 3> c = center_coords(i, j, k);
 
-                D_(i, j, k) += science().source(*this, U_(i, j, k), coords);
+                D_(i, j, k) += science().source(*this, (*U_)(i, j, k), c);
 
                 // Here, you can see the temporal dependency.
-                U_(i, j, k) = (U_(i, j, k) + D_(i, j, k) * dt) * beta
-                            + U0_(i, j, k) * (1.0 - beta); 
+                (*U_)(i, j, k) = ((*U_)(i, j, k) + D_(i, j, k) * dt) * beta
+                               + (*U0_)(i, j, k) * (1.0 - beta); 
 
-                science().enforce_limits(U_(i, j, k), coords);
+                science().enforce_limits((*U_)(i, j, k), c);
             }
 
-    FO_ = (FO_ + DFO_ * dt) * beta + FO0_ * (1.0 - beta);
+    (*FO_) = ((*FO_) + DFO_ * dt) * beta + (*FO0_) * (1.0 - beta);
 } // }}}
 
+// REVIEW: Make this run only when debugging is enabled.
 void octree_server::prepare_differentials_kernel() 
 { // {{{
     boost::uint64_t const ss = science().state_size;
@@ -2029,7 +2034,7 @@ void octree_server::compute_x_flux_kernel()
         {
             for (boost::uint64_t i = 0; i < gnx; ++i)
             {
-                q0[i] = U_(i, j, k);
+                q0[i] = (*U_)(i, j, k);
     
                 boost::array<double, 3> coords = center_coords(i, j, k);
     
@@ -2076,7 +2081,7 @@ void octree_server::compute_y_flux_kernel()
         {
             for (boost::uint64_t j = 0; j < gnx; ++j)
             {
-                q0[j] = U_(i, j, k);
+                q0[j] = (*U_)(i, j, k);
     
                 boost::array<double, 3> coords = center_coords(i, j, k);
     
@@ -2123,7 +2128,7 @@ void octree_server::compute_z_flux_kernel()
         {
             for (boost::uint64_t k = 0; k < gnx; ++k)
             {
-                q0[k] = U_(i, j, k);
+                q0[k] = (*U_)(i, j, k);
     
                 boost::array<double, 3> coords = center_coords(i, j, k);
 

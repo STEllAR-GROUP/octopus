@@ -263,24 +263,27 @@ struct OCTOPUS_EXPORT octree_server
     // optimize allocations.
     // REVIEW: Are the "corners" of our cube are needed? I think there may be
     // eight chunks of unused space that we don't ever use.
-    vector3d<std::vector<double> > U_; ///< 3d array of state vectors, includes
-                                       ///  ghost zones. Size of the state
-                                       ///  vectors comes from the science
-                                       ///  table.
+    // 3d array of state vectors, includes ghost zones. Size of the state
+    // vectors comes from the science table.
+    boost::shared_ptr<vector3d<std::vector<double> > > U_;
 
-    vector3d<std::vector<double> > U0_; ///< Data from the previous timestep.
+    // Data from previous timestep.
+    boost::shared_ptr<vector3d<std::vector<double> > > U0_; 
 
+    // Scratch space for computations.
     vector3d<std::vector<double> > FX_; ///< Flux (X-axis).
     vector3d<std::vector<double> > FY_; ///< Flux (Y-axis).
     vector3d<std::vector<double> > FZ_; ///< Flux (Z-axis).
 
-    std::vector<double> FO_; ///< Flow off (stuff that leaves the problem
-                             ///  space).
+    boost::shared_ptr<std::vector<double> > FO_; ///< Flow off (stuff that
+                                                 ///  leaves the problem space).
 
-    std::vector<double> FO0_;
+    boost::shared_ptr<std::vector<double> > FO0_;
 
+    // Scratch space for computations.
     vector3d<std::vector<double> > D_; ///< Flux differential.
 
+    // Scratch space for computations.
     std::vector<double> DFO_; ///< Flow off differential. 
 
     ///////////////////////////////////////////////////////////////////////////
@@ -418,7 +421,7 @@ struct OCTOPUS_EXPORT octree_server
     octree_server(
         back_pointer_type back_ptr
       , octree_init_data const& init
-      , vector3d<std::vector<double> > const& parent_U
+      , boost::shared_ptr<vector3d<std::vector<double> > > const& parent_U
         );
 
     boost::uint64_t get_level() const
@@ -459,7 +462,7 @@ struct OCTOPUS_EXPORT octree_server
       , boost::uint64_t k
         )
     {
-        return U_(i, j, k);
+        return (*U_)(i, j, k);
     } 
 
     std::vector<double> const& operator()(
@@ -468,7 +471,7 @@ struct OCTOPUS_EXPORT octree_server
       , boost::uint64_t k
         ) const
     {
-        return U_(i, j, k);
+        return (*U_)(i, j, k);
     } 
 
 /*
@@ -559,6 +562,19 @@ struct OCTOPUS_EXPORT octree_server
 
     ///////////////////////////////////////////////////////////////////////////
     void prepare_compute_queues();
+
+    void set_buffer_links(
+        hpx::id_type const& future_self
+      , hpx::id_type const& past_self
+        )
+    {
+        future_self_ = octree_client(future_self);
+        past_self_ = octree_client(past_self);
+    }
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                set_buffer_links,
+                                set_buffer_links_action);
 
     void clear_refinement_marks();
 
@@ -1126,6 +1142,7 @@ inline oid_type& oid_type::operator=(octree_server const& e)
     /**/
 
 // FIXME: Make sure this is in order.
+OCTOPUS_REGISTER_ACTION(set_buffer_links);
 OCTOPUS_REGISTER_ACTION(clear_refinement_marks);
 
 OCTOPUS_REGISTER_ACTION(create_child);

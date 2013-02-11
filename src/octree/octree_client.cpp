@@ -116,6 +116,17 @@ void octree_client::create_root(
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+hpx::future<void> octree_client::set_buffer_links_async(
+    hpx::id_type const& future_self
+  , hpx::id_type const& past_self
+    ) const
+{
+    ensure_real();
+    return hpx::async<octree_server::set_buffer_links_action>
+        (gid_, future_self, past_self);
+}
+
+///////////////////////////////////////////////////////////////////////////////
 hpx::future<void> octree_client::clear_refinement_marks_async() const
 {
     ensure_real();

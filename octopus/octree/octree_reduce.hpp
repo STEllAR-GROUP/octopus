@@ -99,7 +99,7 @@ inline T octree_server::reduce_zonal(
     for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
         for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
             for (boost::uint64_t k = bw; k < (gnx - bw); ++k)
-                local_result = reducer(local_result, f(U_(i, j, k))); 
+                local_result = reducer(local_result, f((*U_)(i, j, k))); 
 
     hpx::wait(recursion_is_parallelism);
 

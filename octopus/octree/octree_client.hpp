@@ -351,6 +351,22 @@ struct OCTOPUS_EXPORT octree_client
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
+    // {{{ set_buffer_links
+    void set_buffer_links(
+        hpx::id_type const& future_self
+      , hpx::id_type const& past_self
+        ) const
+    {
+        set_buffer_links_async(future_self, past_self).get(); 
+    }
+
+    hpx::future<void> set_buffer_links_async(
+        hpx::id_type const& future_self
+      , hpx::id_type const& past_self
+        ) const;
+    // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
     // {{{ clear_refinement_marks
     void clear_refinement_marks() const
     {

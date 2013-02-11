@@ -22,9 +22,7 @@ namespace octopus
 struct octree_init_data
 {
     octree_init_data()
-      : future_self()
-      , past_self()
-      , parent()
+      : parent()
       , level(0)
       , dx(0)
       , time(0)
@@ -39,9 +37,7 @@ struct octree_init_data
     }
 
     octree_init_data(octree_init_data const& other)
-      : future_self(other.future_self)
-      , past_self(other.past_self)
-      , parent(other.parent)
+      : parent(other.parent)
       , level(other.level)
       , location(other.location)
       , dx(other.dx)
@@ -51,8 +47,6 @@ struct octree_init_data
       , step(other.step)
     {}
 
-    hpx::id_type                     future_self;
-    hpx::id_type                     past_self;
     hpx::id_type                     parent;
     boost::uint64_t                  level;
     boost::array<boost::uint64_t, 3> location;
@@ -65,8 +59,6 @@ struct octree_init_data
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int version)
     {
-        ar & future_self;
-        ar & past_self;
         ar & parent;
         ar & level;
         ar & boost::serialization::make_array(location.data(), location.size());     
