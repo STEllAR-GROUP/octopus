@@ -21,6 +21,20 @@ template <typename Derived>
 struct OCTOPUS_EXPORT elementwise_refinement_criteria_base
   : refinement_criteria_base
 {
+    elementwise_refinement_criteria_base()
+    {
+        hpx::actions::detail::guid_initialization<
+            elementwise_refinement_criteria_base
+        >();
+    }
+
+    static void register_base()
+    {
+        hpx::util::void_cast_register_nonvirt<
+            elementwise_refinement_criteria_base, refinement_criteria_base
+        >();
+    }
+
     Derived& derived()
     {
         return static_cast<Derived&>(*this);

@@ -418,6 +418,11 @@ struct OCTOPUS_EXPORT octree_client
         octree_client const& nephew
       , face f
         ) const;
+
+    void remove_nephew_push(
+        octree_client const& nephew
+      , face f
+        ) const;
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////

@@ -12,6 +12,9 @@
 
 #include <boost/cstdint.hpp>
 #include <boost/serialization/shared_ptr.hpp>
+#include <boost/serialization/version.hpp>
+
+#define OCTOPUS_WRITER_BASE_VERSION 0x01
 
 namespace octopus
 {
@@ -121,6 +124,10 @@ struct writer
 };
 
 }
+
+BOOST_CLASS_VERSION(octopus::writer_base, OCTOPUS_WRITER_BASE_VERSION)
+BOOST_CLASS_TRACKING(octopus::writer_base, boost::serialization::track_never)
+
 
 #endif // OCTOPUS_ED5406AF_2905_4BDD_B8A4_78D28B9E38AC
 

@@ -159,6 +159,14 @@ hpx::future<void> octree_client::remove_nephew_async(
     return hpx::async<octree_server::remove_nephew_action>(gid_, nephew, f);
 }
 
+void octree_client::remove_nephew_push(
+    octree_client const& nephew
+  , face f
+    ) const
+{
+    hpx::apply<octree_server::remove_nephew_action>(gid_, nephew, f);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 hpx::future<void> octree_client::set_sibling_async(
     face f ///< Relative to us.

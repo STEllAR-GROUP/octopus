@@ -18,7 +18,7 @@ void octopus_define_problem(
     double max_dt_growth = 0.0; 
     double temporal_prediction_limiter = 0.0; 
 
-    std::string rotation_direction_str = "";
+    std::string rotational_direction_str = "";
 
     octopus::config_reader reader("octopus.3d_torus");
 
@@ -29,21 +29,18 @@ void octopus_define_problem(
     reader
         ("max_dt_growth", max_dt_growth, 1.25)
         ("temporal_prediction_limiter", temporal_prediction_limiter, 0.5)
-        ("rotation_direction", rotation_direction_str, "counterclockwise")
+        ("rotational_direction", rotational_direction_str, "counterclockwise")
         ("kappa", kappa0, 1.0)
         ("epsilon", eps, 0.4)
         ("outer_radius", R_outer, 1.0747e-4)
     ;
-
-    kappa_buffer.store(kappa0);
-    KAPPA.resize(octopus::config().temporal_prediction_gap, kappa0);
  
-    if (rotation_direction_str == "clockwise")
+    if (rotational_direction_str == "clockwise")
         rotation = rotate_clockwise;
-    else if (rotation_direction_str == "counterclockwise")
+    else if (rotational_direction_str == "counterclockwise")
         rotation = rotate_counterclockwise;
     else
-        OCTOPUS_ASSERT_MSG(false, "invalid rotation direction");
+        OCTOPUS_ASSERT_MSG(false, "invalid rotational direction");
 
     std::cout
         << "[octopus.3d_torus]\n"
@@ -51,8 +48,8 @@ void octopus_define_problem(
            % max_dt_growth)
         << ( boost::format("temporal_prediction_limiter = %i\n")
            % temporal_prediction_limiter)
-        << ( boost::format("rotional_direction          = %s\n")
-           % rotation_direction_str)
+        << ( boost::format("rotational_direction        = %s\n")
+           % rotational_direction_str)
         << ( boost::format("kappa                       = %.6g\n")
            % kappa0)
         << ( boost::format("epsilon                     = %.6g\n")
@@ -94,8 +91,6 @@ struct stepper
 
     void operator()(octopus::octree_server& root) const
     {
-        hpx::util::high_resolution_timer global_clock;
-   
         for ( std::size_t i = 0
             ; i < octopus::config().levels_of_refinement
             ; ++i)
@@ -106,10 +101,10 @@ struct stepper
             root.child_to_parent_injection(0);
             root.prepare_compute_queues();
 
-            std::cout << "REFINED LEVEL " << (i + 1) << "\n";
+            std::cout << "REFINED LEVEL " << (i + 1) << std::endl;
         }
 
-        root.output(root.get_time() / period_, "U_L%06u_initial.silo");
+//        root.output(root.get_time() / period_, "U_L%06u_initial.silo");
   
         std::ofstream dt_file("dt.csv");
         std::ofstream speed_file("speed.csv");
@@ -123,6 +118,10 @@ struct stepper
         root.post_dt(root.apply_leaf(octopus::science().initial_timestep));
         double next_output_time = octopus::config().output_frequency * period_;
 
+        hpx::reset_active_counters();
+
+        hpx::util::high_resolution_timer global_clock;
+   
         while ((root.get_time() / period_) <= octopus::config().temporal_domain)
         {
             hpx::util::high_resolution_timer local_clock;
@@ -135,6 +134,7 @@ struct stepper
    
             bool output_and_refine = false;
 
+/*
             if (root.get_time() >= next_output_time)
             {   
                 output_and_refine = true;
@@ -145,6 +145,7 @@ struct stepper
 
                 root.refine();
             }
+*/
   
             // IMPLEMENT: Futurize w/ continutation.
             octopus::timestep_prediction prediction
@@ -152,7 +153,7 @@ struct stepper
     
             OCTOPUS_ASSERT(0.0 < prediction.next_dt);
             OCTOPUS_ASSERT(0.0 < prediction.future_dt);
-    
+
             root.post_dt(prediction.next_dt);
 
             ///////////////////////////////////////////////////////////////////
@@ -191,7 +192,7 @@ struct stepper
         std::cout << "\n"
                   << "ELAPSED WALLTIME "
                   << global_clock.elapsed()
-                  << " [seconds]\n"; 
+                  << " [seconds]" << std::endl; 
     }
 
     template <typename Archive>
@@ -211,13 +212,18 @@ int octopus_main(boost::program_options::variables_map& vm)
 
     double eps = 0.0; 
     double R_outer = 0.0; 
+    double kappa0 = 0.0;
 
     octopus::config_reader reader("octopus.3d_torus");
 
     reader
+        ("kappa", kappa0, 1.0)
         ("epsilon", eps, 0.4)
         ("outer_radius", R_outer, 1.0747e-4)
     ;
+
+    // Initialize kappa. 
+    hpx::wait(octopus::call_everywhere(initialize_kappa(kappa0)));
 
     root.apply_leaf<void>(stepper(orbital_period(eps, R_outer)));
     

@@ -65,7 +65,7 @@ boost::atomic<double> kappa_buffer(0.0);
 
 inline double& kappa(boost::uint64_t step)
 {
-    return KAPPA.at(step % octopus::config().temporal_prediction_gap);
+    return KAPPA[step % octopus::config().temporal_prediction_gap];
 }
 
 void update_kappa(double k)
@@ -95,6 +95,29 @@ struct set_kappa_from_buffer
     void serialize(Archive& ar, unsigned int)
     {
         ar & step_;
+    }
+};
+
+struct initialize_kappa
+{
+  private:
+    double kappa0_;
+
+  public:
+    initialize_kappa() : kappa0_(0.0) {}
+
+    initialize_kappa(double kappa0) : kappa0_(kappa0) {}
+
+    void operator()() const
+    {
+        kappa_buffer.store(kappa0_);
+        KAPPA.resize(octopus::config().temporal_prediction_gap, kappa0_);
+    }
+
+    template <typename Archive>
+    void serialize(Archive& ar, unsigned int)
+    {
+        ar & kappa0_;
     }
 };
 

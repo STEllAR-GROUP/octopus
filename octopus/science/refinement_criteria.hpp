@@ -8,10 +8,16 @@
 #if !defined(OCTOPUS_95F7B0D1_2246_4B89_9B80_BAC4C4F22C0E)
 #define OCTOPUS_95F7B0D1_2246_4B89_9B80_BAC4C4F22C0E
 
+//#include <hpx/runtime/actions/guid_initialization.hpp>
+//#include <hpx/util/detail/serialization_registration.hpp>
+
 #include <octopus/octree/octree_server.hpp>
 
 #include <boost/cstdint.hpp>
 #include <boost/serialization/shared_ptr.hpp>
+#include <boost/serialization/version.hpp>
+
+#define OCTOPUS_REFINEMENT_CRITERIA_BASE_VERSION 0x01
 
 namespace octopus
 {
@@ -103,6 +109,11 @@ struct refinement_criteria
 };
 
 }
+
+BOOST_CLASS_VERSION(octopus::refinement_criteria_base
+                  , OCTOPUS_REFINEMENT_CRITERIA_BASE_VERSION)
+BOOST_CLASS_TRACKING(octopus::refinement_criteria_base
+                   , boost::serialization::track_never)
 
 #endif // OCTOPUS_95F7B0D1_2246_4B89_9B80_BAC4C4F22C0E
 

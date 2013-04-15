@@ -18,7 +18,7 @@ void octopus_define_problem(
     double max_dt_growth = 0.0; 
     double temporal_prediction_limiter = 0.0; 
 
-    std::string rotation_direction_str = "";
+    std::string rotational_direction_str = "";
 
     octopus::config_reader reader("octopus.3d_torus");
 
@@ -29,7 +29,7 @@ void octopus_define_problem(
     reader
         ("max_dt_growth", max_dt_growth, 1.25)
         ("temporal_prediction_limiter", temporal_prediction_limiter, 0.5)
-        ("rotation_direction", rotation_direction_str, "counterclockwise")
+        ("rotational_direction", rotational_direction_str, "counterclockwise")
         ("kappa", kappa0, 1.0)
         ("eps", eps, 0.4)
         ("outer_radius", R_outer, 1.0747e-4)
@@ -38,12 +38,12 @@ void octopus_define_problem(
     kappa_buffer.store(kappa0);
     KAPPA.resize(octopus::config().temporal_prediction_gap, kappa0);
  
-    if (rotation_direction_str == "clockwise")
+    if (rotational_direction_str == "clockwise")
         rotation = rotate_clockwise;
-    else if (rotation_direction_str == "counterclockwise")
+    else if (rotational_direction_str == "counterclockwise")
         rotation = rotate_counterclockwise;
     else
-        OCTOPUS_ASSERT_MSG(false, "invalid rotation direction");
+        OCTOPUS_ASSERT_MSG(false, "invalid rotational direction");
 
     std::cout
         << "[octopus.3d_torus]\n"
@@ -51,8 +51,8 @@ void octopus_define_problem(
            % max_dt_growth)
         << ( boost::format("temporal_prediction_limiter = %i\n")
            % temporal_prediction_limiter)
-        << ( boost::format("rotional_direction          = %s\n")
-           % rotation_direction_str)
+        << ( boost::format("rotational_direction        = %s\n")
+           % rotational_direction_str)
         << ( boost::format("kappa                       = %.6g\n")
            % kappa0)
         << ( boost::format("epsilon                     = %.6g\n")

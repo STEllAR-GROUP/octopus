@@ -34,6 +34,42 @@
 namespace octopus
 {
 
+struct debug_serializer
+{
+    std::stringstream ss;
+
+    ~debug_serializer();
+};
+
+template <typename T>
+debug_serializer& operator<<(debug_serializer& os, T const& t)
+{
+    os.ss << t;
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, debug_serializer const& stm)
+{
+    os << stm.ss.str() << std::flush; 
+    return os;
+}
+
+debug_serializer::~debug_serializer()
+{
+    std::cout << *this;
+}
+
+/*
+#define OCTOPUS_DUMP(x)                     \
+    {                                       \
+        octopus::debug_serializer tmp_stm;  \
+        tmp_stm << get_oid() << ": " << x;  \
+    }
+*/
+
+#define OCTOPUS_DUMP(x)
+
+///////////////////////////////////////////////////////////////////////////////
 std::ostream& operator<<(std::ostream& os, oid_type const& id)
 {
     os << ( boost::format("{L%u (%i, %i, %i) %016x%016x}")
@@ -267,18 +303,18 @@ void octree_server::prepare_compute_queues()
 { // {{{
     for (boost::uint64_t i = 0; i < ghost_zone_deps_.size(); ++i)
         for (boost::uint64_t j = 0; j < 6; ++j)
-            ghost_zone_deps_.at(i)(j).reset();
+            ghost_zone_deps_[i](j).reset();
 
     if ((level_ + 1) == config().levels_of_refinement)
         return;
 
     for (boost::uint64_t i = 0; i < children_state_deps_.size(); ++i)
         for (boost::uint64_t j = 0; j < 6; ++j)
-            children_state_deps_.at(i)(j).reset();
+            children_state_deps_[i](j).reset();
 
     for (boost::uint64_t i = 0; i < adjust_flux_deps_.size(); ++i)
         for (boost::uint64_t j = 0; j < 6; ++j)
-            adjust_flux_deps_.at(i)(j).reset();
+            adjust_flux_deps_[i](j).reset();
 } // }}}
 
 void octree_server::clear_refinement_marks()
@@ -472,9 +508,10 @@ void octree_server::set_sibling(
     else 
     {
         if (siblings_[f].real() && sib.real())
-            OCTOPUS_ASSERT(siblings_[f] == sib); 
-
-        siblings_[f] = sib;  
+            ;
+            //OCTOPUS_ASSERT(siblings_[f] == sib); 
+        else
+            siblings_[f] = sib;  
     }
 } // }}}
 
@@ -483,20 +520,23 @@ void octree_server::tie_sibling(
   , octree_client const& target_sib
     )
 { // {{{
-    // Locks.
     child_index target_kid = get_child_index();
 
     face source_f = invert(target_f);
 
     child_index source_kid = invert(target_f, target_kid);
 
+    OCTOPUS_DUMP("tie_sibling: calling set_sibling on myself\n");
     // Locks.
     set_sibling(target_f, target_sib);
-    
+    OCTOPUS_DUMP("tie_sibling: called set_sibling on myself\n");
+   
     octree_client source_sib(get_gid());
 
+    OCTOPUS_DUMP("tie_sibling: calling set_sibling on target\n");
     // Locks.
     target_sib.set_sibling(source_f, source_sib);  
+    OCTOPUS_DUMP("tie_sibling: called set_sibling on target\n");
 } // }}}
 
 void octree_server::set_child_sibling(
@@ -551,8 +591,14 @@ void octree_server::tie_child_sibling(
     }
 
     if (invalid_boundary != child.kind())
+    {
+        OCTOPUS_DUMP("tie_child_sibling: calling tie_sibling\n");
+
         // Locks.
         child.tie_sibling(target_f, target_sib);
+
+        OCTOPUS_DUMP("tie_child_sibling: called tie_sibling\n");
+    }
 
     else if (!marked_for_refinement_.test(target_kid))
     {
@@ -571,48 +617,18 @@ void octree_server::tie_child_sibling(
                 interpolation_data(target_sib, target_f, bound.offset_));
         }
 
+        OCTOPUS_DUMP("tie_child_sibling: calling set_sibling\n");
+
         // Locks.
         target_sib.set_sibling(invert(target_f), bound);
+
+        OCTOPUS_DUMP("tie_child_sibling: called set_sibling\n");
     }
 } // }}} 
 
 ///////////////////////////////////////////////////////////////////////////////
 // Ghost zone communication
 
-// {{{ Description of the algorithm for send_ghost_zone 
-/// Pseudo code based on the original code (GS = GNX - 2 BW = dimensions of
-/// the grid without ghostzones):
-///
-/// for i in [0, BW)
-///     for j in [BW, GNX - BW)
-///         for k in [BW, GNX - BW)
-///             U(i, j, k) = sibling[XL].U(GNX - 2 * BW + i, j, k) 
-///              
-/// for i in [GNX - BW, GNX)
-///     for j in [BW, GNX - BW)
-///         for k in [BW, GNX - BW)
-///             U(i, j, k) = sibling[XU].U(-GNX - 2 * BW + i, j, k) 
-///
-/// for i in [BW, GNX - BW)
-///     for j in [0, BW)
-///         for k in [BW, GNX - BW)
-///             U(i, j, k) = sibling[YL].U(i, GNX - 2 * BW + j, k) 
-///
-/// for i in [BW, GNX - BW)
-///     for j in [GNX - BW, GNX)
-///         for k in [BW, GNX - BW)
-///             U(i, j, k) = sibling[YU].U(i, -GNX - 2 * BW + j, k) 
-///
-/// for i in [BW, GNX - BW)
-///     for j in [BW, GNX - BW)
-///         for k in [0, BW)
-///             U(i, j, k) = sibling[ZL].U(i, j, GNX - 2 * BW + k) 
-///
-/// for i in [BW, GNX - BW)
-///     for j in [BW, GNX - BW)
-///         for k in [GNX - BW, GNX)
-///             U(i, j, k) = sibling[ZU].U(i, j, -GNX - 2 * BW + k) 
-// }}}
 
 // REVIEW: I think step 2.) can come before step 1.).
 /// 0.) Push ghost zone data to our siblings and determine which ghost zones we
@@ -645,7 +661,7 @@ void octree_server::communicate_ghost_zones(
             // Set up a callback which adds the ghost zones to our state
             // when they arrive. 
             dependencies.push_back( 
-                ghost_zone_deps_.at(phase)(i).then(
+                ghost_zone_deps_[phase](i).then(
                     boost::bind(&octree_server::add_ghost_zone_callback,
                         this, fi, _1))); 
 
@@ -661,7 +677,7 @@ void octree_server::communicate_ghost_zones(
             // Set up a callback which adds the ghost zones to our state
             // when they arrive. 
             dependencies.push_back(
-                ghost_zone_deps_.at(phase)(i).then(boost::bind
+                ghost_zone_deps_[phase](i).then(boost::bind
                     (&octree_server::add_ghost_zone_callback, this, fi, _1))); 
         }
     }
@@ -1750,7 +1766,7 @@ void octree_server::child_to_parent_injection_kernel(
         for (boost::uint64_t i = 0; i < 8; ++i)
             if (children_[i] != hpx::invalid_id)
                 dependencies.push_back(
-                    children_state_deps_.at(phase)(i).then(
+                    children_state_deps_[phase](i).then(
                         boost::bind(&octree_server::add_child_state,
                             this, child_index(i), _1))); 
     }
@@ -2218,7 +2234,7 @@ void octree_server::mark()
 
     mark_kernel();
 
-    sibling_refinement_signal(0);
+//    sibling_refinement_signal(0);
 
     for (std::size_t i = 0; i < 8; ++i)
         if (  (hpx::invalid_id != children_[i])
@@ -2227,7 +2243,7 @@ void octree_server::mark()
 
     hpx::wait(recursion_is_parallelism);
 
-    sibling_refinement_signal(1);
+//    sibling_refinement_signal(1);
 } // }}}
 
 void octree_server::mark_kernel()
@@ -2371,7 +2387,7 @@ void octree_server::populate()
 
     populate_kernel();
 
-    sibling_refinement_signal(2);
+    //sibling_refinement_signal(2);
 
     for (std::size_t i = 0; i < 8; ++i)
         if (  (hpx::invalid_id != children_[i])
@@ -2381,7 +2397,7 @@ void octree_server::populate()
 
     hpx::wait(recursion_is_parallelism);
 
-    sibling_refinement_signal(3);
+    //sibling_refinement_signal(3);
 } // }}}
 
 void octree_server::populate_kernel()
@@ -2425,7 +2441,7 @@ void octree_server::link()
 
     hpx::wait(recursion_is_parallelism);
 
-    sibling_refinement_signal(4);
+    //sibling_refinement_signal(4);
 } // }}}
 
 void octree_server::link_kernel()
@@ -2435,6 +2451,9 @@ void octree_server::link_kernel()
     std::vector<hpx::future<void> > links;
     links.reserve(8*6);
 
+    std::stringstream ss;
+    ss << "link_kernel: waiting on futures:\n";
+
     {
         mutex_type::scoped_lock l(mtx_);
 
@@ -2443,11 +2462,19 @@ void octree_server::link_kernel()
             child_index const kid(i);
 
             if (hpx::invalid_id != children_[i])
+            {
+                ss << ( boost::format("    %s: %016x%016x\n")
+                      % kid
+                      % children_[i].get_gid().get_msb()
+                      % children_[i].get_gid().get_lsb()); 
                 link_child(links, kid);
+            }
         }
     }
 
+    OCTOPUS_DUMP(ss.str());
     hpx::wait(links); 
+    OCTOPUS_DUMP("link_kernel: got futures\n");
 } // }}}
 
 void octree_server::link_child(
@@ -2608,13 +2635,27 @@ void octree_server::refine()
 { // {{{
     OCTOPUS_ASSERT(0 == level_);
 
+    OCTOPUS_DUMP("refine: clearing refinement marks\n");
+
     clear_refinement_marks();
+
+    OCTOPUS_DUMP("refine: calling mark\n");
 
     mark();
 
+    OCTOPUS_DUMP("refine: called mark, calling populate\n");
+
     populate();
 
+    OCTOPUS_DUMP("refine: called populate, calling link\n");
+
     link();
+
+    OCTOPUS_DUMP("refine: called link, doing c->p injection\n");
+
+    child_to_parent_injection(0);
+
+    OCTOPUS_DUMP("refine: c->p injection complete\n");
 } // }}}
 
 void octree_server::sibling_refinement_signal(
@@ -2639,7 +2680,7 @@ void octree_server::sibling_refinement_signal(
                         (phase, invert(face(i))));
 
                 dependencies.push_back
-                    (refinement_deps_.at(phase)(i).get_future());
+                    (refinement_deps_[phase](i).get_future());
             }
         }
     }

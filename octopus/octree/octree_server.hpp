@@ -131,19 +131,23 @@ struct OCTOPUS_EXPORT interpolation_data
 
     bool operator<(interpolation_data const& rhs) const
     {
-        using hpx::naming::strip_credit_from_gid;
-        return std::make_pair(strip_credit_from_gid(subject.gid_.get_gid())
+        using hpx::naming::detail::strip_credit_from_gid;
+        hpx::naming::gid_type lhs_gid = subject.gid_.get_gid();
+        hpx::naming::gid_type rhs_gid = rhs.subject.gid_.get_gid();
+        return std::make_pair(strip_credit_from_gid(lhs_gid)
                             , direction)
-             < std::make_pair(strip_credit_from_gid(rhs.subject.gid_.get_gid())
+             < std::make_pair(strip_credit_from_gid(rhs_gid)
                             , rhs.direction);
     }
 
     bool operator==(interpolation_data const& rhs) const
     {
-        using hpx::naming::strip_credit_from_gid;
-        return std::make_pair(strip_credit_from_gid(subject.gid_.get_gid())
+        using hpx::naming::detail::strip_credit_from_gid;
+        hpx::naming::gid_type lhs_gid = subject.gid_.get_gid();
+        hpx::naming::gid_type rhs_gid = rhs.subject.gid_.get_gid();
+        return std::make_pair(strip_credit_from_gid(lhs_gid)
                             , direction)
-            == std::make_pair(strip_credit_from_gid(rhs.subject.gid_.get_gid())
+            == std::make_pair(strip_credit_from_gid(rhs_gid)
                             , rhs.direction);
     }
 };
@@ -172,7 +176,8 @@ struct OCTOPUS_EXPORT octree_server
     octree_client future_self_;
     octree_client past_self_;
  
-    atomic_bitset<8> marked_for_refinement_;
+//    atomic_bitset<8> marked_for_refinement_;
+    std::bitset<8> marked_for_refinement_;
  
     typedef array1d<
         hpx::lcos::local::channel<vector3d<std::vector<double> > >, 6
@@ -733,7 +738,7 @@ struct OCTOPUS_EXPORT octree_server
         return offset_;
     }
 
-    HPX_DEFINE_COMPONENT_CONST_DIRECT_ACTION(octree_server,
+    HPX_DEFINE_COMPONENT_CONST_ACTION(octree_server,
                                              get_offset,
                                              get_offset_action);
 
@@ -744,9 +749,9 @@ struct OCTOPUS_EXPORT octree_server
         return location_;
     }
 
-    HPX_DEFINE_COMPONENT_CONST_DIRECT_ACTION(octree_server,
-                                             get_location,
-                                             get_location_action);
+    HPX_DEFINE_COMPONENT_CONST_ACTION(octree_server,
+                                      get_location,
+                                      get_location_action);
 
     ///////////////////////////////////////////////////////////////////////////
     // Ghost zone communication
@@ -800,7 +805,7 @@ struct OCTOPUS_EXPORT octree_server
         // NOTE (wash): boost::move should be safe here, zone is a temporary,
         // even if we're local to the caller. Plus, ATM set_value requires the
         // value to be moved to it.
-        ghost_zone_deps_.at(phase)(f).post(zone);
+        ghost_zone_deps_[phase](f).post(zone);
     }
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
@@ -882,7 +887,7 @@ struct OCTOPUS_EXPORT octree_server
       , vector3d<std::vector<double> > const& state
         )
     { // {{{
-        mutex_type::scoped_lock l(mtx_);
+        //mutex_type::scoped_lock l(mtx_);
 
         OCTOPUS_ASSERT_MSG(step_ == step,
             "cross-timestep communication occurred, octree is ill-formed");
@@ -897,7 +902,7 @@ struct OCTOPUS_EXPORT octree_server
         // NOTE (wash): boost::move should be safe here, zone is a temporary,
         // even if we're local to the caller. Plus, ATM set_value requires the
         // value to be moved to it.
-        children_state_deps_.at(phase)(idx).post(state);
+        children_state_deps_[phase](idx).post(state);
     } // }}}
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
@@ -1009,7 +1014,7 @@ struct OCTOPUS_EXPORT octree_server
 
         OCTOPUS_ASSERT(invalid_face != f);
 
-        refinement_deps_.at(phase)(f).post();
+        refinement_deps_[phase](f).post();
     }
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
@@ -1072,6 +1077,7 @@ struct OCTOPUS_EXPORT octree_server
     {
         T tmp = reducer(result, value.get()); 
 
+        // REVIEW: Why is this here?
         mutex_type::scoped_lock l(mtx_);
         result = boost::move(tmp);
     }
