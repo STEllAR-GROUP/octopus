@@ -21,6 +21,8 @@
 #include <octopus/octree/octree_client.hpp>
 #include <octopus/atomic_bitset.hpp>
 
+#include <bitset>
+
 // TODO: apply_criteria, apply_zonal, apply_zonal_leaf, reduce_leaf,
 // reduce_zonal_leaf
 // TODO: Get rid of unnecessary _kernel and _locked suffixes.
@@ -630,7 +632,7 @@ struct OCTOPUS_EXPORT octree_server
         )
     {
         mutex_type::scoped_lock l(mtx_);
-        bool erased = nephews_.erase(interpolation_data(nephew.gid_, f));
+        bool erased = nephews_.erase(interpolation_data(nephew.gid_, f)) != 0;
         OCTOPUS_ASSERT(erased); 
     }
 
@@ -712,12 +714,12 @@ struct OCTOPUS_EXPORT octree_server
         return oid_type(*this); 
     }
 
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+    HPX_DEFINE_COMPONENT_CONST_ACTION(octree_server,
                                        get_oid,
                                        get_oid_action);
 
     ///////////////////////////////////////////////////////////////////////////
-    boost::array<octree_client, 6> get_siblings() 
+    boost::array<octree_client, 6> get_siblings() const
     {
         // Make sure that we are initialized.
         //initialized_.wait();
@@ -727,7 +729,7 @@ struct OCTOPUS_EXPORT octree_server
         return siblings_;
     }
 
-    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+    HPX_DEFINE_COMPONENT_CONST_ACTION(octree_server,
                                 get_siblings,
                                 get_siblings_action);
 

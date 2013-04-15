@@ -26,13 +26,13 @@ struct child_index
     child_index() : packed_(0) {}
 
     child_index(boost::uint64_t packed)
-      : packed_(packed)
+      : packed_(static_cast<boost::uint8_t>(packed))
     {
         OCTOPUS_ASSERT_MSG(7 >= packed, "packed index is out of range"); 
     }
 
     child_index(boost::uint64_t x, boost::uint64_t y, boost::uint64_t z)
-      : packed_(x | (y << 1) | (z << 2))
+      : packed_(static_cast<boost::uint8_t>(x | (y << 1) | (z << 2)))
     {
         OCTOPUS_ASSERT_MSG(1 >= x, "x-index is out of range"); 
         OCTOPUS_ASSERT_MSG(1 >= y, "y-index is out of range"); 

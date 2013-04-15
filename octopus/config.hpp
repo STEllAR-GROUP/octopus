@@ -29,6 +29,8 @@
 
 #if defined(__GNUC__)
     #define OCTOPUS_WEAK __attribute__((weak))
+#else
+    #define OCTOPUS_WEAK
 #endif
 
 #if defined(_DEBUG) && !defined(DEBUG)

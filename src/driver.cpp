@@ -182,8 +182,12 @@ int main(int argc, char** argv)
     // Initialize HPX.
     int r = hpx::init(cmdline, argc, argv); 
 
+#if !defined(BOOST_MSVC)
     // We call C99 _Exit to work around problems with 3rd-party libraries using
     // atexit (HDF5 and visit).
     ::_Exit(r);
+#else
+    return r;
+#endif
 }
 

@@ -950,7 +950,7 @@ vector3d<std::vector<double> > octree_server::send_ghost_zone(
                         boost::uint64_t const jj = j - bw;
                         boost::uint64_t const kk = k - bw; 
 
-                        zone(ii, jj, kk) = (*U_)(-gnx + 2 * bw + i, j, k);
+                        zone(ii, jj, kk) = (*U_)(-static_cast<boost::int64_t>(gnx) + 2 * bw + i, j, k);
                     }
 
             return zone;
@@ -1009,7 +1009,7 @@ vector3d<std::vector<double> > octree_server::send_ghost_zone(
                         boost::uint64_t const jj = j - (gnx - bw);
                         boost::uint64_t const kk = k - bw; 
 
-                        zone(ii, jj, kk) = (*U_)(i, -gnx + 2 * bw + j, k);
+                        zone(ii, jj, kk) = (*U_)(i, -static_cast<boost::int64_t>(gnx) + 2 * bw + j, k);
                     }
 
             return zone;
@@ -1067,7 +1067,7 @@ vector3d<std::vector<double> > octree_server::send_ghost_zone(
                         boost::uint64_t const jj = j - bw; 
                         boost::uint64_t const kk = k - (gnx - bw);
 
-                        zone(ii, jj, kk) = (*U_)(i, j, -gnx + 2 * bw + k);
+                        zone(ii, jj, kk) = (*U_)(i, j, -static_cast<boost::int64_t>(gnx) + 2 * bw + k);
                     }
 
             return zone;
@@ -1123,7 +1123,7 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const k_out = k - bw; 
 
                         ///////////////////////////////////////////////////////
-                        bool const i0 = (amr_offset[0] + i) % 2;
+                        bool const i0 = (amr_offset[0] + i) % 2 ? true : false;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
@@ -1174,7 +1174,7 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const k_out = k - bw; 
 
                         ///////////////////////////////////////////////////////
-                        bool const i0 = (amr_offset[0] + i) % 2;
+                        bool const i0 = (amr_offset[0] + i) % 2 ? true : false;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
@@ -1227,7 +1227,7 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const k_out = k - bw; 
 
                         //////////////////////////////////////////////////////
-                        bool const j0 = (amr_offset[1] + j) % 2;
+                        bool const j0 = (amr_offset[1] + j) % 2 ? true : false;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
@@ -1278,7 +1278,7 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const k_out = k - bw; 
 
                         ///////////////////////////////////////////////////////
-                        bool const j0 = (amr_offset[1] + j) % 2;
+                        bool const j0 = (amr_offset[1] + j) % 2 ? true : false;
 
                         ///////////////////////////////////////////////////////
                         boost::uint64_t const i_in = (amr_offset[0] + i) / 2;
@@ -1330,7 +1330,7 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const k_out = k - bw;
 
                         ///////////////////////////////////////////////////////
-                        bool const k0 = (amr_offset[2] + k) % 2;
+                        bool const k0 = (amr_offset[2] + k) % 2 ? true : false;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
@@ -1381,7 +1381,7 @@ vector3d<std::vector<double> > octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const k_out = k - (gnx - 2 * bw);
 
                         ///////////////////////////////////////////////////////
-                        bool const k0 = (amr_offset[2] + k) % 2;
+                        bool const k0 = (amr_offset[2] + k) % 2 ? true : false;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
@@ -1531,7 +1531,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
                     {
                         boost::array<boost::uint64_t, 3> v =
-                            map_location(f, -gnx + 2 * bw + i, j, k);
+                            map_location(f, -static_cast<boost::int64_t>(gnx) + 2 * bw + i, j, k);
 
                         // Adjusted indices (for output ghost zone). 
                         boost::uint64_t const ii = i - (gnx - bw);
@@ -1599,7 +1599,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
                     {
                         boost::array<boost::uint64_t, 3> v =
-                            map_location(f, i, -gnx + 2 * bw + j, k);
+                            map_location(f, i, -static_cast<boost::int64_t>(gnx) + 2 * bw + j, k);
 
                         // Adjusted indices (for output ghost zone). 
                         boost::uint64_t const ii = i - bw;
@@ -1672,7 +1672,7 @@ vector3d<std::vector<double> > octree_server::send_mapped_ghost_zone(
                     for (boost::uint64_t k = gnx - bw; k < gnx; ++k)
                     {
                         boost::array<boost::uint64_t, 3> v =  
-                            map_location(f, i, j, -gnx + 2 * bw + k);
+                            map_location(f, i, j, -static_cast<boost::int64_t>(gnx) + 2 * bw + k);
 
                         // Adjusted indices (for output ghost zone). 
                         boost::uint64_t const ii = i - bw;

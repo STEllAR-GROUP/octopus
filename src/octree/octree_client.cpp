@@ -248,7 +248,7 @@ hpx::future<boost::array<boost::int64_t, 3> >
 octree_client::get_offset_async() const
 {
     ensure_real();
-    return hpx::async<octree_server::get_offset_action>(gid_);
+    return hpx::async(octree_server::get_offset_action(), gid_);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

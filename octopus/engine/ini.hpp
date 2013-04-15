@@ -124,7 +124,7 @@ struct config_reader
                     boost::int64_t num
                         = boost::lexical_cast<boost::int64_t>(str);
 
-                    data = num;
+                    data = num != 0 ? true : false;
                 } 
             }
             else
@@ -168,7 +168,7 @@ struct config_reader
                     boost::int64_t num
                         = boost::lexical_cast<boost::int64_t>(str);
 
-                    data = num;
+                    data = num ? true : false;
                 } 
             }
             else

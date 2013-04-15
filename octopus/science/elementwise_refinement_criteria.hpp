@@ -18,7 +18,7 @@ namespace octopus
 {
 
 template <typename Derived>
-struct OCTOPUS_EXPORT elementwise_refinement_criteria_base
+struct elementwise_refinement_criteria_base
   : refinement_criteria_base
 {
     elementwise_refinement_criteria_base()
