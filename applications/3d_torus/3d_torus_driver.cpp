@@ -76,7 +76,9 @@ void octopus_define_problem(
 
     sci.refine_policy = refine_by_density();
 
-    sci.output = octopus::single_variable_silo_writer(0, "rho");
+    #if defined(OCTOPUS_HAVE_SILO)
+        sci.output = octopus::single_variable_silo_writer(0, "rho");
+    #endif
 }
 
 struct stepper 

@@ -15,11 +15,14 @@
 #include <octopus/science.hpp>
 #include <octopus/engine/engine_interface.hpp>
 #include <octopus/engine/ini.hpp>
-#include <octopus/io/silo.hpp>
 #include <octopus/octree/octree_reduce.hpp>
 #include <octopus/octree/octree_apply_leaf.hpp>
 #include <octopus/operators/boost_array_arithmetic.hpp>
 #include <octopus/math.hpp>
+
+#if defined(OCTOPUS_HAVE_SILO)
+    #include <octopus/io/silo.hpp>
+#endif
 
 #include <boost/atomic.hpp>
 #include <boost/math/constants/constants.hpp>

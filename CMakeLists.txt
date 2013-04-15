@@ -40,10 +40,13 @@ include_directories(${octopus_SOURCE_DIR})
 include_directories(externals/process)
 
 ################################################################################
-find_package(HPX_Silo REQUIRED)
+find_package(HPX_Silo)
 
-include_directories(${SILO_INCLUDE_DIR})
-link_directories(${SILO_LIBRARY_DIR})
+if(SILO_FOUND)
+  include_directories(${SILO_INCLUDE_DIR})
+  link_directories(${SILO_LIBRARY_DIR})
+  add_definitions(-DOCTOPUS_HAVE_SILO)
+endif()
 
 ################################################################################
 find_package(HPX_Visit)
