@@ -24,12 +24,12 @@ if(VISIT_DRIVER_FOUND AND VISIT_LIBSIM_FOUND)
 endif()
 
 foreach(application ${applications})
-  set(sources ${application}.cpp)
+  set(sources ${application}.cpp ${CMAKE_SOURCE_DIR}/src/driver.cpp)
 
   source_group("Source Files" FILES ${sources})
 
   add_hpx_executable(${application} SOURCES ${sources} ${${application}_FLAGS}
-                     FOLDER "Applications")
+    FOLDER "Applications")
 
   add_hpx_pseudo_target(applications.${application})
   add_hpx_pseudo_dependencies(applications applications.${application})

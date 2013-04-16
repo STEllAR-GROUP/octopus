@@ -26,8 +26,6 @@ using hpx::components::stubs::runtime_support;
 
 // namespace octopus { extern OCTOPUS_EXPORT int default_main(variables_map& vm); }
 
-OCTOPUS_EXPORT int main(int argc, char** argv);
-
 int hpx_main(variables_map& vm)
 {
     int result = 0;

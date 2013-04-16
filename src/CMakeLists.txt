@@ -10,7 +10,6 @@ if(SILO_FOUND)
   add_hpx_component(octopus
     SOURCES
             octopus_component.cpp
-            driver.cpp
             default_main.cpp
             child_index.cpp
             engine/engine_interface.cpp
@@ -28,7 +27,6 @@ else()
   add_hpx_component(octopus
     SOURCES
             octopus_component.cpp
-            driver.cpp
             default_main.cpp
             child_index.cpp
             engine/engine_interface.cpp

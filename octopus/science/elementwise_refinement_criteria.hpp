@@ -44,29 +44,23 @@ struct elementwise_refinement_criteria_base
     {
         boost::uint64_t const bw = science().ghost_zone_width;
         boost::uint64_t const gnx = config().grid_node_length;
-
-        boost::uint64_t const id_offset = idx.x() * (gnx / 2) - bw;
-        boost::uint64_t const jd_offset = idx.y() * (gnx / 2) - bw;
-        boost::uint64_t const kd_offset = idx.z() * (gnx / 2) - bw;
-
+    
         for (boost::uint64_t i = bw; i < (gnx - bw); i += 2)
-        {
-            // Adjusted X index (for destination).
-            boost::uint64_t const id = (bw + i) / id_offset;
             for (boost::uint64_t j = bw; j < (gnx - bw); j += 2)
-            {
-                // Adjusted Y index (for destination).
-                boost::uint64_t const jd = (bw + j) / 2 + jd_offset;
                 for (boost::uint64_t k = bw; k < (gnx - bw); k += 2)
                 {
-                    // Adjusted Z index (for destination).
-                    boost::uint64_t const kd = (bw + k) / 2 + kd_offset;
-
+                    // Adjusted indices (for destination).
+                    boost::uint64_t const id
+                        = (bw + i) / 2 + idx.x() * ((gnx / 2) - bw);
+                    boost::uint64_t const jd
+                        = (bw + j) / 2 + idx.y() * ((gnx / 2) - bw);
+                    boost::uint64_t const kd
+                        = (bw + k) / 2 + idx.z() * ((gnx / 2) - bw);
+   
                     if (derived().refine(e(id, jd, kd)))
                         return true;
                 }
-            }
-        }
+    
         return false;
     }
 
