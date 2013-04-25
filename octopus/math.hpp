@@ -11,6 +11,7 @@
 
 #include <octopus/assert.hpp>
 #include <octopus/trivial_serialization.hpp>
+#include <octopus/state.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -87,56 +88,56 @@ inline double minmod_theta(double a, double b, double theta)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-inline std::vector<double> minmod(
-    std::vector<double> const& v1
-  , std::vector<double> const& v2
+inline state minmod(
+    state const& v1
+  , state const& v2
     )
 {
     OCTOPUS_ASSERT(v1.size() == v2.size());
 
-    std::vector<double> mm;
-    mm.reserve(v1.size());
+    state mm;
+    //mm.reserve(v1.size());
 
     for (std::size_t i = 0; i < v1.size(); ++i) 
-        mm.push_back(minmod(v1[i], v2[i]));
+        mm[i] = minmod(v1[i], v2[i]);
 
     return mm;
 }
 
-inline std::vector<double> minmod(
-    std::vector<double> const& v1
-  , std::vector<double> const& v2
-  , std::vector<double> const& v3
+inline state minmod(
+    state const& v1
+  , state const& v2
+  , state const& v3
     )
 {
     OCTOPUS_ASSERT(v1.size() == v2.size());
     OCTOPUS_ASSERT(v1.size() == v3.size());
 
-    std::vector<double> mm;
-    mm.reserve(v1.size());
+    state mm;
+    //mm.reserve(v1.size());
 
     for (std::size_t i = 0; i < v1.size(); ++i) 
-        mm.push_back(minmod(v1[i], v2[i], v3[i]));
+        mm[i] = minmod(v1[i], v2[i], v3[i]);
 
     return mm;
 }
 
-inline std::vector<double> minmod_theta(
-    std::vector<double> const& v1
-  , std::vector<double> const& v2
+inline state minmod_theta(
+    state const& v1
+  , state const& v2
   , double theta
     )
 {
     OCTOPUS_ASSERT(v1.size() == v2.size());
 
-    std::vector<double> mm;
-    mm.reserve(v1.size());
+    state mm;
+    //mm.reserve(v1.size());
 
     for (std::size_t i = 0; i < v1.size(); ++i) 
-        mm.push_back(minmod(
+        mm[i] = minmod(
             theta * v1[i]
           , theta * v2[i]
-          , 0.5 * (v1[i] + v2[i])));
+          , 0.5 * (v1[i] + v2[i]));
 
     return mm;
 }

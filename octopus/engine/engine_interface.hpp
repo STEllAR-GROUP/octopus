@@ -56,7 +56,7 @@ inline std::vector<hpx::id_type> const& localities()
 /// Synchrony Gurantee:  Asynchronous.
 inline hpx::future<hpx::id_type> create_octree_async(
     octree_init_data const& init
-  , boost::shared_ptr<vector3d<std::vector<double> > > const& parent_U
+  , boost::shared_ptr<vector3d<state> > const& parent_U
     )
 {
     OCTOPUS_ASSERT_MSG(engine_ptr != 0, "engine_ptr is NULL");
@@ -72,7 +72,7 @@ inline hpx::future<hpx::id_type> create_octree_async(
 /// Synchrony Gurantee:  Synchronous.
 inline hpx::id_type create_octree(
     octree_init_data const& init
-  , boost::shared_ptr<vector3d<std::vector<double> > > const& parent_U
+  , boost::shared_ptr<vector3d<state> > const& parent_U
     )
 {
     return create_octree_async(init, parent_U).get();

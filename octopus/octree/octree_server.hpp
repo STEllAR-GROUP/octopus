@@ -182,11 +182,11 @@ struct OCTOPUS_EXPORT octree_server
     std::bitset<8> marked_for_refinement_;
  
     typedef array1d<
-        hpx::lcos::local::channel<vector3d<std::vector<double> > >, 6
+        hpx::lcos::local::channel<vector3d<state> >, 6
     > sibling_state_dependencies;
   
     typedef array1d<
-        hpx::lcos::local::channel<vector3d<std::vector<double> > >, 8
+        hpx::lcos::local::channel<vector3d<state> >, 8
     > children_state_dependencies;
 
     typedef array1d<
@@ -272,26 +272,26 @@ struct OCTOPUS_EXPORT octree_server
     // eight chunks of unused space that we don't ever use.
     // 3d array of state vectors, includes ghost zones. Size of the state
     // vectors comes from the science table.
-    boost::shared_ptr<vector3d<std::vector<double> > > U_;
+    boost::shared_ptr<vector3d<state> > U_;
 
     // Data from previous timestep.
-    boost::shared_ptr<vector3d<std::vector<double> > > U0_; 
+    boost::shared_ptr<vector3d<state> > U0_; 
 
     // Scratch space for computations.
-    vector3d<std::vector<double> > FX_; ///< Flux (X-axis).
-    vector3d<std::vector<double> > FY_; ///< Flux (Y-axis).
-    vector3d<std::vector<double> > FZ_; ///< Flux (Z-axis).
+    vector3d<state> FX_; ///< Flux (X-axis).
+    vector3d<state> FY_; ///< Flux (Y-axis).
+    vector3d<state> FZ_; ///< Flux (Z-axis).
 
-    boost::shared_ptr<std::vector<double> > FO_; ///< Flow off (stuff that
-                                                 ///  leaves the problem space).
+    boost::shared_ptr<state> FO_; ///< Flow off (stuff that
+                                  ///  leaves the problem space).
 
-    boost::shared_ptr<std::vector<double> > FO0_;
-
-    // Scratch space for computations.
-    vector3d<std::vector<double> > D_; ///< Flux differential.
+    boost::shared_ptr<state> FO0_;
 
     // Scratch space for computations.
-    std::vector<double> DFO_; ///< Flow off differential. 
+    vector3d<state> D_; ///< Flux differential.
+
+    // Scratch space for computations.
+    state DFO_; ///< Flow off differential. 
 
     ///////////////////////////////////////////////////////////////////////////
     // TODO: Migration.
@@ -368,7 +368,7 @@ struct OCTOPUS_EXPORT octree_server
     /// Concurrency Control: Locks mtx_.
     /// Synchrony Gurantee:  Synchronous. 
     void parent_to_child_injection(
-        vector3d<std::vector<double> > const& pU
+        vector3d<state> const& pU
         );
 
     void initialize_queues();
@@ -428,7 +428,7 @@ struct OCTOPUS_EXPORT octree_server
     octree_server(
         back_pointer_type back_ptr
       , octree_init_data const& init
-      , boost::shared_ptr<vector3d<std::vector<double> > > const& parent_U
+      , boost::shared_ptr<vector3d<state> > const& parent_U
         );
 
     boost::uint64_t get_level() const
@@ -463,7 +463,7 @@ struct OCTOPUS_EXPORT octree_server
         dt_.post(dt);
     }
 
-    std::vector<double>& operator()(
+    state& operator()(
         boost::uint64_t i
       , boost::uint64_t j
       , boost::uint64_t k
@@ -472,7 +472,7 @@ struct OCTOPUS_EXPORT octree_server
         return (*U_)(i, j, k);
     } 
 
-    std::vector<double> const& operator()(
+    state const& operator()(
         boost::uint64_t i
       , boost::uint64_t j
       , boost::uint64_t k
@@ -771,12 +771,12 @@ struct OCTOPUS_EXPORT octree_server
 
     void add_ghost_zone(
         face f
-      , BOOST_RV_REF(vector3d<std::vector<double> >) zone
+      , BOOST_RV_REF(vector3d<state>) zone
         );
 
     void add_ghost_zone_callback(
         face f ///< Bound parameter.
-      , hpx::future<vector3d<std::vector<double> > > zone_f
+      , hpx::future<vector3d<state> > zone_f
         )
     {
         add_ghost_zone(f, boost::move(zone_f.move()));
@@ -789,7 +789,7 @@ struct OCTOPUS_EXPORT octree_server
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
       , face f ///< Relative to caller.
-      , vector3d<std::vector<double> > const& zone
+      , vector3d<state> const& zone
         )
     {
         mutex_type::scoped_lock l(mtx_);
@@ -815,14 +815,14 @@ struct OCTOPUS_EXPORT octree_server
                                 receive_ghost_zone_action);
 
   private:
-    vector3d<std::vector<double> > send_ghost_zone_locked(
+    vector3d<state> send_ghost_zone_locked(
         face f ///< Our direction, relative to the caller.
       /*, mutex_type::scoped_lock& l*/
         );
   public:
 
     /// Produces ghost zone data for a sibling.
-    vector3d<std::vector<double> > send_ghost_zone(
+    vector3d<state> send_ghost_zone(
         face f ///< Our direction, relative to the caller.
         );
 
@@ -832,7 +832,7 @@ struct OCTOPUS_EXPORT octree_server
 
     // FIXME: The octree doing the interpolation could reverse-engineer the
     // offset (probably) from the face (the child_index may also be needed).
-    vector3d<std::vector<double> > send_interpolated_ghost_zone(
+    vector3d<state> send_interpolated_ghost_zone(
         face f ///< Our direction, relative to the caller.
 //      , boost::uint64_t disparity ///< Difference in refinement level
       , boost::array<boost::int64_t, 3> offset
@@ -842,7 +842,7 @@ struct OCTOPUS_EXPORT octree_server
                                 send_interpolated_ghost_zone,
                                 send_interpolated_ghost_zone_action);
 
-    vector3d<std::vector<double> > send_mapped_ghost_zone(
+    vector3d<state> send_mapped_ghost_zone(
         face f ///< Our direction, relative to the caller.
         );
 
@@ -876,7 +876,7 @@ struct OCTOPUS_EXPORT octree_server
     /// Callback used to wait for a particular child state. 
     void add_child_state(
         child_index idx ///< Bound parameter.
-      , hpx::future<vector3d<std::vector<double> > > state_f
+      , hpx::future<vector3d<state> > state_f
         );
 
   public:
@@ -886,7 +886,7 @@ struct OCTOPUS_EXPORT octree_server
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
       , child_index idx 
-      , vector3d<std::vector<double> > const& state
+      , vector3d<state> const& s
         )
     { // {{{
         //mutex_type::scoped_lock l(mtx_);
@@ -904,7 +904,7 @@ struct OCTOPUS_EXPORT octree_server
         // NOTE (wash): boost::move should be safe here, zone is a temporary,
         // even if we're local to the caller. Plus, ATM set_value requires the
         // value to be moved to it.
-        children_state_deps_[phase](idx).post(state);
+        children_state_deps_[phase](idx).post(s);
     } // }}}
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
@@ -912,7 +912,7 @@ struct OCTOPUS_EXPORT octree_server
                                 receive_child_state_action);
 
   private:
-    vector3d<std::vector<double> > send_child_state();
+    vector3d<state> send_child_state();
 
   public:
     ///////////////////////////////////////////////////////////////////////////
@@ -1108,7 +1108,7 @@ struct OCTOPUS_EXPORT octree_server
     // Initial should be an identity.
     template <typename T>
     T reduce_zonal(
-        hpx::util::function<T(std::vector<double>&)> const& f
+        hpx::util::function<T(state&)> const& f
       , hpx::util::function<T(T const&, T const&)> const& reducer
       , T const& initial = T()
         );
@@ -1117,7 +1117,7 @@ struct OCTOPUS_EXPORT octree_server
     struct reduce_zonal_action
       : hpx::actions::make_action<
             T (octree_server::*)
-                ( hpx::util::function<T(std::vector<double>&)> const&
+                ( hpx::util::function<T(state&)> const&
                 , hpx::util::function<T(T const&, T const&)> const&
                 , T const&)
           , &octree_server::template reduce_zonal<T>

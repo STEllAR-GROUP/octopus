@@ -6,7 +6,7 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <octopus/operators/std_vector_arithmetic.hpp>
+#include <octopus/operators/boost_array_arithmetic.hpp>
 #include <octopus/science/reconstruction.hpp>
 #include <octopus/engine/engine_interface.hpp>
 #include <octopus/math.hpp>
@@ -15,26 +15,25 @@ namespace octopus
 {
 
 void minmod_reconstruction::operator()(
-    std::vector<std::vector<double> > const& q0
-  , std::vector<std::vector<double> >& ql
-  , std::vector<std::vector<double> >& qr
+    std::vector<state> const& q0
+  , std::vector<state>& ql
+  , std::vector<state>& qr
     ) const
 {
-    boost::uint64_t const ss = science().state_size;
     boost::uint64_t const gnx = config().grid_node_length;
 
-    std::vector<std::vector<double> > slope(gnx, std::vector<double>(ss));
+    std::vector<state> slope(gnx, state());
 
     using namespace octopus::operators;
 
     for (boost::uint64_t i = 1; i < gnx - 1; ++i)
     {
         // up = q0[i + 1] - q0[i]
-        std::vector<double> up  = q0[i + 1];
+        state up  = q0[i + 1];
                             up -= q0[i];
 
         // um = q0[i] - q0[i - 1]
-        std::vector<double> um  = q0[i];
+        state um  = q0[i];
                             um -= q0[i - 1];
 
         slope[i] = minmod_theta(up, um, theta_);

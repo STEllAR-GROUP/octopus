@@ -259,7 +259,7 @@ octree_client::get_location_async() const
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-hpx::future<vector3d<std::vector<double> > >
+hpx::future<vector3d<state> >
 octree_client::send_interpolated_ghost_zone_async(
     face f ///< Direction, relative to us 
     ) const
@@ -274,7 +274,7 @@ octree_client::send_interpolated_ghost_zone_async(
         (gid_, f, offset_);
 }
 
-hpx::future<vector3d<std::vector<double> > >
+hpx::future<vector3d<state> >
 octree_client::send_mapped_ghost_zone_async(
     face f ///< Direction, relative to us 
     ) const
@@ -289,7 +289,7 @@ octree_client::send_mapped_ghost_zone_async(
         (gid_, face_);
 }
 
-vector3d<std::vector<double> > octree_client::send_ghost_zone(
+vector3d<state> octree_client::send_ghost_zone(
     face f ///< Direction, relative to us 
     ) const
 {
@@ -306,10 +306,10 @@ vector3d<std::vector<double> > octree_client::send_ghost_zone(
     }
 
     OCTOPUS_ASSERT(false);
-    return vector3d<std::vector<double> >();
+    return vector3d<state>();
 }
 
-hpx::future<vector3d<std::vector<double> > > 
+hpx::future<vector3d<state> > 
 octree_client::send_ghost_zone_async(
     face f ///< Direction, relative to us. 
     ) const
@@ -327,7 +327,7 @@ octree_client::send_ghost_zone_async(
     }
 
     OCTOPUS_ASSERT(false);
-    return hpx::future<vector3d<std::vector<double> > >();
+    return hpx::future<vector3d<state> >();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -335,7 +335,7 @@ hpx::future<void> octree_client::receive_ghost_zone_async(
     boost::uint64_t step ///< For debugging purposes.
   , boost::uint64_t phase 
   , face f ///< Relative to caller.
-  , BOOST_RV_REF(vector3d<std::vector<double> >) zone
+  , BOOST_RV_REF(vector3d<state>) zone
     ) const
 {
     ensure_real();
@@ -347,7 +347,7 @@ void octree_client::receive_ghost_zone_push(
     boost::uint64_t step ///< For debugging purposes.
   , boost::uint64_t phase 
   , face f ///< Relative to caller.
-  , BOOST_RV_REF(vector3d<std::vector<double> >) zone
+  , BOOST_RV_REF(vector3d<state>) zone
     ) const
 {
     ensure_real();
@@ -370,7 +370,7 @@ hpx::future<void> octree_client::receive_child_state_async(
     boost::uint64_t step ///< For debugging purposes.
   , boost::uint64_t phase 
   , child_index idx 
-  , BOOST_RV_REF(vector3d<std::vector<double> >) zone
+  , BOOST_RV_REF(vector3d<state>) zone
     ) const
 {
     ensure_real();
@@ -382,7 +382,7 @@ void octree_client::receive_child_state_push(
     boost::uint64_t step ///< For debugging purposes.
   , boost::uint64_t phase 
   , child_index idx 
-  , BOOST_RV_REF(vector3d<std::vector<double> >) zone
+  , BOOST_RV_REF(vector3d<state>) zone
     ) const
 {
     ensure_real();

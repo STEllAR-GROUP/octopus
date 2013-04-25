@@ -39,34 +39,34 @@ double KAPPA = 1.0;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Mass density
-inline double&       rho(std::vector<double>& u)       { return u[0]; }
-inline double const& rho(std::vector<double> const& u) { return u[0]; }
+inline double&       rho(state& u)       { return u[0]; }
+inline double const& rho(state const& u) { return u[0]; }
 
 /// Momentum density (X-axis)
-inline double&       momentum_x(std::vector<double>& u)       { return u[1]; }
-inline double const& momentum_x(std::vector<double> const& u) { return u[1]; }
+inline double&       momentum_x(state& u)       { return u[1]; }
+inline double const& momentum_x(state const& u) { return u[1]; }
 
 /// Momentum density (Y-axis)
-inline double&       momentum_y(std::vector<double>& u)       { return u[2]; }
-inline double const& momentum_y(std::vector<double> const& u) { return u[2]; }
+inline double&       momentum_y(state& u)       { return u[2]; }
+inline double const& momentum_y(state const& u) { return u[2]; }
 
 /// Momentum density (Z-axis)
-inline double&       momentum_z(std::vector<double>& u)       { return u[3]; }
-inline double const& momentum_z(std::vector<double> const& u) { return u[3]; }
+inline double&       momentum_z(state& u)       { return u[3]; }
+inline double const& momentum_z(state const& u) { return u[3]; }
 
 /// Total energy of the gas 
-inline double&       total_energy(std::vector<double>& u)       { return u[4]; }
-inline double const& total_energy(std::vector<double> const& u) { return u[4]; }
+inline double&       total_energy(state& u)       { return u[4]; }
+inline double const& total_energy(state const& u) { return u[4]; }
 
 /// Entropy tracer
-inline double&       tau(std::vector<double>& u)       { return u[5]; }
-inline double const& tau(std::vector<double> const& u) { return u[5]; }
+inline double&       tau(state& u)       { return u[5]; }
+inline double const& tau(state const& u) { return u[5]; }
 
-inline double kinetic_energy(std::vector<double> const& state)
+inline double kinetic_energy(state const& s)
 {
-    return 0.5 * ( momentum_x(state) * momentum_x(state)
-                 + momentum_y(state) * momentum_y(state)
-                 + momentum_z(state) * momentum_z(state)) / rho(state);
+    return 0.5 * ( momentum_x(s) * momentum_x(s)
+                 + momentum_y(s) * momentum_y(s)
+                 + momentum_z(s) * momentum_z(s)) / rho(s);
 }
 
 template <octopus::axis Axis>
@@ -100,31 +100,31 @@ inline double gravity(boost::array<double, 3> const& v)
 
 /// Gas pressure - polytropic equation of state.
 // TODO: Make equation of state switch-able at runtime.
-double pressure(std::vector<double> const& state)
+double pressure(state const& s)
 {
-    OCTOPUS_ASSERT(total_energy(state) >= 0.0);
-    OCTOPUS_ASSERT(kinetic_energy(state) >= 0.0);
-    OCTOPUS_ASSERT(tau(state) >= 0.0);
+    OCTOPUS_ASSERT(total_energy(s) >= 0.0);
+    OCTOPUS_ASSERT(kinetic_energy(s) >= 0.0);
+    OCTOPUS_ASSERT(tau(s) >= 0.0);
 
     //Polytropic equation of state.
     //return KAPPA * std::pow(rho(state), GAMMA);
 
     //Ideal gas equation of state.
     double const internal_energy
-        = total_energy(state) - kinetic_energy(state);
+        = total_energy(s) - kinetic_energy(s);
     
-    if (internal_energy > 0.001 * total_energy(state))
+    if (internal_energy > 0.001 * total_energy(s))
         return (GAMMA-1.0)*internal_energy;
     else
-        return (GAMMA-1.0)*(std::pow(tau(state),GAMMA));        
+        return (GAMMA-1.0)*(std::pow(tau(s),GAMMA));        
 
 }
 
-double speed_of_sound(std::vector<double> const& state)
+double speed_of_sound(state const& s)
 {
-    OCTOPUS_ASSERT(rho(state) > 0.0);
-    OCTOPUS_ASSERT(pressure(state) >= 0.0);
-    return std::sqrt(GAMMA * pressure(state) / rho(state)); 
+    OCTOPUS_ASSERT(rho(s) > 0.0);
+    OCTOPUS_ASSERT(pressure(s) >= 0.0);
+    return std::sqrt(GAMMA * pressure(s) / rho(s)); 
 }
 
 
@@ -219,9 +219,9 @@ struct enforce_outflow : octopus::trivial_serialization
 // FIXME: This should live in <octopus/science/> and be a default.
 struct reflect_z : octopus::trivial_serialization
 {
-    void operator()(std::vector<double>& state) const
+    void operator()(state& s) const
     {
-        momentum_z(state) = -momentum_z(state);
+        momentum_z(s) = -momentum_z(s);
     }
 };
 
@@ -230,20 +230,20 @@ struct max_eigenvalue : octopus::trivial_serialization
     double operator()(
         octopus::octree_server& U
       , octopus::axis a
-      , std::vector<double> const& state
+      , state const& s
         ) const
     {
         boost::array<double, 3> coords;
         coords[0] = 0.0;
         coords[1] = 0.0;
         coords[2] = 0.0;
-        return (*this)(U, a, state, coords);
+        return (*this)(U, a, s, coords);
     }
 
     double operator()(
         octopus::octree_server& U
       , octopus::axis a
-      , std::vector<double> const& state
+      , state const& s
       , boost::array<double, 3> const& 
         ) const
     {
@@ -252,16 +252,16 @@ struct max_eigenvalue : octopus::trivial_serialization
         switch (a)
         {
             case octopus::x_axis:
-                return abs(momentum_x(state) / rho(state)) // velocity
-                     + speed_of_sound(state);
+                return abs(momentum_x(s) / rho(s)) // velocity
+                     + speed_of_sound(s);
 
             case octopus::y_axis:
-                return abs(momentum_y(state) / rho(state)) // velocity
-                     + speed_of_sound(state);
+                return abs(momentum_y(s) / rho(s)) // velocity
+                     + speed_of_sound(s);
 
             case octopus::z_axis:
-                return abs(momentum_z(state) / rho(state)) // velocity
-                     + speed_of_sound(state);
+                return abs(momentum_z(s) / rho(s)) // velocity
+                     + speed_of_sound(s);
 
             default: { OCTOPUS_ASSERT(false); break; }
         }
@@ -288,7 +288,7 @@ struct cfl_treewise_compute_timestep : octopus::trivial_serialization
             {
               for (boost::uint64_t k = bw; k < (gnx-bw); ++k)
                 {
-                    std::vector<double> const& u = U(i, j, k);
+                    state const& u = U(i, j, k);
                     double const dx = U.get_dx(); 
 
                     // FIXME: 0.4 shouldn't be hard coded.  
@@ -373,7 +373,7 @@ struct cfl_predict_timestep
 struct conserved_to_primitive : octopus::trivial_serialization
 {
     void operator()(
-        std::vector<double>& u
+        state& u
       , boost::array<double, 3> const& v
         ) const
     {
@@ -387,7 +387,7 @@ struct conserved_to_primitive : octopus::trivial_serialization
 struct primitive_to_conserved : octopus::trivial_serialization
 {
     void operator()(
-        std::vector<double>& u
+        state& u
       , boost::array<double, 3> const& X
         ) const
     {
@@ -400,13 +400,13 @@ struct primitive_to_conserved : octopus::trivial_serialization
 
 struct source : octopus::trivial_serialization
 {
-    std::vector<double> operator()(
+    state operator()(
         octopus::octree_server& U
-      , std::vector<double> const& u
+      , state const& u
       , boost::array<double, 3> const& coords
         ) const
     {
-        std::vector<double> s(octopus::science().state_size);
+        state s;
         
         momentum_x(s) = rho(u)*gravity<octopus::x_axis>(coords);
         momentum_y(s) = rho(u)*gravity<octopus::y_axis>(coords);
@@ -419,7 +419,7 @@ struct source : octopus::trivial_serialization
 struct enforce_lower_limits : octopus::trivial_serialization
 {
     void operator()(
-        std::vector<double>& u
+        state& u
       , boost::array<double, 3> const& coords 
         ) const
     {
@@ -439,16 +439,16 @@ struct enforce_lower_limits : octopus::trivial_serialization
 
 struct flux : octopus::trivial_serialization
 {
-    std::vector<double> operator()(
+    state operator()(
         octopus::octree_server& U
       , octopus::axis a 
-      , std::vector<double>& u
+      , state& u
       , boost::array<double, 3> const& coords
         ) const
     {
         double p = pressure(u);
  
-        std::vector<double> fl(u);
+        state fl(u);
 
         switch (a)
         {
@@ -505,9 +505,9 @@ struct refine_by_density
   : octopus::elementwise_refinement_criteria_base<refine_by_density>
 {
     /// Returns true if we should refine the region that contains this point.
-    bool refine(std::vector<double> const& state)
+    bool refine(state const& s)
     {
-        if (rho(state) > min_refine_rho)
+        if (rho(s) > min_refine_rho)
             return true;
         else
             return false;
@@ -515,7 +515,7 @@ struct refine_by_density
 
     /// If this returns true for all regions in a point, that region will be
     /// unrefined.
-    bool unrefine(std::vector<double> const& state)
+    bool unrefine(state const& s)
     {
         // Unused currently.
         return false;
@@ -548,8 +548,6 @@ void octopus_define_problem(
         << ( boost::format("kappa                       = %lf\n")
            % KAPPA)
         << "\n";
-
-    sci.state_size = 6;
 
     sci.initialize = initialize();
     sci.enforce_outflow = enforce_outflow();

@@ -58,8 +58,6 @@ void octopus_define_problem(
            % R_outer)
         << "\n";
 
-    sci.state_size = 6;
-
     sci.initialize = initialize(eps, R_outer);
     sci.enforce_outflow = enforce_outflow();
     sci.reflect_z = reflect_z();

@@ -15,6 +15,7 @@
 #include <octopus/child_index.hpp>
 #include <octopus/face.hpp>
 #include <octopus/axis.hpp>
+#include <octopus/state.hpp>
 
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/array.hpp>
@@ -46,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, boundary_kind k)
         case real_boundary:     os << "real_boundary"; break; 
         case physical_boundary: os << "physical_boundary"; break; 
         case amr_boundary:      os << "amr_boundary"; break; 
-        default: os << "invalid_boundary"; break; 
+        default:                os << "invalid_boundary"; break; 
     }
     return os;
 }
@@ -534,7 +535,7 @@ struct OCTOPUS_EXPORT octree_client
     // {{{ Boundary forwarding code (implementation has moved to the server) 
   private:
     // AMR boundary.
-    vector3d<std::vector<double> >
+    vector3d<state>
     send_interpolated_ghost_zone(
         face f ///< Direction, relative to us 
         ) const
@@ -543,13 +544,13 @@ struct OCTOPUS_EXPORT octree_client
     }
 
     // AMR boundary.
-    hpx::future<vector3d<std::vector<double> > >
+    hpx::future<vector3d<state> >
     send_interpolated_ghost_zone_async(
         face f ///< Direction, relative to us 
         ) const;
 
     // Physical boundary. 
-    vector3d<std::vector<double> > send_mapped_ghost_zone(
+    vector3d<state> send_mapped_ghost_zone(
         face f ///< Direction, relative to us 
         ) const
     {
@@ -557,7 +558,7 @@ struct OCTOPUS_EXPORT octree_client
     }
 
     // Physical boundary. 
-    hpx::future<vector3d<std::vector<double> > > send_mapped_ghost_zone_async(
+    hpx::future<vector3d<state> > send_mapped_ghost_zone_async(
         face f ///< Direction, relative to us 
         ) const;
     // }}}
@@ -565,11 +566,11 @@ struct OCTOPUS_EXPORT octree_client
   public:
     ///////////////////////////////////////////////////////////////////////////
     // {{{ send_ghost_zone
-    vector3d<std::vector<double> > send_ghost_zone(
+    vector3d<state> send_ghost_zone(
         face f
         ) const;
 
-    hpx::future<vector3d<std::vector<double> > > send_ghost_zone_async(
+    hpx::future<vector3d<state> > send_ghost_zone_async(
         face f
         ) const;
     // }}}
@@ -580,7 +581,7 @@ struct OCTOPUS_EXPORT octree_client
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
       , face f ///< Relative to caller.
-      , BOOST_RV_REF(vector3d<std::vector<double> >) zone
+      , BOOST_RV_REF(vector3d<state>) zone
         ) const
     {
         receive_ghost_zone_async(step, phase, f, boost::move(zone)).get();
@@ -590,14 +591,14 @@ struct OCTOPUS_EXPORT octree_client
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
       , face f ///< Relative to caller.
-      , BOOST_RV_REF(vector3d<std::vector<double> >) zone
+      , BOOST_RV_REF(vector3d<state>) zone
         ) const;
 
     void receive_ghost_zone_push(
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
       , face f ///< Relative to caller.
-      , BOOST_RV_REF(vector3d<std::vector<double> >) zone
+      , BOOST_RV_REF(vector3d<state>) zone
         ) const;
     // }}}
 
@@ -621,7 +622,7 @@ struct OCTOPUS_EXPORT octree_client
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
       , child_index idx 
-      , BOOST_RV_REF(vector3d<std::vector<double> >) zone
+      , BOOST_RV_REF(vector3d<state>) zone
         ) const
     {
         receive_child_state_async(step, phase, idx, boost::move(zone)).get();
@@ -631,14 +632,14 @@ struct OCTOPUS_EXPORT octree_client
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
       , child_index idx 
-      , BOOST_RV_REF(vector3d<std::vector<double> >) zone
+      , BOOST_RV_REF(vector3d<state>) zone
         ) const;
 
     void receive_child_state_push(
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
       , child_index idx 
-      , BOOST_RV_REF(vector3d<std::vector<double> >) zone
+      , BOOST_RV_REF(vector3d<state>) zone
         ) const;
     // }}}
 
@@ -765,14 +766,14 @@ struct OCTOPUS_EXPORT octree_client
 
     template <typename T>
     T reduce_zonal(
-        hpx::util::function<T(std::vector<double>&)> const& f
+        hpx::util::function<T(state&)> const& f
       , hpx::util::function<T(T const&, T const&)> const& reducer
       , T const& initial = T()
         ) const;
 
     template <typename T>
     hpx::future<T> reduce_zonal_async(
-        hpx::util::function<T(std::vector<double>&)> const& f
+        hpx::util::function<T(state&)> const& f
       , hpx::util::function<T(T const&, T const&)> const& reducer
       , T const& initial = T()
         ) const;

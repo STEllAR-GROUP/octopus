@@ -60,7 +60,7 @@ inline T octree_server::reduce(
 
 template <typename T>
 inline T octree_server::reduce_zonal(
-    hpx::util::function<T(std::vector<double>&)> const& f
+    hpx::util::function<T(state&)> const& f
   , hpx::util::function<T(T const&, T const&)> const& reducer
   , T const& initial
     ) 
@@ -130,7 +130,7 @@ inline hpx::future<T> octree_client::reduce_async(
 
 template <typename T>
 inline T octree_client::reduce_zonal(
-    hpx::util::function<T(std::vector<double>&)> const& f
+    hpx::util::function<T(state&)> const& f
   , hpx::util::function<T(T const&, T const&)> const& reducer
   , T const& initial 
     ) const 
@@ -140,7 +140,7 @@ inline T octree_client::reduce_zonal(
 
 template <typename T>
 inline hpx::future<T> octree_client::reduce_zonal_async(
-    hpx::util::function<T(std::vector<double>&)> const& f
+    hpx::util::function<T(state&)> const& f
   , hpx::util::function<T(T const&, T const&)> const& reducer
   , T const& initial
     ) const

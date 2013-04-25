@@ -33,9 +33,6 @@ namespace octopus
 // NOTE: Users should never copy this.
 struct science_table
 {
-    boost::uint64_t state_size;  /// Number of doubles needed for state for
-                                 /// each discrete value (zone) on the grid.
-
     /// Defines the physical boundaries. Returns true if a face at a location in
     /// the octree and a particular level of refinement is a physical boundary. 
     hpx::util::function<
@@ -51,9 +48,9 @@ struct science_table
     // vector3d instead.
     hpx::util::function<
         void(
-            std::vector<std::vector<double> > const&
-          , std::vector<std::vector<double> >&
-          , std::vector<std::vector<double> >&
+            std::vector<state> const&
+          , std::vector<state>&
+          , std::vector<state>&
             )
     > reconstruct; 
 
@@ -70,20 +67,20 @@ struct science_table
 
     hpx::util::function<
         void(
-            std::vector<double>& 
+            state& 
           , boost::array<double, 3> const&
             )
     > enforce_limits; 
 
     hpx::util::function<
-        void(std::vector<double>&)
+        void(state&)
     > reflect_z; 
 
     hpx::util::function<
         double(
             octree_server&
           , axis
-          , std::vector<double> const& ///< State 
+          , state const& ///< State 
           , boost::array<double, 3> const& 
             )
     > max_eigenvalue; 
@@ -108,31 +105,31 @@ struct science_table
 
     hpx::util::function<
         void(
-            std::vector<double>& 
+            state& 
           , boost::array<double, 3> const&
             )
     > conserved_to_primitive; 
 
     hpx::util::function<
         void(
-            std::vector<double>& 
+            state& 
           , boost::array<double, 3> const&
             )
     > primitive_to_conserved; 
 
     hpx::util::function<
-        std::vector<double>(
+        state(
             octree_server&
-          , std::vector<double> const& 
+          , state const& 
           , boost::array<double, 3> const&
             )
     > source; 
 
     hpx::util::function<
-        std::vector<double>(
+        state(
             octree_server&
           , axis
-          , std::vector<double>& ///< State 
+          , state& ///< State 
           , boost::array<double, 3> const& 
             )
     > flux; 
@@ -142,8 +139,7 @@ struct science_table
     writer output;
 
     science_table()
-     : state_size(0)
-     , physical_boundaries()
+     : physical_boundaries()
      , reconstruct()
      , ghost_zone_width(0)
      , initialize()
@@ -165,8 +161,6 @@ struct science_table
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int version)
     {
-        ar & state_size;
-
         ar & physical_boundaries;
         ar & reconstruct;
         ar & ghost_zone_width;

@@ -10,8 +10,7 @@
 #define OCTOPUS_0091D3AA_2B0C_4069_80E5_9EA08E57C45F
 
 #include <octopus/config.hpp>
-
-#include <vector>
+#include <octopus/state.hpp>
 
 namespace octopus
 {
@@ -28,9 +27,9 @@ struct OCTOPUS_EXPORT minmod_reconstruction
     enum { ghost_zone_width = 2 };
 
     void operator()(
-        std::vector<std::vector<double> > const& q0
-      , std::vector<std::vector<double> >& ql
-      , std::vector<std::vector<double> >& qr
+        std::vector<state> const& q0
+      , std::vector<state>& ql
+      , std::vector<state>& qr
         ) const;
 
     template <typename Archive>
