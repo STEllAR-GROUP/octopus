@@ -16,7 +16,7 @@
 #include <hpx/lcos/local/mutex.hpp>
 #include <hpx/lcos/local/channel.hpp>
 
-#include <octopus/array1d.hpp>
+#include <octopus/array.hpp>
 #include <octopus/octree/octree_init_data.hpp>
 #include <octopus/octree/octree_client.hpp>
 #include <octopus/atomic_bitset.hpp>
@@ -52,7 +52,7 @@ struct OCTOPUS_EXPORT oid_type
 {
   private:
     boost::uint64_t level_;
-    boost::array<boost::uint64_t, 3> location_;
+    array<boost::uint64_t, 3> location_;
     hpx::id_type gid_;
 
     friend std::ostream& operator<<(std::ostream& os, oid_type const& id);
@@ -99,7 +99,7 @@ struct OCTOPUS_EXPORT interpolation_data
 {
     octree_client subject;
     face direction;
-    boost::array<boost::int64_t, 3> offset;
+    array<boost::int64_t, 3> offset;
 
     interpolation_data() : subject(), direction()
     {
@@ -115,7 +115,7 @@ struct OCTOPUS_EXPORT interpolation_data
     interpolation_data(
         octree_client const& s
       , face d
-      , boost::array<boost::int64_t, 3> o
+      , array<boost::int64_t, 3> o
         )
       : subject(s), direction(d), offset(o)
     {}
@@ -181,15 +181,15 @@ struct OCTOPUS_EXPORT octree_server
 //    atomic_bitset<8> marked_for_refinement_;
     std::bitset<8> marked_for_refinement_;
  
-    typedef array1d<
+    typedef array<
         hpx::lcos::local::channel<vector3d<state> >, 6
     > sibling_state_dependencies;
   
-    typedef array1d<
+    typedef array<
         hpx::lcos::local::channel<vector3d<state> >, 8
     > children_state_dependencies;
 
-    typedef array1d<
+    typedef array<
         hpx::lcos::local::channel<void>, 6
     > sibling_sync_dependencies;
 
@@ -232,12 +232,12 @@ struct OCTOPUS_EXPORT octree_server
     ///////////////////////////////////////////////////////////////////////////
     // From OctNode
     octree_client parent_; 
-    boost::array<octree_client, 8> children_;
-    boost::array<octree_client, 6> siblings_; // FIXME: Misleading, should be
+    array<octree_client, 8> children_;
+    array<octree_client, 6> siblings_; // FIXME: Misleading, should be
                                               // neighbors.
     std::set<interpolation_data> nephews_;
     boost::uint64_t level_;
-    boost::array<boost::uint64_t, 3> location_; 
+    array<boost::uint64_t, 3> location_; 
 
     ///////////////////////////////////////////////////////////////////////////
     // From Grid/GridNode (mostly)
@@ -256,10 +256,10 @@ struct OCTOPUS_EXPORT octree_server
     double time_; ///< The current (physics?) time.
                   ///  NOTE: Confirmation needed from Dominic.
 
-    boost::array<boost::int64_t, 3> offset_; ///< NOTE: Not sure if this needs
-                                             ///  be signed. 
+    array<boost::int64_t, 3> offset_; ///< NOTE: Not sure if this needs
+                                      ///  be signed. 
 
-    boost::array<double, 3> origin_; ///< The origin of the cartesian grid.
+    array<double, 3> origin_; ///< The origin of the cartesian grid.
                                      ///  NOTE: Confirmation needed from
                                      ///  from Dominic.
 
@@ -489,52 +489,52 @@ struct OCTOPUS_EXPORT octree_server
     }
 */
 
-    boost::array<double, 3> center_coords(
+    array<double, 3> center_coords(
         boost::uint64_t i
       , boost::uint64_t j
       , boost::uint64_t k
         ) const
     {
-        boost::array<double, 3> coords;
+        array<double, 3> coords;
         coords[0] = x_center(i);
         coords[1] = y_center(j);
         coords[2] = z_center(k);
         return coords;
     }
 
-    boost::array<double, 3> x_face_coords(
+    array<double, 3> x_face_coords(
         boost::uint64_t i
       , boost::uint64_t j
       , boost::uint64_t k
         ) const
     {
-    	boost::array<double, 3> coords;
+    	array<double, 3> coords;
         coords[0] = x_face(i);
         coords[1] = y_center(j);
         coords[2] = z_center(k);
     	return coords;
     }
 
-    boost::array<double, 3> y_face_coords(
+    array<double, 3> y_face_coords(
         boost::uint64_t i
       , boost::uint64_t j
       , boost::uint64_t k
         ) const
     {
-    	boost::array<double, 3> coords;
+    	array<double, 3> coords;
         coords[0] = x_center(i);
         coords[1] = y_face(j);
         coords[2] = z_center(k);
     	return coords;
     }
     
-    boost::array<double, 3> z_face_coords(
+    array<double, 3> z_face_coords(
         boost::uint64_t i
       , boost::uint64_t j
       , boost::uint64_t k
         ) const
     {
-    	boost::array<double, 3> coords;
+    	array<double, 3> coords;
         coords[0] = x_center(i);
         coords[1] = y_center(j);
         coords[2] = z_face(k);
@@ -719,7 +719,7 @@ struct OCTOPUS_EXPORT octree_server
                                        get_oid_action);
 
     ///////////////////////////////////////////////////////////////////////////
-    boost::array<octree_client, 6> get_siblings() const
+    array<octree_client, 6> get_siblings() 
     {
         // Make sure that we are initialized.
         //initialized_.wait();
@@ -735,7 +735,7 @@ struct OCTOPUS_EXPORT octree_server
 
     ///////////////////////////////////////////////////////////////////////////
     // FIXME: Remove the need for this.
-    boost::array<boost::int64_t, 3> get_offset() const
+    array<boost::int64_t, 3> get_offset() const
     {
         return offset_;
     }
@@ -746,7 +746,7 @@ struct OCTOPUS_EXPORT octree_server
 
     ///////////////////////////////////////////////////////////////////////////
     // Purely for debugging. 
-    boost::array<boost::uint64_t, 3> get_location() const
+    array<boost::uint64_t, 3> get_location() const
     {
         return location_;
     }
@@ -835,7 +835,7 @@ struct OCTOPUS_EXPORT octree_server
     vector3d<state> send_interpolated_ghost_zone(
         face f ///< Our direction, relative to the caller.
 //      , boost::uint64_t disparity ///< Difference in refinement level
-      , boost::array<boost::int64_t, 3> offset
+      , array<boost::int64_t, 3> offset
         );
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,

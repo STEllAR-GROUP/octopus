@@ -338,7 +338,7 @@ void perform_write(
                 variables[index] = e(i, j, k)[variable_index];
             }
 
-    boost::array<boost::uint64_t, 3> location = e.get_location();
+    array<boost::uint64_t, 3> location = e.get_location();
 
     std::string mesh_name
         = boost::str( boost::format("mesh_L%i_%i_%i_%i")

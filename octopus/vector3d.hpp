@@ -194,12 +194,12 @@ struct vector3d
         return data_[x + y * x_length_ + z * x_length_ * y_length_];
     }
 
-    T& operator()(boost::array<size_type, 3> const& xyz)
+    T& operator()(array<size_type, 3> const& xyz)
     {
         return (*this)(xyz[0], xyz[1], xyz[2]);
     }
 
-    T const& operator()(boost::array<size_type, 3> const& xyz) const
+    T const& operator()(array<size_type, 3> const& xyz) const
     {
         return (*this)(xyz[0], xyz[1], xyz[2]);
     }
@@ -234,6 +234,7 @@ bool same_dimensions(
         ;
 }
 
+#if 0
 #define OCTOPUS_DEFINE_ARITHMETIC_ASSIGNMENT_OPERATOR(OP)                     \
     template <typename T0, typename T1>                                       \
     vector3d<T0>& operator OP(                                                \
@@ -312,6 +313,7 @@ OCTOPUS_DEFINE_ARITHMETIC_OPERATOR(*)
 OCTOPUS_DEFINE_ARITHMETIC_OPERATOR(/)
 
 #undef OCTOPUS_DEFINE_ARITHMETIC_OPERATOR
+#endif
 
 }
 

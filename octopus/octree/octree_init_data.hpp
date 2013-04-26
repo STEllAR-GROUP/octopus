@@ -47,14 +47,14 @@ struct octree_init_data
       , step(other.step)
     {}
 
-    hpx::id_type                     parent;
-    boost::uint64_t                  level;
-    boost::array<boost::uint64_t, 3> location;
-    double                           dx;
-    double                           time; 
-    boost::array<boost::int64_t, 3>  offset; 
-    boost::array<double, 3>          origin;
-    boost::uint64_t                  step;
+    hpx::id_type              parent;
+    boost::uint64_t           level;
+    array<boost::uint64_t, 3> location;
+    double                    dx;
+    double                    time; 
+    array<boost::int64_t, 3>  offset; 
+    array<double, 3>          origin;
+    boost::uint64_t           step;
 
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int version)

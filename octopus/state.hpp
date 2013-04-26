@@ -8,12 +8,12 @@
 #if !defined(OCTOPUS_AD1535F4_875D_446D_9D95_F6B698FCAD7A)
 #define OCTOPUS_AD1535F4_875D_446D_9D95_F6B698FCAD7A
 
-#include <boost/array.hpp>
+#include <octopus/array.hpp>
 
 namespace octopus
 {
 
-typedef boost::array<double, 6> state;
+typedef array<double, 6> state;
 
 }
 

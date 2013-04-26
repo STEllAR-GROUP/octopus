@@ -11,10 +11,10 @@
 
 #include <octopus/assert.hpp>
 #include <octopus/face.hpp>
+#include <octopus/array.hpp>
 
 #include <boost/serialization/access.hpp>
 #include <boost/cstdint.hpp>
-#include <boost/array.hpp>
 
 #include <ostream>
 
@@ -96,9 +96,9 @@ struct child_index
             packed_ |= 4;
     }
 
-    boost::array<boost::uint64_t, 3> array() const
+    array<boost::uint64_t, 3> array() const
     {
-        boost::array<boost::uint64_t, 3> a;
+        array<boost::uint64_t, 3> a;
         a[0] = x();
         a[1] = y();
         a[2] = z();

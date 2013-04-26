@@ -109,8 +109,6 @@ void octree_server::parent_to_child_injection(
         {
             state const& u = parent_U(i0, j0, k0);
 
-            using namespace octopus::operators;
-
             s1 = minmod(parent_U(i0 + 1, j0, k0) - u
                       , u - parent_U(i0 - 1, j0, k0));
 
@@ -266,8 +264,6 @@ double octree_server::x_face(boost::uint64_t i) const
     boost::uint64_t const bw = science().ghost_zone_width;
     double const grid_dim = config().spatial_domain;
 
-    using namespace octopus::operators;
-
     return double(offset_[0] + i) * dx_ - grid_dim - bw * dx0_ - origin_[0];
 } // }}}
 
@@ -278,8 +274,6 @@ double octree_server::y_face(boost::uint64_t i) const
     boost::uint64_t const bw = science().ghost_zone_width;
     double const grid_dim = config().spatial_domain;
 
-    using namespace octopus::operators;
-
     return double(offset_[1] + i) * dx_ - grid_dim - bw * dx0_ - origin_[1];
 } // }}}
 
@@ -289,8 +283,6 @@ double octree_server::z_face(boost::uint64_t i) const
 { // {{{
     boost::uint64_t const bw = science().ghost_zone_width;
     double const grid_dim = config().spatial_domain;
-
-    using namespace octopus::operators;
 
     if (config().reflect_on_z)
         return double(offset_[2] + i) * dx_ - bw * dx0_ - origin_[2];
@@ -467,8 +459,6 @@ void octree_server::create_child(
 
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
-
-    using namespace octopus::operators;
 
     kid_init.parent   = reference_from_this(); 
     kid_init.level    = level_ + 1; 
@@ -949,7 +939,7 @@ vector3d<state> octree_server::send_ghost_zone(
                         boost::uint64_t const jj = j - bw;
                         boost::uint64_t const kk = k - bw; 
 
-                        zone(ii, jj, kk) = (*U_)(-static_cast<boost::int64_t>(gnx) + 2 * bw + i, j, k);
+                        zone(ii, jj, kk) = (*U_)(2 * bw + i - gnx, j, k);
                     }
 
             return zone;
@@ -1008,7 +998,7 @@ vector3d<state> octree_server::send_ghost_zone(
                         boost::uint64_t const jj = j - (gnx - bw);
                         boost::uint64_t const kk = k - bw; 
 
-                        zone(ii, jj, kk) = (*U_)(i, -static_cast<boost::int64_t>(gnx) + 2 * bw + j, k);
+                        zone(ii, jj, kk) = (*U_)(i, 2 * bw + j - gnx, k);
                     }
 
             return zone;
@@ -1066,7 +1056,7 @@ vector3d<state> octree_server::send_ghost_zone(
                         boost::uint64_t const jj = j - bw; 
                         boost::uint64_t const kk = k - (gnx - bw);
 
-                        zone(ii, jj, kk) = (*U_)(i, j, -static_cast<boost::int64_t>(gnx) + 2 * bw + k);
+                        zone(ii, jj, kk) = (*U_)(i, j, 2 * bw + k - gnx);
                     }
 
             return zone;
@@ -1086,7 +1076,7 @@ vector3d<state> octree_server::send_ghost_zone(
 ///////////////////////////////////////////////////////////////////////////////
 vector3d<state> octree_server::send_interpolated_ghost_zone(
     face f ///< Our direction, relative to the caller.
-  , boost::array<boost::int64_t, 3> amr_offset
+  , array<boost::int64_t, 3> amr_offset
     ) 
 { // {{{
     boost::uint64_t const bw = science().ghost_zone_width;
@@ -1113,8 +1103,6 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
                 for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k)
                     {
-                        using namespace octopus::operators;
-
                         ///////////////////////////////////////////////////////
                         // Adjusted indices 
                         boost::uint64_t const i_out = i - bw;
@@ -1164,8 +1152,6 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
                 for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
                     {
-                        using namespace octopus::operators;
-
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (output). 
                         boost::uint64_t const i_out = i - (gnx - 2 * bw);
@@ -1217,8 +1203,6 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
                 for (boost::uint64_t j = bw; j < (2 * bw); ++j)
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
                     {
-                        using namespace octopus::operators;
-
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (output). 
                         boost::uint64_t const i_out = i - bw;
@@ -1268,8 +1252,6 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
                 for (boost::uint64_t j = gnx - 2 * bw; j < (gnx - bw); ++j)
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
                     {
-                        using namespace octopus::operators;
-
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (output). 
                         boost::uint64_t const i_out = i - bw;
@@ -1320,8 +1302,6 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
                 for (boost::uint64_t j = bw; j < (gnx - bw); ++j) 
                     for (boost::uint64_t k = bw; k < (2 * bw); ++k)
                     {
-                        using namespace octopus::operators;
-
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (output). 
                         boost::uint64_t const i_out = i - bw;
@@ -1371,8 +1351,6 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
                 for (boost::uint64_t j = bw; j < (gnx - bw); ++j) 
                     for (boost::uint64_t k = gnx - 2 * bw; k < (gnx - bw); ++k)
                     {
-                        using namespace octopus::operators;
-
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (output). 
                         boost::uint64_t const i_out = i - bw;
@@ -1421,7 +1399,7 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
 } // }}}
 
 // FIXME: Range checking.
-boost::array<boost::uint64_t, 3> map_location(
+array<boost::uint64_t, 3> map_location(
     face f ///< Our direction, relative to the caller.
   , boost::uint64_t i
   , boost::uint64_t j
@@ -1432,7 +1410,7 @@ boost::array<boost::uint64_t, 3> map_location(
     boost::uint64_t const gnx = config().grid_node_length;
     bool const reflect_on_z = config().reflect_on_z;
 
-    boost::array<boost::uint64_t, 3> v;
+    array<boost::uint64_t, 3> v;
 
     v[0] = i;
     v[1] = j;
@@ -1496,7 +1474,7 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
                 for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
                     {
-                        boost::array<boost::uint64_t, 3> v =
+                        array<boost::uint64_t, 3> v =
                             map_location(f, gnx - 2 * bw + i, j, k);
 
                         // Adjusted indices (for output ghost zone). 
@@ -1529,8 +1507,8 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
                 for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
                     {
-                        boost::array<boost::uint64_t, 3> v =
-                            map_location(f, -static_cast<boost::int64_t>(gnx) + 2 * bw + i, j, k);
+                        array<boost::uint64_t, 3> v =
+                            map_location(f, 2 * bw + i - gnx, j, k);
 
                         // Adjusted indices (for output ghost zone). 
                         boost::uint64_t const ii = i - (gnx - bw);
@@ -1564,7 +1542,7 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
                 for (boost::uint64_t j = 0; j < bw; ++j)
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
                     {
-                        boost::array<boost::uint64_t, 3> v =
+                        array<boost::uint64_t, 3> v =
                             map_location(f, i, gnx - 2 * bw + j, k);
 
                         // Adjusted indices (for output ghost zone). 
@@ -1597,8 +1575,8 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
                 for (boost::uint64_t j = gnx - bw; j < gnx; ++j)
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
                     {
-                        boost::array<boost::uint64_t, 3> v =
-                            map_location(f, i, -static_cast<boost::int64_t>(gnx) + 2 * bw + j, k);
+                        array<boost::uint64_t, 3> v =
+                            map_location(f, i, 2 * bw + j - gnx, k);
 
                         // Adjusted indices (for output ghost zone). 
                         boost::uint64_t const ii = i - bw;
@@ -1632,7 +1610,7 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
                 for (boost::uint64_t j = bw; j < (gnx - bw); ++j) 
                     for (boost::uint64_t k = 0; k < bw; ++k)
                     {
-                        boost::array<boost::uint64_t, 3> v =
+                        array<boost::uint64_t, 3> v =
                             map_location(f, i, j, gnx - 2 * bw + k);
 
                         // Adjusted indices (for output ghost zone). 
@@ -1670,8 +1648,8 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
                 for (boost::uint64_t j = bw; j < (gnx - bw); ++j) 
                     for (boost::uint64_t k = gnx - bw; k < gnx; ++k)
                     {
-                        boost::array<boost::uint64_t, 3> v =  
-                            map_location(f, i, j, -static_cast<boost::int64_t>(gnx) + 2 * bw + k);
+                        array<boost::uint64_t, 3> v =  
+                            map_location(f, i, j, 2 * bw + k - gnx);
 
                         // Adjusted indices (for output ghost zone). 
                         boost::uint64_t const ii = i - bw;
@@ -1839,8 +1817,6 @@ vector3d<state> octree_server::send_child_state()
                 boost::uint64_t const jj = ((j + bw) / 2) - bw; 
                 boost::uint64_t const kk = ((k + bw) / 2) - bw; 
 
-                using namespace octopus::operators;
-
                 state(ii, jj, kk)  = (*U_)(i + 0, j + 0, k + 0);
                 state(ii, jj, kk) += (*U_)(i + 1, j + 0, k + 0);
                 state(ii, jj, kk) += (*U_)(i + 0, j + 1, k + 0);
@@ -1969,13 +1945,11 @@ void octree_server::add_differentials_kernel(double dt, double beta)
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
 
-    using namespace octopus::operators;
-
     for (boost::uint64_t i = bw; i < gnx - bw; ++i)
         for (boost::uint64_t j = bw; j < gnx - bw; ++j)
             for (boost::uint64_t k = bw; k < gnx - bw; ++k)
             {
-                boost::array<double, 3> c = center_coords(i, j, k);
+                array<double, 3> c = center_coords(i, j, k);
 
                 D_(i, j, k) += science().source(*this, (*U_)(i, j, k), c);
 
@@ -2013,7 +1987,7 @@ void octree_server::compute_flux_kernel()
     // Compute our own local fluxes locally in parallel. 
 
     // Do two in other threads.
-    boost::array<hpx::future<void>, 2> xyz =
+    array<hpx::future<void>, 2> xyz =
     { {
         hpx::async(boost::bind
             (&octree_server::compute_x_flux_kernel, this/*, boost::ref(l)*/))
@@ -2045,7 +2019,7 @@ void octree_server::compute_x_flux_kernel()
             {
                 q0[i] = (*U_)(i, j, k);
     
-                boost::array<double, 3> coords = center_coords(i, j, k);
+                array<double, 3> coords = center_coords(i, j, k);
     
                 science().conserved_to_primitive(q0[i], coords);
             }
@@ -2054,7 +2028,7 @@ void octree_server::compute_x_flux_kernel()
     
             for (boost::uint64_t i = bw; i < gnx - bw + 1; ++i)
             {
-                boost::array<double, 3> coords = x_face_coords(i, j, k);
+                array<double, 3> coords = x_face_coords(i, j, k);
     
                 science().primitive_to_conserved(ql[i], coords);
                 science().primitive_to_conserved(qr[i], coords);
@@ -2067,8 +2041,6 @@ void octree_server::compute_x_flux_kernel()
                     ql_flux = science().flux(*this, x_axis, ql[i], coords),
                     qr_flux = science().flux(*this, x_axis, qr[i], coords);
     
-                using namespace octopus::operators;
-     
                 FX_(i, j, k) = ((ql_flux + qr_flux)
                              - (qr[i] - ql[i]) * a) * 0.5;
             }
@@ -2091,7 +2063,7 @@ void octree_server::compute_y_flux_kernel()
             {
                 q0[j] = (*U_)(i, j, k);
     
-                boost::array<double, 3> coords = center_coords(i, j, k);
+                array<double, 3> coords = center_coords(i, j, k);
     
                 science().conserved_to_primitive(q0[j], coords);
             }
@@ -2100,7 +2072,7 @@ void octree_server::compute_y_flux_kernel()
     
             for (boost::uint64_t j = bw; j < gnx - bw + 1; ++j)
             {
-                boost::array<double, 3> coords = y_face_coords(i, j, k);
+                array<double, 3> coords = y_face_coords(i, j, k);
     
                 science().primitive_to_conserved(ql[j], coords);
                 science().primitive_to_conserved(qr[j], coords);
@@ -2113,8 +2085,6 @@ void octree_server::compute_y_flux_kernel()
                     ql_flux = science().flux(*this, y_axis, ql[j], coords)
                   , qr_flux = science().flux(*this, y_axis, qr[j], coords);
      
-                using namespace octopus::operators;
-    
                 FY_(i, j, k) = ((ql_flux + qr_flux)
                              - (qr[j] - ql[j]) * a) * 0.5;
             }
@@ -2137,7 +2107,7 @@ void octree_server::compute_z_flux_kernel()
             {
                 q0[k] = (*U_)(i, j, k);
     
-                boost::array<double, 3> coords = center_coords(i, j, k);
+                array<double, 3> coords = center_coords(i, j, k);
 
                 science().conserved_to_primitive(q0[k], coords);
             }
@@ -2146,7 +2116,7 @@ void octree_server::compute_z_flux_kernel()
     
             for (boost::uint64_t k = bw; k < gnx - bw + 1; ++k)
             {
-                boost::array<double, 3> coords = z_face_coords(i, j, k);
+                array<double, 3> coords = z_face_coords(i, j, k);
     
                 science().primitive_to_conserved(ql[k], coords);
                 science().primitive_to_conserved(qr[k], coords);
@@ -2160,8 +2130,6 @@ void octree_server::compute_z_flux_kernel()
                   , qr_flux = science().flux(*this, z_axis, qr[k], coords)
                     ;
      
-                using namespace octopus::operators;
-    
                 FZ_(i, j, k) = ((ql_flux + qr_flux)
                              - (qr[k] - ql[k]) * a) * 0.5;
             }
@@ -2182,8 +2150,6 @@ void octree_server::sum_differentials_kernel()
 
     ///////////////////////////////////////////////////////////////////////////
     // Kernel.
-    using namespace octopus::operators;
-
     // NOTE: This is probably too tight a loop to parallelize with HPX, but
     // could be vectorized. 
     for (boost::uint64_t i = bw; i < gnx - bw; ++i)
@@ -2257,9 +2223,7 @@ void octree_server::mark_kernel()
         if (  !children_[i].real()
            && science().refine_policy.refine(*this, kid))
         {
-            using namespace octopus::operators;
-
-            boost::array<boost::uint64_t, 3> kid_location;
+            array<boost::uint64_t, 3> kid_location;
             kid_location = location_ * 2 + kid.array();
 
             OCTOPUS_ASSERT(children_[i] == hpx::invalid_id);
@@ -2277,7 +2241,7 @@ void octree_server::mark_kernel()
 
             if (amr_boundary == siblings_[r.exterior_x_face].kind())
             {
-                boost::array<boost::uint64_t, 3> dep_location;
+                array<boost::uint64_t, 3> dep_location;
                 dep_location = siblings_[r.exterior_x_face].get_location() * 2
                     + invert(r.exterior_x_face, get_child_index()).array();
                 markings.push_back
@@ -2287,7 +2251,7 @@ void octree_server::mark_kernel()
 
             if (amr_boundary == siblings_[r.exterior_y_face].kind())
             {
-                boost::array<boost::uint64_t, 3> dep_location;
+                array<boost::uint64_t, 3> dep_location;
                 dep_location = siblings_[r.exterior_y_face].get_location() * 2
                     + invert(r.exterior_y_face, get_child_index()).array();
                 markings.push_back
@@ -2297,7 +2261,7 @@ void octree_server::mark_kernel()
 
             if (amr_boundary == siblings_[r.exterior_z_face].kind())
             {
-                boost::array<boost::uint64_t, 3> dep_location;
+                array<boost::uint64_t, 3> dep_location;
                 dep_location = siblings_[r.exterior_z_face].get_location() * 2
                     + invert(r.exterior_z_face, get_child_index()).array();
                 markings.push_back
@@ -2325,16 +2289,14 @@ void octree_server::propagate_locked(
     std::vector<hpx::future<void> > markings;
     markings.reserve(3);
 
-    using namespace octopus::operators;
-
-    boost::array<boost::uint64_t, 3> kid_location;
+    array<boost::uint64_t, 3> kid_location;
     kid_location = location_ * 2 + kid.array();
 
     relatives r(kid);
 
     if (amr_boundary == siblings_[r.exterior_x_face].kind())
     {
-        boost::array<boost::uint64_t, 3> dep_location;
+        array<boost::uint64_t, 3> dep_location;
         dep_location = siblings_[r.exterior_x_face].get_location() * 2
             + invert(r.exterior_x_face, get_child_index()).array();
         markings.push_back
@@ -2344,7 +2306,7 @@ void octree_server::propagate_locked(
 
     if (amr_boundary == siblings_[r.exterior_y_face].kind())
     {
-        boost::array<boost::uint64_t, 3> dep_location;
+        array<boost::uint64_t, 3> dep_location;
         dep_location = siblings_[r.exterior_y_face].get_location() * 2
             + invert(r.exterior_y_face, get_child_index()).array();
         markings.push_back
@@ -2354,7 +2316,7 @@ void octree_server::propagate_locked(
 
     if (amr_boundary == siblings_[r.exterior_z_face].kind())
     {
-        boost::array<boost::uint64_t, 3> dep_location;
+        array<boost::uint64_t, 3> dep_location;
         dep_location = siblings_[r.exterior_z_face].get_location() * 2
             + invert(r.exterior_z_face, get_child_index()).array();
         markings.push_back
@@ -2479,8 +2441,6 @@ void octree_server::link_child(
 
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
-
-    using namespace octopus::operators;
 
     kid_init.parent   = reference_from_this(); 
     kid_init.level    = level_ + 1; 

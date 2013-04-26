@@ -24,8 +24,6 @@ void minmod_reconstruction::operator()(
 
     std::vector<state> slope(gnx, state());
 
-    using namespace octopus::operators;
-
     for (boost::uint64_t i = 1; i < gnx - 1; ++i)
     {
         // up = q0[i + 1] - q0[i]

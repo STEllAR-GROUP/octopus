@@ -96,7 +96,7 @@ struct OCTOPUS_EXPORT octree_client
     mutable child_index index_; 
 
     // FIXME: This is only used for AMR boundaries, optimize.
-    mutable boost::array<boost::int64_t, 3> offset_; ///< Relative offset.
+    mutable array<boost::int64_t, 3> offset_; ///< Relative offset.
     
     BOOST_COPYABLE_AND_MOVABLE(octree_client);
 
@@ -193,8 +193,8 @@ struct OCTOPUS_EXPORT octree_client
       , octree_client const& source  
       , face f ///< Relative to caller.
       , child_index index
-      , boost::array<boost::int64_t, 3> sib_offset
-      , boost::array<boost::int64_t, 3> source_offset
+      , array<boost::int64_t, 3> sib_offset
+      , array<boost::int64_t, 3> source_offset
         );
 
     // Physical boundary.
@@ -503,32 +503,32 @@ struct OCTOPUS_EXPORT octree_client
 
     ///////////////////////////////////////////////////////////////////////////
     // {{{ get_siblings
-    boost::array<octree_client, 6> get_siblings() const
+    array<octree_client, 6> get_siblings() const
     {
         return get_siblings_async().get();
     }
 
-    hpx::future<boost::array<octree_client, 6> > get_siblings_async() const;
+    hpx::future<array<octree_client, 6> > get_siblings_async() const;
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
     // {{{ get_offset
-    boost::array<boost::int64_t, 3> get_offset() const
+    array<boost::int64_t, 3> get_offset() const
     {
         return get_offset_async().get();
     }
 
-    hpx::future<boost::array<boost::int64_t, 3> > get_offset_async() const;
+    hpx::future<array<boost::int64_t, 3> > get_offset_async() const;
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
     // {{{ get_location
-    boost::array<boost::uint64_t, 3> get_location() const
+    array<boost::uint64_t, 3> get_location() const
     {
         return get_location_async().get();
     }
 
-    hpx::future<boost::array<boost::uint64_t, 3> > get_location_async() const;
+    hpx::future<array<boost::uint64_t, 3> > get_location_async() const;
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////

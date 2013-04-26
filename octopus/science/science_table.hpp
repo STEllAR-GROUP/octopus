@@ -37,7 +37,7 @@ struct science_table
     /// the octree and a particular level of refinement is a physical boundary. 
     hpx::util::function<
         bool(
-            boost::array<boost::int64_t, 3> const&
+            array<boost::int64_t, 3> const&
           , face
           , boost::uint64_t
             )
@@ -62,13 +62,13 @@ struct science_table
     > initialize;
 
     hpx::util::function<
-        void(face, boost::array<double, 3> const&)
+        void(face, array<double, 3> const&)
     > enforce_outflow; 
 
     hpx::util::function<
         void(
             state& 
-          , boost::array<double, 3> const&
+          , array<double, 3> const&
             )
     > enforce_limits; 
 
@@ -81,7 +81,7 @@ struct science_table
             octree_server&
           , axis
           , state const& ///< State 
-          , boost::array<double, 3> const& 
+          , array<double, 3> const& 
             )
     > max_eigenvalue; 
 
@@ -106,14 +106,14 @@ struct science_table
     hpx::util::function<
         void(
             state& 
-          , boost::array<double, 3> const&
+          , array<double, 3> const&
             )
     > conserved_to_primitive; 
 
     hpx::util::function<
         void(
             state& 
-          , boost::array<double, 3> const&
+          , array<double, 3> const&
             )
     > primitive_to_conserved; 
 
@@ -121,7 +121,7 @@ struct science_table
         state(
             octree_server&
           , state const& 
-          , boost::array<double, 3> const&
+          , array<double, 3> const&
             )
     > source; 
 
@@ -130,7 +130,7 @@ struct science_table
             octree_server&
           , axis
           , state& ///< State 
-          , boost::array<double, 3> const& 
+          , array<double, 3> const& 
             )
     > flux; 
 

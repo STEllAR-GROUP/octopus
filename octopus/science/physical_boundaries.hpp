@@ -11,9 +11,8 @@
 
 #include <octopus/assert.hpp>
 #include <octopus/face.hpp>
+#include <octopus/array.hpp>
 #include <octopus/trivial_serialization.hpp>
-
-#include <boost/array.hpp>
 
 namespace octopus
 {
@@ -21,7 +20,7 @@ namespace octopus
 struct physical_boundaries_at_zero : trivial_serialization
 {
     bool operator()(
-        boost::array<boost::int64_t, 3> const& location
+        array<boost::int64_t, 3> const& location
       , face f
       , boost::uint64_t level
         ) const

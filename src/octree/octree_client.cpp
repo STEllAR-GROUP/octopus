@@ -31,8 +31,8 @@ octree_client::octree_client(
   , octree_client const& source 
   , face f ///< Relative to caller.
   , child_index index
-  , boost::array<boost::int64_t, 3> sib_offset
-  , boost::array<boost::int64_t, 3> source_offset
+  , array<boost::int64_t, 3> sib_offset
+  , array<boost::int64_t, 3> source_offset
     )
   : kind_(amr_boundary)
   , gid_(source.gid_)
@@ -42,7 +42,7 @@ octree_client::octree_client(
 { // {{{
     OCTOPUS_ASSERT(amr_boundary == kind);
 
-    boost::array<boost::int64_t, 3> v;
+    array<boost::int64_t, 3> v;
     v[0] = 0;
     v[1] = 0;
     v[2] = 0;
@@ -236,7 +236,7 @@ hpx::future<oid_type> octree_client::get_oid_async() const
 }
     
 ///////////////////////////////////////////////////////////////////////////////
-hpx::future<boost::array<octree_client, 6> >
+hpx::future<array<octree_client, 6> >
 octree_client::get_siblings_async() const
 {
     ensure_real();
@@ -244,7 +244,7 @@ octree_client::get_siblings_async() const
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-hpx::future<boost::array<boost::int64_t, 3> >
+hpx::future<array<boost::int64_t, 3> >
 octree_client::get_offset_async() const
 {
     ensure_real();
@@ -252,7 +252,7 @@ octree_client::get_offset_async() const
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-hpx::future<boost::array<boost::uint64_t, 3> >
+hpx::future<array<boost::uint64_t, 3> >
 octree_client::get_location_async() const
 {
     return hpx::async<octree_server::get_location_action>(gid_);
