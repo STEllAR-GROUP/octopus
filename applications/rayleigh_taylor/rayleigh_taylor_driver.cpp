@@ -15,7 +15,6 @@
 #include <octopus/io/silo.hpp>
 #include <octopus/octree/octree_reduce.hpp>
 #include <octopus/octree/octree_apply_leaf.hpp>
-#include <octopus/operators/boost_array_arithmetic.hpp>
 #include <octopus/math.hpp>
 
 // FIXME: Move shared code from the drivers into a shared object/headers.

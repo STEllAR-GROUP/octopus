@@ -9,6 +9,7 @@
 #define OCTOPUS_E73B96D9_CF42_4331_A4D5_2BE254FD289C
 
 #include <octopus/vector3d.hpp>
+#include <octopus/array.hpp>
 
 #include <boost/cstdint.hpp>
 #include <boost/serialization/array.hpp>
@@ -61,11 +62,11 @@ struct octree_init_data
     {
         ar & parent;
         ar & level;
-        ar & boost::serialization::make_array(location.data(), location.size());     
+        ar & location; 
         ar & dx;
         ar & time;
-        ar & boost::serialization::make_array(offset.data(), offset.size());     
-        ar & boost::serialization::make_array(origin.data(), origin.size());     
+        ar & offset; 
+        ar & origin; 
         ar & step;
     }
 };

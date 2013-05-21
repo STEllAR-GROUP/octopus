@@ -12,9 +12,13 @@
 
 #include <boost/array.hpp>
 #include <boost/cstdint.hpp>
+#include <boost/utility/enable_if.hpp>
 #include <boost/move/move.hpp>
 #include <boost/preprocessor/cat.hpp>
 #include <boost/serialization/access.hpp>
+#include <boost/serialization/array.hpp>
+
+// TODO: Split array_rep_traits into two traits classes..
 
 namespace octopus
 {
@@ -25,32 +29,7 @@ struct array_rep_traits
     typedef T& reference;
     typedef T const& const_reference;
 
-    template <typename Archive>
-    static void serialize(
-        Archive& ar
-      , Rep& r
-      , const unsigned int version
-        )
-    {
-        ar & r; 
-    }
-};
-
-template <typename T, boost::uint64_t Size>
-struct array_rep_traits<T, boost::array<T, Size> > 
-{
-    typedef T& reference;
-    typedef T const& const_reference;
-
-    template <typename Archive>
-    static void serialize(
-        Archive& ar
-      , boost::array<T, Size>& a
-      , const unsigned int version
-        )
-    {
-        ar & boost::serialization::make_array(a, Size);
-    }
+    typedef Rep const& storage_type;
 };
 
 template <
@@ -72,37 +51,65 @@ struct array
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int version)
     {
-        array_rep_traits<T, Rep>::serialize(ar, rep_, version);
+        ar & rep_;
     }
 
   public:
-    array() : data_()
+    array() : rep_()
     {
         for (size_type i = 0; i < Size; ++i)
-            data_[i] = T();
+            rep_[i] = T();
     }
 
     array(Rep const& rep) : rep_(rep) {}
 
-    array(BOOST_RV_REF(array) : rep_(boost::move(rhs.rep_)) {}
+    array(BOOST_RV_REF(Rep) rep) : rep_(boost::move(rep)) {}
 
-    array(array const& rhs) : rep_(rhs.rep) {}
+    array(array const& rhs) : rep_(rhs.rep_) {}
 
     array(BOOST_RV_REF(array) rhs) : rep_(boost::move(rhs.rep_)) {}
+ 
+    template <typename OtherRep>
+    array(array<T, Size, OtherRep> const& rhs)
+    {
+        *this = rhs;
+    }
 
     template <typename OtherRep>
-    array& operator=(array<T, Size, OtherRep> const& rhs)
+    array(BOOST_RV_REF_3_TEMPL_ARGS(array, T, Size, OtherRep) rhs)
     {
-        for (size_type i = 0; i < Size; ++i)
-            rep_[i] = rhs_[i]; 
+        *this = boost::move(rhs);
+    }
+
+    array& operator=(BOOST_COPY_ASSIGN_REF(array) rhs)
+    {
+        rep_ = rhs.rep_;
+        return *this;
+    }
+
+    array& operator=(BOOST_RV_REF(array) rhs)
+    {
+        rep_ = boost::move(rhs.rep_);
         return *this;
     }
 
     template <typename OtherRep>
-    array& operator=(BOOST_RV_REF(array<T, Size, OtherRep>) rhs)
+    array& operator=(
+        BOOST_COPY_ASSIGN_REF_3_TEMPL_ARGS(array, T, Size, OtherRep) rhs
+        )
     {
         for (size_type i = 0; i < Size; ++i)
-            rep_[i] = boost::move(rhs_[i]); 
+            rep_[i] = rhs[i]; 
+        return *this;
+    }
+
+    template <typename OtherRep>
+    array& operator=(
+        BOOST_RV_REF_3_TEMPL_ARGS(array, T, Size, OtherRep) rhs
+        )
+    {
+        for (size_type i = 0; i < Size; ++i)
+            rep_[i] = boost::move(rhs[i]); 
         return *this;
     }
 
@@ -118,6 +125,11 @@ struct array
         return Size;
     } 
 
+    Rep const& rep() const
+    {
+        return rep_;
+    } 
+    
     typename array_rep_traits<T, Rep>::reference
     operator()(size_type c)
     {
@@ -155,7 +167,7 @@ struct array_dsel_scalar
     typedef boost::uint64_t size_type;
 
   private:
-    T const& s_;
+    T s_;
 
   public:
     array_dsel_scalar(T const& s) : s_(s) {}
@@ -172,15 +184,7 @@ struct array_rep_traits<T, array_dsel_scalar<T> >
     typedef T const& reference;
     typedef T const& const_reference;
 
-    template <typename Archive>
-    static void serialize(
-        Archive& ar
-      , array_dsel_scalar<T>& r
-      , const unsigned int version
-        )
-    {
-        ar & r; 
-    }
+    typedef array_dsel_scalar<T> storage_type;
 };
 
 #define OCTOPUS_DEFINE_ARRAY_ARITHMETIC_OPERATOR(OP, NAME)                    \
@@ -190,8 +194,8 @@ struct array_rep_traits<T, array_dsel_scalar<T> >
         typedef boost::uint64_t size_type;                                    \
                                                                               \
       private:                                                                \
-        LHS const& lhs_;                                                      \
-        RHS const& rhs_;                                                      \
+        typename array_rep_traits<T, LHS>::storage_type lhs_;                 \
+        typename array_rep_traits<T, RHS>::storage_type rhs_;                 \
                                                                               \
       public:                                                                 \
         BOOST_PP_CAT(array_dsel_, NAME)(LHS const& lhs, RHS const& rhs)       \
@@ -209,6 +213,9 @@ struct array_rep_traits<T, array_dsel_scalar<T> >
     {                                                                         \
         typedef T reference;                                                  \
         typedef T const_reference;                                            \
+                                                                              \
+        typedef BOOST_PP_CAT(array_dsel_, NAME)<T, LHS, RHS> const&           \
+            storage_type;                                                     \
     };                                                                        \
                                                                               \
     template <typename T, boost::uint64_t Size, typename LHS, typename RHS>   \
@@ -222,11 +229,13 @@ struct array_rep_traits<T, array_dsel_scalar<T> >
         return array<T, Size, op>(op(lhs.rep(), rhs.rep()));                  \
     }                                                                         \
                                                                               \
-    template <typename T, boost::uint64_t Size, typename RHS>                 \
-    array<T, Size, BOOST_PP_CAT(array_dsel_, NAME)                            \
-        <T, array_dsel_scalar<T>, RHS> >                                      \
+    template <typename I, typename T, boost::uint64_t Size, typename RHS>     \
+    typename boost::enable_if_c<boost::is_arithmetic<I>::value,               \
+        array<T, Size, BOOST_PP_CAT(array_dsel_, NAME)                        \
+            <T, array_dsel_scalar<T>, RHS> >                                  \
+    >::type                                                                   \
     operator OP (                                                             \
-        T const& s                                                            \
+        I s                                                                   \
       , array<T, Size, RHS> const& rhs                                        \
         )                                                                     \
     {                                                                         \
@@ -235,12 +244,14 @@ struct array_rep_traits<T, array_dsel_scalar<T> >
         return array<T, Size, op>(op(array_dsel_scalar<T>(s), rhs.rep()));    \
     }                                                                         \
                                                                               \
-    template <typename T, boost::uint64_t Size, typename LHS>                 \
-    array<T, Size, BOOST_PP_CAT(array_dsel_, NAME)                            \
-        <T, array_dsel_scalar<T>, LHS> >                                      \
+    template <typename I, typename T, boost::uint64_t Size, typename LHS>     \
+    typename boost::enable_if_c<boost::is_arithmetic<I>::value,               \
+        array<T, Size, BOOST_PP_CAT(array_dsel_, NAME)                        \
+            <T, LHS, array_dsel_scalar<T> > >                                 \
+    >::type                                                                   \
     operator OP (                                                             \
         array<T, Size, LHS> const& lhs                                        \
-      , T const& s                                                            \
+      , I s                                                                   \
         )                                                                     \
     {                                                                         \
         typedef BOOST_PP_CAT(array_dsel_, NAME)                               \
@@ -256,7 +267,21 @@ struct array_rep_traits<T, array_dsel_scalar<T> >
         )                                                                     \
     {                                                                         \
         for (typename array<T, Size>::size_type i = 0; i < lhs.size(); ++i)   \
-            lhs[i] = rhs[i];                                                  \
+            lhs[i] BOOST_PP_CAT(OP, =) rhs[i];                                \
+        return lhs;                                                           \
+    }                                                                         \
+                                                                              \
+    template <typename I, typename T, boost::uint64_t Size>                   \
+    typename boost::enable_if_c<boost::is_arithmetic<I>::value,               \
+        array<T, Size>                                                        \
+    >::type                                                                   \
+    operator BOOST_PP_CAT(OP, =) (                                            \
+        array<T, Size>& lhs                                                   \
+      , I rhs                                                                 \
+        )                                                                     \
+    {                                                                         \
+        for (typename array<T, Size>::size_type i = 0; i < lhs.size(); ++i)   \
+            lhs[i] BOOST_PP_CAT(OP, =) rhs;                                   \
         return lhs;                                                           \
     }                                                                         \
     /**/
@@ -274,7 +299,7 @@ struct array_dsel_negation
     typedef boost::uint64_t size_type;
 
   private:
-    Subject const& subject_;
+    typename array_rep_traits<T, Subject>::storage_type subject_;
 
   public:
     array_dsel_negation(Subject const& subject)
@@ -285,6 +310,15 @@ struct array_dsel_negation
     {
         return -subject_[i]; 
     }
+};
+
+template <typename T, typename Subject>
+struct array_rep_traits<T, array_dsel_negation<T, Subject> >  
+{
+    typedef T reference;
+    typedef T const_reference;
+
+    typedef array_dsel_negation<T, Subject> const& storage_type;
 };
 
 template <typename T, boost::uint64_t Size, typename Subject>

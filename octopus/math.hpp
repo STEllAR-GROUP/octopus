@@ -88,14 +88,15 @@ inline double minmod_theta(double a, double b, double theta)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-inline state minmod(
-    state const& v1
-  , state const& v2
+template <std::size_t Size, typename Rep0, typename Rep1>
+inline array<double, Size> minmod(
+    array<double, Size, Rep0> const& v1
+  , array<double, Size, Rep1> const& v2
     )
 {
-    OCTOPUS_ASSERT(v1.size() == v2.size());
+    //OCTOPUS_ASSERT(v1.size() == v2.size());
 
-    state mm;
+    array<double, Size> mm;
     //mm.reserve(v1.size());
 
     for (std::size_t i = 0; i < v1.size(); ++i) 
@@ -104,16 +105,16 @@ inline state minmod(
     return mm;
 }
 
-inline state minmod(
-    state const& v1
-  , state const& v2
-  , state const& v3
-    )
+template <std::size_t Size, typename Rep0, typename Rep1, typename Rep2>
+inline array<double, Size> minmod(
+    array<double, Size, Rep0> const& v1
+  , array<double, Size, Rep1> const& v2
+  , array<double, Size, Rep2> const& v3)
 {
-    OCTOPUS_ASSERT(v1.size() == v2.size());
-    OCTOPUS_ASSERT(v1.size() == v3.size());
+    //OCTOPUS_ASSERT(v1.size() == v2.size());
+    //OCTOPUS_ASSERT(v1.size() == v3.size());
 
-    state mm;
+    array<double, Size> mm;
     //mm.reserve(v1.size());
 
     for (std::size_t i = 0; i < v1.size(); ++i) 
@@ -122,15 +123,16 @@ inline state minmod(
     return mm;
 }
 
-inline state minmod_theta(
-    state const& v1
-  , state const& v2
+template <std::size_t Size, typename Rep0, typename Rep1>
+inline array<double, Size> minmod_theta(
+    array<double, Size, Rep0> const& v1
+  , array<double, Size, Rep1> const& v2
   , double theta
     )
 {
     OCTOPUS_ASSERT(v1.size() == v2.size());
 
-    state mm;
+    array<double, Size> mm;
     //mm.reserve(v1.size());
 
     for (std::size_t i = 0; i < v1.size(); ++i) 

@@ -13,8 +13,9 @@
 #include <hpx/runtime/components/stubs/runtime_support.hpp>
 #include <hpx/lcos/future.hpp>
 #include <hpx/lcos/future_wait.hpp>
+#include <hpx/util/plugin.hpp>
 
-#include <octopus/driver.hpp>
+//#include <octopus/driver.hpp>
 #include <octopus/engine/engine_server.hpp>
 #include <octopus/engine/engine_interface.hpp>
 
@@ -25,6 +26,8 @@ using boost::program_options::value;
 using hpx::components::stubs::runtime_support;
 
 // namespace octopus { extern OCTOPUS_EXPORT int default_main(variables_map& vm); }
+
+OCTOPUS_EXPORT int main(int argc, char** argv);
 
 int hpx_main(variables_map& vm)
 {
@@ -75,15 +78,21 @@ int hpx_main(variables_map& vm)
 
         ///////////////////////////////////////////////////////////////////////
         // Define the problem. 
-/*
-        typedef void (*define_function)(octopus::science_table&);
-        typedef int (*main_function)(variables_map&);
+// BEGIN
+        typedef void (*define_function)(
+            variables_map&
+          , octopus::science_table&
+            );
+
+        typedef int (*main_function)(
+            variables_map&
+            );
 
         typedef boost::function<void(define_function)> define_deleter;
         typedef boost::function<void(main_function)> main_deleter;
 
         // Figure out where we are.
-        boost::plugin::dll this_exe(hpx::util::get_executable_filename());
+        hpx::util::plugin::dll this_exe(hpx::util::get_executable_filename());
 
         std::pair<define_function, define_deleter> define_p;
         std::pair<main_function, main_deleter> main_p; 
@@ -108,26 +117,24 @@ int hpx_main(variables_map& vm)
             // Ignore the failure.
         }
 
-        OCTOPUS_ASSERT_MSG(define_p.first || main_p.first,
-            "either octopus_define_problem or octopus_main must be defined");
-*/
-        hpx::id_type const here = hpx::find_here();
-
-        engines.emplace_back(
-            runtime_support::create_component<octopus::engine_server>
-                (here, cfg, octopus::default_science_table(), localities));
+        OCTOPUS_ASSERT_MSG(main_p.first, "octopus_main must be defined");
+// END
 
         ///////////////////////////////////////////////////////////////////////
         // Initialize the science table.
         std::cout << "Initializing science table...\n"
                   << "\n";
 
-        octopus_define_problem(vm, octopus::science());
+        hpx::id_type const here = hpx::find_here();
 
-/*
+        engines.emplace_back(
+            runtime_support::create_component<octopus::engine_server>
+                (here, cfg, octopus::default_science_table(), localities));
+
+//        octopus_define_problem(vm, octopus::science());
+
         if (define_p.first)
-            (*define_p.first)(sci);
-*/
+            (*define_p.first)(vm, octopus::science());
 
         ///////////////////////////////////////////////////////////////////////
         // Create an engine on every locality.
@@ -158,14 +165,9 @@ int hpx_main(variables_map& vm)
         std::cout << "Executing application...\n"
                      "\n";
 
-        result = octopus_main(vm);
+//        result = octopus_main(vm);
 
-/*
-        if (main_p.first)
-            result = (*main_p.first)(vm);
-        else
-            result = octopus::default_main(vm);
-*/
+        result = (*main_p.first)(vm);
     }
 
     hpx::finalize();

@@ -18,7 +18,6 @@
 #include <octopus/engine/ini.hpp>
 #include <octopus/octree/octree_reduce.hpp>
 #include <octopus/octree/octree_apply_leaf.hpp>
-#include <octopus/operators/boost_array_arithmetic.hpp>
 #include <octopus/math.hpp>
 
 #if defined(OCTOPUS_HAVE_SILO)
@@ -53,13 +52,11 @@ double const min_refine_rho = 1.0e-6;
 // Polytropic index.
 double const GAMMA = 2.0; // EULER_GAMMA
 
-enum rotation_direction
+enum rotational_direction
 {
     rotate_clockwise,
     rotate_counterclockwise
 };
-
-rotation_direction rotation;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Polytropic constant.
@@ -219,16 +216,19 @@ struct initialize
   private:
     double eps_;
     double R_outer_;
+    rotational_direction rotation_;
 
   public:
-    initialize() : eps_(0.0), R_outer_(0.0) {}
+    initialize() : eps_(0.0), R_outer_(0.0), rotation_() {}
 
     initialize(
         double eps
       , double R_outer
+      , rotational_direction rotation
         )
       : eps_(eps)
       , R_outer_(R_outer)
+      , rotation_(rotation)
     {}
 
     void operator()(octopus::octree_server& U) const
@@ -293,13 +293,13 @@ struct initialize
                             mom_x = y*rho_here*h/pow(r, 2);
                             mom_y = x*rho_here*h/pow(r, 2);
 
-                            if (rotate_counterclockwise == rotation)
+                            if (rotate_counterclockwise == rotation_)
                             {
                                 mom_x = (-y)*rho_here*h/pow(r, 2);
                                 mom_y = (+x)*rho_here*h/pow(r, 2);
                             }
 
-                            else if (rotate_clockwise == rotation)
+                            else if (rotate_clockwise == rotation_)
                             {
                                 mom_x = (+y)*rho_here*h/pow(r, 2);
                                 mom_y = (-x)*rho_here*h/pow(r, 2);

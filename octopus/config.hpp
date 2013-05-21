@@ -45,5 +45,15 @@
     #define OCTOPUS_ENABLE_VERIFICATION 1
 #endif
 
+#if BOOST_VERSION < 105300
+    #if defined(BOOST_NO_RVALUE_REFERENCES)
+        #define BOOST_COPY_ASSIGN_REF_3_TEMPL_ARGS \
+                BOOST_MOVE_COPY_ASSIGN_REF_3_TEMPL_ARGS
+    #else
+        #define BOOST_COPY_ASSIGN_REF_3_TEMPL_ARGS(TYPE, ARG1, ARG2, ARG3) \
+            const TYPE<ARG1, ARG2, ARG3>&
+    #endif
+#endif
+
 #endif // OCTOPUS_974D87CF_23F9_41CC_9705_2A4CDB3339DC
 

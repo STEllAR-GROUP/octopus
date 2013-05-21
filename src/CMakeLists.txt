@@ -10,7 +10,7 @@ if(SILO_FOUND)
   add_hpx_component(octopus
     SOURCES
             octopus_component.cpp
-            default_main.cpp
+            driver.cpp
             child_index.cpp
             engine/engine_interface.cpp
             engine/engine_server.cpp
@@ -20,14 +20,14 @@ if(SILO_FOUND)
             science/reconstruction.cpp
             science/science_table.cpp
             io/silo.cpp
-    DEPENDENCIES ${SILO_LIBRARY}
+    DEPENDENCIES ${SILO_LIBRARY} dl
     FOLDER "Core"
     ESSENTIAL)
 else()
   add_hpx_component(octopus
     SOURCES
             octopus_component.cpp
-            default_main.cpp
+            driver.cpp
             child_index.cpp
             engine/engine_interface.cpp
             engine/engine_server.cpp

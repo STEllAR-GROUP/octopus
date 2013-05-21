@@ -96,9 +96,10 @@ struct child_index
             packed_ |= 4;
     }
 
-    array<boost::uint64_t, 3> array() const
+    template <typename T>
+    array<T, 3> get_array() const
     {
-        array<boost::uint64_t, 3> a;
+        array<T, 3> a;
         a[0] = x();
         a[1] = y();
         a[2] = z();

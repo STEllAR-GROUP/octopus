@@ -34,6 +34,8 @@ void octopus_define_problem(
         ("epsilon", eps, 0.4)
         ("outer_radius", R_outer, 1.0747e-4)
     ;
+
+    rotational_direction rotation;
  
     if (rotational_direction_str == "clockwise")
         rotation = rotate_clockwise;
@@ -58,7 +60,7 @@ void octopus_define_problem(
            % R_outer)
         << "\n";
 
-    sci.initialize = initialize(eps, R_outer);
+    sci.initialize = initialize(eps, R_outer, rotation);
     sci.enforce_outflow = enforce_outflow();
     sci.reflect_z = reflect_z();
     sci.max_eigenvalue = max_eigenvalue();
@@ -92,7 +94,7 @@ struct stepper
     void operator()(octopus::octree_server& root) const
     {
         for ( std::size_t i = 0
-            ; i < octopus::config().levels_of_refinement
+            ; i < (octopus::config().levels_of_refinement + 1)
             ; ++i)
         {
             root.apply(octopus::science().initialize);
@@ -101,10 +103,20 @@ struct stepper
             root.child_to_parent_injection(0);
             root.prepare_compute_queues();
 
-            std::cout << "REFINED LEVEL " << (i + 1) << std::endl;
+            std::cout << "REFINED LEVEL " << i << std::endl;
         }
 
-//        root.output(root.get_time() / period_, "U_L%06u_initial.silo");
+        root.output(root.get_time() / period_, "U_L%06u_initial0.silo");
+
+        {
+            root.apply(octopus::science().initialize);
+            root.refine();
+
+            root.child_to_parent_injection(0);
+            root.prepare_compute_queues();
+        }
+
+        root.output(root.get_time() / period_, "U_L%06u_initial1.silo");
   
         std::ofstream dt_file("dt.csv");
         std::ofstream speed_file("speed.csv");

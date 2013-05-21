@@ -15,8 +15,6 @@
 #include <octopus/octree/octree_server.hpp>
 #include <octopus/octree/octree_apply_leaf.hpp>
 #include <octopus/engine/engine_interface.hpp>
-#include <octopus/operators/std_vector_arithmetic.hpp>
-#include <octopus/operators/boost_array_arithmetic.hpp>
 #include <octopus/trivial_serialization.hpp>
 #include <octopus/math.hpp>
 
@@ -75,8 +73,6 @@ octree_client::octree_client(
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
 
-    using namespace octopus::operators;
-
     v *= (gnx - 2 * bw);
 
     offset_ = sib_offset;
@@ -98,6 +94,7 @@ void octree_client::create_root(
 
     hpx::components::runtime_support rts(locality);
     gid_ = rts.create_component_async<octopus::octree_server>(init).get();
+    OCTOPUS_ASSERT(hpx::invalid_id != gid_);
 }
 
 void octree_client::create_root(
@@ -113,6 +110,7 @@ void octree_client::create_root(
 
     hpx::components::runtime_support rts(locality);
     gid_ = rts.create_component_async<octopus::octree_server>(init).get();
+    OCTOPUS_ASSERT(hpx::invalid_id != gid_);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

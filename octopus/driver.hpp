@@ -23,14 +23,14 @@ extern "C"
 void octopus_define_problem(
     boost::program_options::variables_map& vm
   , octopus::science_table& sci
-    ) OCTOPUS_WEAK;
+    ) OCTOPUS_WEAK OCTOPUS_EXPORT;
 
 /// octopus_main is called after the AMR framework has been initialized and the
 /// problem defined.
 extern "C"
 int octopus_main(
     boost::program_options::variables_map& vm
-    ) OCTOPUS_WEAK;
+    ) OCTOPUS_WEAK OCTOPUS_EXPORT;
 
 #endif // OCTOPUS_17914F5A_C09A_42A4_9819_0641B54EBF15
 

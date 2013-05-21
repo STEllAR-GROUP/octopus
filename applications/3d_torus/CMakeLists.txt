@@ -24,7 +24,8 @@ if(VISIT_DRIVER_FOUND AND VISIT_LIBSIM_FOUND)
 endif()
 
 foreach(application ${applications})
-  set(sources ${application}.cpp ${CMAKE_SOURCE_DIR}/src/driver.cpp)
+#  set(sources ${application}.cpp ${CMAKE_SOURCE_DIR}/src/driver.cpp)
+  set(sources ${application}.cpp)
 
   source_group("Source Files" FILES ${sources})
 

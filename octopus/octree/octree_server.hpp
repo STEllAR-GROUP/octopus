@@ -63,8 +63,7 @@ struct OCTOPUS_EXPORT oid_type
     void serialize(Archive& ar, const unsigned int version)
     {
         ar & level_;
-        ar & boost::serialization::make_array
-            (location_.data(), location_.size());
+        ar & location_;
         ar & gid_; 
     }
 
@@ -171,6 +170,7 @@ struct OCTOPUS_EXPORT octree_server
 //    hpx::lcos::local::event initialized_;
 
     mutable mutex_type mtx_; 
+    hpx::id_type this_;
 //    boost::uint8_t siblings_set_;
 //    bool state_received_;
 
@@ -384,12 +384,12 @@ struct OCTOPUS_EXPORT octree_server
     hpx::id_type reference_from_this() const
     {
         // We shouldn't need to lock here, I believe.
-        hpx::id_type gid = get_gid();
-        OCTOPUS_ASSERT(hpx::invalid_id != gid);
+//        hpx::id_type gid = get_gid();
+        OCTOPUS_ASSERT(hpx::invalid_id != this_);
         OCTOPUS_ASSERT_MSG(
-            gid.get_management_type() == hpx::id_type::unmanaged,
+            this_.get_management_type() == hpx::id_type::unmanaged,
             "get_gid() should return an unmanaged GID");
-        return gid;
+        return this_;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -403,12 +403,12 @@ struct OCTOPUS_EXPORT octree_server
     octree_client client_from_this() const
     {
         // We shouldn't need to lock here, I believe.
-        hpx::id_type gid = get_gid();
-        OCTOPUS_ASSERT(hpx::invalid_id != gid);
+//        hpx::id_type gid = get_gid();
+        OCTOPUS_ASSERT(hpx::invalid_id != this_);
         OCTOPUS_ASSERT_MSG(
-            gid.get_management_type() == hpx::id_type::unmanaged,
+            this_.get_management_type() == hpx::id_type::unmanaged,
             "get_gid() should return an unmanaged GID");
-        return octree_client(gid);
+        return octree_client(this_);
     }
 
   public:

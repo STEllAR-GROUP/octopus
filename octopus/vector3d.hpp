@@ -10,7 +10,7 @@
 #define OCTOPUS_820FC460_190E_4E57_8CB7_CB0880FC3E28
 
 #include <octopus/assert.hpp>
-#include <octopus/operators/std_vector_arithmetic.hpp>
+#include <octopus/array.hpp>
 
 #include <boost/move/move.hpp>
 #include <boost/serialization/vector.hpp>

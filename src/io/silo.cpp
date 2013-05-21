@@ -62,8 +62,8 @@ void single_variable_silo_writer::start_write_locked(
 
     OCTOPUS_ASSERT(file_ != 0);
 
-    directory_names_.reserve(config().levels_of_refinement);
-    for (boost::uint64_t i = 0; i < config().levels_of_refinement; ++i)
+    directory_names_.reserve(config().levels_of_refinement + 1);
+    for (boost::uint64_t i = 0; i < (config().levels_of_refinement + 1); ++i)
         directory_names_.push_back
             (boost::str(boost::format("/meshes_%1%") % i).c_str()); 
 

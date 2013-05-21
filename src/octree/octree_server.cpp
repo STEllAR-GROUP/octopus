@@ -18,9 +18,8 @@
 #include <octopus/indexer2d.hpp>
 #include <octopus/octree/octree_server.hpp>
 #include <octopus/engine/engine_interface.hpp>
-#include <octopus/operators/boost_array_arithmetic.hpp>
-#include <octopus/operators/std_vector_arithmetic.hpp>
 
+#include <boost/array.hpp>
 #include <boost/range/adaptor/map.hpp>
 
 // TODO: Verify the size of parent_U and it's elements when initialization is
@@ -128,6 +127,8 @@ void octree_server::parent_to_child_injection(
             (*U_)(i + 1, j + 0, k + 1) = u + (s1 - s2 + s3) * 0.25;
             (*U_)(i + 0, j + 1, k + 1) = u - (s1 - s2 - s3) * 0.25;
             (*U_)(i + 1, j + 1, k + 1) = u + (s1 + s2 + s3) * 0.25;
+
+            OCTOPUS_ASSERT((*U_)(i, j, k)[0] > 0.0);
         }
     }
 } // }}}
@@ -143,7 +144,7 @@ void octree_server::initialize_queues()
     for (boost::uint64_t i = 0; i < (config().runge_kutta_order + 1); ++i)
         ghost_zone_deps_.push_back(sibling_state_dependencies());
 
-    if ((level_ + 1) == config().levels_of_refinement)
+    if (level_ == config().levels_of_refinement)
         return;
 
     for (boost::uint64_t i = 0; i < (config().runge_kutta_order + 1); ++i)
@@ -165,6 +166,7 @@ octree_server::octree_server(
 // {{{
   : base_type(back_ptr)
   , mtx_()
+  , this_(back_ptr->get_gid())
   , future_self_(hpx::invalid_id)
   , past_self_(hpx::invalid_id)
   , marked_for_refinement_()
@@ -196,6 +198,7 @@ octree_server::octree_server(
   , DFO_()
 {
     OCTOPUS_ASSERT(back_ptr);
+    OCTOPUS_ASSERT(back_ptr->get_gid() != hpx::invalid_id);
     OCTOPUS_ASSERT(parent_ == hpx::invalid_id);
 
     initialize_queues();
@@ -215,6 +218,7 @@ octree_server::octree_server(
 // {{{
   : base_type(back_ptr)
   , mtx_()
+  , this_(back_ptr->get_gid())
   , future_self_(hpx::invalid_id)
   , past_self_(hpx::invalid_id)
   , marked_for_refinement_()
@@ -246,6 +250,7 @@ octree_server::octree_server(
   , DFO_()
 {
     OCTOPUS_ASSERT(back_ptr);
+    OCTOPUS_ASSERT(back_ptr->get_gid() != hpx::invalid_id);
 
     // Make sure our parent reference is not reference counted.
     OCTOPUS_ASSERT_MSG(
@@ -296,7 +301,7 @@ void octree_server::prepare_compute_queues()
         for (boost::uint64_t j = 0; j < 6; ++j)
             ghost_zone_deps_[i](j).reset();
 
-    if ((level_ + 1) == config().levels_of_refinement)
+    if (level_ == config().levels_of_refinement)
         return;
 
     for (boost::uint64_t i = 0; i < children_state_deps_.size(); ++i)
@@ -315,7 +320,7 @@ void octree_server::clear_refinement_marks()
 
     for (std::size_t i = 0; i < 8; ++i)
         if (  (hpx::invalid_id != children_[i])
-           && (level_ + 2) != config().levels_of_refinement)
+           && (level_ + 1) != config().levels_of_refinement)
             recursion_is_parallelism.push_back
                 (children_[i].clear_refinement_marks_async());
 
@@ -462,10 +467,11 @@ void octree_server::create_child(
 
     kid_init.parent   = reference_from_this(); 
     kid_init.level    = level_ + 1; 
-    kid_init.location = location_ * 2 + kid.array(); 
+    kid_init.location = location_ * 2 + kid.get_array<boost::uint64_t>(); 
     kid_init.dx       = dx_ * 0.5;
     kid_init.time     = time_;
-    kid_init.offset   = offset_ * 2 + bw + (kid.array() * (gnx - 2 * bw));
+    kid_init.offset   = offset_ * 2 + bw
+                      + (kid.get_array<boost::int64_t>() * (gnx - 2 * bw));
     kid_init.origin   = origin_;
     kid_init.step     = step_;
 
@@ -1714,7 +1720,7 @@ void octree_server::child_to_parent_injection_kernel(
     
     bool has_children = false;
 
-    if ((level_ + 1) == config().levels_of_refinement)
+    if (level_ == config().levels_of_refinement)
         has_children = false;
 
     else
@@ -1738,7 +1744,7 @@ void octree_server::child_to_parent_injection_kernel(
 
     if (has_children)
     {
-        OCTOPUS_ASSERT((level_ + 1) != config().levels_of_refinement);
+        OCTOPUS_ASSERT(level_ != config().levels_of_refinement);
 
         for (boost::uint64_t i = 0; i < 8; ++i)
             if (children_[i] != hpx::invalid_id)
@@ -1987,7 +1993,7 @@ void octree_server::compute_flux_kernel()
     // Compute our own local fluxes locally in parallel. 
 
     // Do two in other threads.
-    array<hpx::future<void>, 2> xyz =
+    boost::array<hpx::future<void>, 2> xyz =
     { {
         hpx::async(boost::bind
             (&octree_server::compute_x_flux_kernel, this/*, boost::ref(l)*/))
@@ -2183,7 +2189,7 @@ void octree_server::copy_and_regrid()
 
 void octree_server::mark()
 { // {{{
-    if ((level_ + 1) == config().levels_of_refinement)
+    if (level_ == config().levels_of_refinement)
         return;
 
     std::vector<hpx::future<void> > recursion_is_parallelism;
@@ -2195,7 +2201,7 @@ void octree_server::mark()
 
     for (std::size_t i = 0; i < 8; ++i)
         if (  (hpx::invalid_id != children_[i])
-           && (level_ + 2) != config().levels_of_refinement)
+           && (level_ + 1) != config().levels_of_refinement)
             recursion_is_parallelism.push_back(children_[i].mark_async());
 
     hpx::wait(recursion_is_parallelism);
@@ -2205,7 +2211,7 @@ void octree_server::mark()
 
 void octree_server::mark_kernel()
 { // {{{ 
-    OCTOPUS_ASSERT((level_ + 1) != config().levels_of_refinement);
+    OCTOPUS_ASSERT(level_ != config().levels_of_refinement);
 
     std::vector<hpx::future<void> > markings;
     markings.reserve(8*3);
@@ -2224,7 +2230,7 @@ void octree_server::mark_kernel()
            && science().refine_policy.refine(*this, kid))
         {
             array<boost::uint64_t, 3> kid_location;
-            kid_location = location_ * 2 + kid.array();
+            kid_location = location_ * 2 + kid.get_array<boost::uint64_t>();
 
             OCTOPUS_ASSERT(children_[i] == hpx::invalid_id);
 
@@ -2241,9 +2247,9 @@ void octree_server::mark_kernel()
 
             if (amr_boundary == siblings_[r.exterior_x_face].kind())
             {
-                array<boost::uint64_t, 3> dep_location;
-                dep_location = siblings_[r.exterior_x_face].get_location() * 2
-                    + invert(r.exterior_x_face, get_child_index()).array();
+//                array<boost::uint64_t, 3> dep_location;
+//                dep_location = siblings_[r.exterior_x_face].get_location() * 2
+//                    + invert(r.exterior_x_face, get_child_index()).get_array();
                 markings.push_back
                     (siblings_[r.exterior_x_face].require_child_async
                         (invert(r.exterior_x_face, get_child_index())));
@@ -2251,9 +2257,9 @@ void octree_server::mark_kernel()
 
             if (amr_boundary == siblings_[r.exterior_y_face].kind())
             {
-                array<boost::uint64_t, 3> dep_location;
-                dep_location = siblings_[r.exterior_y_face].get_location() * 2
-                    + invert(r.exterior_y_face, get_child_index()).array();
+//                array<boost::uint64_t, 3> dep_location;
+//                dep_location = siblings_[r.exterior_y_face].get_location() * 2
+//                    + invert(r.exterior_y_face, get_child_index()).get_array();
                 markings.push_back
                     (siblings_[r.exterior_y_face].require_child_async
                         (invert(r.exterior_y_face, get_child_index())));
@@ -2261,9 +2267,9 @@ void octree_server::mark_kernel()
 
             if (amr_boundary == siblings_[r.exterior_z_face].kind())
             {
-                array<boost::uint64_t, 3> dep_location;
-                dep_location = siblings_[r.exterior_z_face].get_location() * 2
-                    + invert(r.exterior_z_face, get_child_index()).array();
+//                array<boost::uint64_t, 3> dep_location;
+//                dep_location = siblings_[r.exterior_z_face].get_location() * 2
+//                    + invert(r.exterior_z_face, get_child_index()).get_array();
                 markings.push_back
                     (siblings_[r.exterior_z_face].require_child_async
                         (invert(r.exterior_z_face, get_child_index())));
@@ -2282,7 +2288,7 @@ void octree_server::propagate_locked(
   , mutex_type::scoped_lock& l
     )
 { // {{{ 
-    OCTOPUS_ASSERT((level_ + 1) != config().levels_of_refinement);
+    OCTOPUS_ASSERT(level_ != config().levels_of_refinement);
     OCTOPUS_ASSERT(marked_for_refinement_.test(kid));
     OCTOPUS_ASSERT(children_[kid] == hpx::invalid_id);
 
@@ -2290,15 +2296,15 @@ void octree_server::propagate_locked(
     markings.reserve(3);
 
     array<boost::uint64_t, 3> kid_location;
-    kid_location = location_ * 2 + kid.array();
+    kid_location = location_ * 2 + kid.get_array<boost::uint64_t>();
 
     relatives r(kid);
 
     if (amr_boundary == siblings_[r.exterior_x_face].kind())
     {
-        array<boost::uint64_t, 3> dep_location;
-        dep_location = siblings_[r.exterior_x_face].get_location() * 2
-            + invert(r.exterior_x_face, get_child_index()).array();
+//        array<boost::uint64_t, 3> dep_location;
+//        dep_location = siblings_[r.exterior_x_face].get_location() * 2
+//            + invert(r.exterior_x_face, get_child_index()).get_array();
         markings.push_back
             (siblings_[r.exterior_x_face].require_child_async
                 (invert(r.exterior_x_face, get_child_index())));
@@ -2306,9 +2312,9 @@ void octree_server::propagate_locked(
 
     if (amr_boundary == siblings_[r.exterior_y_face].kind())
     {
-        array<boost::uint64_t, 3> dep_location;
-        dep_location = siblings_[r.exterior_y_face].get_location() * 2
-            + invert(r.exterior_y_face, get_child_index()).array();
+//        array<boost::uint64_t, 3> dep_location;
+//        dep_location = siblings_[r.exterior_y_face].get_location() * 2
+//            + invert(r.exterior_y_face, get_child_index()).get_array();
         markings.push_back
             (siblings_[r.exterior_y_face].require_child_async
                 (invert(r.exterior_y_face, get_child_index())));
@@ -2316,9 +2322,9 @@ void octree_server::propagate_locked(
 
     if (amr_boundary == siblings_[r.exterior_z_face].kind())
     {
-        array<boost::uint64_t, 3> dep_location;
-        dep_location = siblings_[r.exterior_z_face].get_location() * 2
-            + invert(r.exterior_z_face, get_child_index()).array();
+//        array<boost::uint64_t, 3> dep_location;
+//        dep_location = siblings_[r.exterior_z_face].get_location() * 2
+//            + invert(r.exterior_z_face, get_child_index()).get_array();
         markings.push_back
             (siblings_[r.exterior_z_face].require_child_async
                 (invert(r.exterior_z_face, get_child_index())));
@@ -2332,7 +2338,7 @@ void octree_server::propagate_locked(
 
 void octree_server::populate()
 { // {{{
-    if ((level_ + 1) == config().levels_of_refinement)
+    if (level_  == config().levels_of_refinement)
         return;
 
     std::vector<hpx::future<void> > recursion_is_parallelism;
@@ -2344,7 +2350,7 @@ void octree_server::populate()
 
     for (std::size_t i = 0; i < 8; ++i)
         if (  (hpx::invalid_id != children_[i])
-           && (level_ + 2) != config().levels_of_refinement)
+           && (level_ + 1) != config().levels_of_refinement)
             recursion_is_parallelism.push_back
                 (children_[i].populate_async());
 
@@ -2355,7 +2361,7 @@ void octree_server::populate()
 
 void octree_server::populate_kernel()
 { // {{{ 
-    OCTOPUS_ASSERT((level_ + 1) != config().levels_of_refinement);
+    OCTOPUS_ASSERT(level_ != config().levels_of_refinement);
 
     std::vector<hpx::future<void> > new_children;
     new_children.reserve(8);
@@ -2378,7 +2384,7 @@ void octree_server::populate_kernel()
 
 void octree_server::link()
 { // {{{
-    if ((level_ + 1) == config().levels_of_refinement)
+    if (level_ == config().levels_of_refinement)
         return;
 
     std::vector<hpx::future<void> > recursion_is_parallelism;
@@ -2388,7 +2394,7 @@ void octree_server::link()
 
     for (std::size_t i = 0; i < 8; ++i)
         if (  (hpx::invalid_id != children_[i])
-           && (level_ + 2) != config().levels_of_refinement)
+           && (level_ + 1) != config().levels_of_refinement)
             recursion_is_parallelism.push_back
                 (children_[i].link_async());
 
@@ -2399,7 +2405,7 @@ void octree_server::link()
 
 void octree_server::link_kernel()
 { // {{{ 
-    OCTOPUS_ASSERT((level_ + 1) != config().levels_of_refinement);
+    OCTOPUS_ASSERT(level_ != config().levels_of_refinement);
 
     std::vector<hpx::future<void> > links;
     links.reserve(8*6);
@@ -2444,10 +2450,11 @@ void octree_server::link_child(
 
     kid_init.parent   = reference_from_this(); 
     kid_init.level    = level_ + 1; 
-    kid_init.location = location_ * 2 + kid.array(); 
+    kid_init.location = location_ * 2 + kid.get_array<boost::uint64_t>(); 
     kid_init.dx       = dx_ * 0.5;
     kid_init.time     = time_;
-    kid_init.offset   = offset_ * 2 + bw + (kid.array() * (gnx - 2 * bw));
+    kid_init.offset   = offset_ * 2 + bw
+                      + (kid.get_array<boost::int64_t>() * (gnx - 2 * bw));
     kid_init.origin   = origin_;
     kid_init.step     = step_;
 
