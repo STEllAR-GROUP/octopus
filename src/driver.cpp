@@ -78,7 +78,6 @@ int hpx_main(variables_map& vm)
 
         ///////////////////////////////////////////////////////////////////////
         // Define the problem. 
-// BEGIN
         typedef void (*define_function)(
             variables_map&
           , octopus::science_table&
@@ -118,7 +117,6 @@ int hpx_main(variables_map& vm)
         }
 
         OCTOPUS_ASSERT_MSG(main_p.first, "octopus_main must be defined");
-// END
 
         ///////////////////////////////////////////////////////////////////////
         // Initialize the science table.

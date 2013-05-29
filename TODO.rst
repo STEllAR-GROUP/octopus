@@ -1,6 +1,13 @@
 Short-term todo list
 ====================
 
+* Start porting from commit ffe3b31099 (zach's branch)
+    * Don't port EAR stuff.
+* Angular momentum
+* PPM
+    * Testing/debugging, make default
+* Rotating frame
+ 
 * *DONE* Implement AMR/physical bounds client-side via type-punning.
     * *DONE* Special handling for send_ghost_zone_async() (aka operator(), aka interpolation)
     * *DONE* Special handling for get_sibling()
@@ -10,10 +17,10 @@ Short-term todo list
 * *DONE* Implement exec_function().
 * Refinement. 
     * *DONE* Implementation.
-    * Testing/debugging.
+    * *DONE* Testing/debugging.
 * Regridding.
-    * Implementation.
-    * Testing/debugging.
+    * *DONE* Implementation.
+    * *DONE* Testing/debugging.
 * Temporal prediction.
     * Implementation.
     * Testing/debugging.
@@ -33,8 +40,7 @@ Short-term todo list
     * Testing/debugging.
     * Better cleanup during unexpected shutdown (e.g. signals, crashes).
 * User-defined configuration (necessary for dynamic updating of config data).
-* Android integration.
- 
+
 Long-term todo list
 ===================
 

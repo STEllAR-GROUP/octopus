@@ -18,49 +18,64 @@ void octopus_define_problem(
     double max_dt_growth = 0.0; 
     double temporal_prediction_limiter = 0.0; 
 
-    std::string rotational_direction_str = "";
+    std::string rot_dir_str = "";
+    std::string mom_cons_str = "";
 
     octopus::config_reader reader("octopus.3d_torus");
-
-    double kappa0 = 0.0;
-    double eps = 0.0; 
-    double R_outer = 0.0; 
 
     reader
         ("max_dt_growth", max_dt_growth, 1.25)
         ("temporal_prediction_limiter", temporal_prediction_limiter, 0.5)
-        ("rotational_direction", rotational_direction_str, "counterclockwise")
-        ("kappa", kappa0, 1.0)
-        ("epsilon", eps, 0.4)
-        ("outer_radius", R_outer, 1.0747e-4)
+        ("rotational_direction", rot_dir_str, "counterclockwise")
+        ("momentum_conservation", mom_cons_str, "angular")
+        ("rotating_grid", rotating_grid, true)
+        ("kappa", kappa, 1.0)
+        ("X_in", X_in, 0.5)
+        ("kick_mode", kick_mode, 0) 
     ;
 
-    rotational_direction rotation;
- 
-    if (rotational_direction_str == "clockwise")
-        rotation = rotate_clockwise;
-    else if (rotational_direction_str == "counterclockwise")
-        rotation = rotate_counterclockwise;
+    if (rot_dir_str == "clockwise")
+        rot_dir = rotate_clockwise;
+    else if (rot_dir_str == "counterclockwise")
+        rot_dir = rotate_counterclockwise;
     else
         OCTOPUS_ASSERT_MSG(false, "invalid rotational direction");
 
+    if (mom_cons_str == "angular")
+        mom_cons = angular_momentum_conservation;
+    else if (mom_cons_str == "cartesian")
+        mom_cons = cartesian_momentum_conservation;
+    else
+        OCTOPUS_ASSERT_MSG(false, "invalid momentum conservation");
+
     std::cout
         << "[octopus.3d_torus]\n"
-        << ( boost::format("max_dt_growth               = %lf\n")
+        << ( boost::format("max_dt_growth                 = %lf\n")
            % max_dt_growth)
-        << ( boost::format("temporal_prediction_limiter = %i\n")
+        << ( boost::format("temporal_prediction_limiter   = %i\n")
            % temporal_prediction_limiter)
-        << ( boost::format("rotational_direction        = %s\n")
-           % rotational_direction_str)
-        << ( boost::format("kappa                       = %.6g\n")
-           % kappa0)
-        << ( boost::format("epsilon                     = %.6g\n")
-           % eps)
-        << ( boost::format("outer_radius                = %.6g\n")
-           % R_outer)
+        << ( boost::format("rotational_direction          = %s\n")
+           % rot_dir_str)
+        << ( boost::format("momentum_conservation         = %s\n")
+           % mom_cons_str)
+        << ( boost::format("rotating_grid                 = %i\n")
+           % rotating_grid.get())
+        << ( boost::format("kappa                         = %.6g\n")
+           % kappa.get())
+        << ( boost::format("X_in                          = %.6g\n")
+           % X_in.get())
+        << ( boost::format("kick_mode                     = %i\n")
+           % kick_mode.get())
         << "\n";
 
-    sci.initialize = initialize(eps, R_outer, rotation);
+    initialize_omega();
+
+    std::cout << "R_0     = " << (R_outer*2.0*X_in/(1.0+X_in)) << "\n";
+    std::cout << "R_inner = " << (X_in*R_outer) << "\n";
+    std::cout << "omega   = " << omega.get() << "\n";
+    std::cout << "period  = " << orbital_period() << "\n\n";
+
+    sci.initialize = initialize();
     sci.enforce_outflow = enforce_outflow();
     sci.reflect_z = reflect_z();
     sci.max_eigenvalue = max_eigenvalue();
@@ -70,15 +85,17 @@ void octopus_define_problem(
     sci.enforce_limits = enforce_lower_limits();
     sci.flux = flux();  
 
-    sci.initial_timestep = cfl_initial_timestep();
-    sci.predict_timestep = cfl_predict_timestep
-        (max_dt_growth, temporal_prediction_limiter);
+    sci.initial_dt = cfl_initial_dt();
+    sci.predict_dt = cfl_predict_dt(max_dt_growth, temporal_prediction_limiter);
 
-    sci.refine_policy = refine_by_density();
+    sci.refine_policy = refine_by_geometry();
 
-    #if defined(OCTOPUS_HAVE_SILO)
-        sci.output = octopus::single_variable_silo_writer(0, "rho");
-    #endif
+//    #if defined(OCTOPUS_HAVE_SILO)
+//        sci.output = octopus::single_variable_silo_writer(0, "rho");
+//    #endif
+
+    sci.output = octopus::fstream_writer(output_equatorial_plane()
+                                       , "slice_L%06u_S%06u.dat");
 }
 
 struct stepper 
@@ -100,34 +117,27 @@ struct stepper
             root.apply(octopus::science().initialize);
             root.refine();
 
-            root.child_to_parent_injection(0);
-            root.prepare_compute_queues();
-
             std::cout << "REFINED LEVEL " << i << std::endl;
         }
 
-        root.output(root.get_time() / period_, "U_L%06u_initial0.silo");
+//        #if defined(OCTOPUS_HAVE_SILO)
+//            root.output(root.get_time() / period_, "U_L%06u_initial.silo");
+//        #endif
 
-        {
-            root.apply(octopus::science().initialize);
-            root.refine();
-
-            root.child_to_parent_injection(0);
-            root.prepare_compute_queues();
-        }
-
-        root.output(root.get_time() / period_, "U_L%06u_initial1.silo");
-  
+        root.output(root.get_time() / period_, "slice_L%06u_initial.dat");
+ 
         std::ofstream dt_file("dt.csv");
         std::ofstream speed_file("speed.csv");
  
-        dt_file    << "step, time [orbits], dt [orbits], output & refine?\n";
-        speed_file << "step, speed [orbits/hours], output & refine?\n";
+        //dt_file    << "step, time [orbits], dt [orbits], output & refine?\n";
+        //speed_file << "step, speed [orbits/hours], output & refine?\n";
+        dt_file    << "step, time [orbits], dt [orbits], output\n";
+        speed_file << "step, speed [orbits/hours], output\n";
  
         ///////////////////////////////////////////////////////////////////////
         // Crude, temporary stepper.
     
-        root.post_dt(root.apply_leaf(octopus::science().initial_timestep));
+        root.post_dt(root.apply_leaf(octopus::science().initial_dt));
         double next_output_time = octopus::config().output_frequency * period_;
 
         hpx::reset_active_counters();
@@ -146,7 +156,6 @@ struct stepper
    
             bool output_and_refine = false;
 
-/*
             if (root.get_time() >= next_output_time)
             {   
                 output_and_refine = true;
@@ -155,13 +164,12 @@ struct stepper
                 next_output_time +=
                     (octopus::config().output_frequency * period_); 
 
-                root.refine();
+                //root.refine();
             }
-*/
   
             // IMPLEMENT: Futurize w/ continutation.
-            octopus::timestep_prediction prediction
-                = root.apply_leaf(octopus::science().predict_timestep);
+            octopus::dt_prediction prediction
+                = root.apply_leaf(octopus::science().predict_dt);
     
             OCTOPUS_ASSERT(0.0 < prediction.next_dt);
             OCTOPUS_ASSERT(0.0 < prediction.future_dt);
@@ -184,8 +192,10 @@ struct stepper
                 % speed 
                 );
  
+            //if (output_and_refine)
+            //    std::cout << ": OUTPUT & REFINE";
             if (output_and_refine)
-                std::cout << ": OUTPUT & REFINE";
+                std::cout << ": OUTPUT";
 
             std::cout << "\n";
  
@@ -219,25 +229,11 @@ int octopus_main(boost::program_options::variables_map& vm)
     octopus::octree_client root;
 
     octopus::octree_init_data root_data;
-    root_data.dx = octopus::science().initial_spacestep();
+    // FIXME: create_root or root_data should do this.
+    root_data.dx = octopus::science().initial_dx();
     root.create_root(hpx::find_here(), root_data);
 
-    double eps = 0.0; 
-    double R_outer = 0.0; 
-    double kappa0 = 0.0;
-
-    octopus::config_reader reader("octopus.3d_torus");
-
-    reader
-        ("kappa", kappa0, 1.0)
-        ("epsilon", eps, 0.4)
-        ("outer_radius", R_outer, 1.0747e-4)
-    ;
-
-    // Initialize kappa. 
-    hpx::wait(octopus::call_everywhere(initialize_kappa(kappa0)));
-
-    root.apply_leaf<void>(stepper(orbital_period(eps, R_outer)));
+    root.apply_leaf<void>(stepper(orbital_period()));
     
     return 0;
 }

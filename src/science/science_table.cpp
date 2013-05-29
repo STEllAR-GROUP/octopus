@@ -19,7 +19,7 @@ science_table default_science_table()
     sci.reconstruct = minmod_reconstruction(); 
     sci.ghost_zone_width = minmod_reconstruction::ghost_zone_width;
 
-    sci.initial_spacestep = initial_spacestep();
+    sci.initial_dx = initial_dx();
 
     return sci;
 }

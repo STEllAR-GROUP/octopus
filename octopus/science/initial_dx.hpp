@@ -15,7 +15,7 @@
 namespace octopus
 {
 
-struct initial_spacestep : trivial_serialization
+struct initial_dx : trivial_serialization
 {
     double operator()() const
     {

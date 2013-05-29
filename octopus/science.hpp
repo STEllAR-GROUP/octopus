@@ -14,10 +14,11 @@
 #include <octopus/science/elementwise_refinement_criteria.hpp>
 
 #include <octopus/science/physical_boundaries.hpp>
-#include <octopus/science/reconstruction.hpp>
-#include <octopus/science/initial_spacestep.hpp>
+#include <octopus/science/minmod_reconstruction.hpp>
+#include <octopus/science/ppm_reconstruction.hpp>
+#include <octopus/science/initial_dx.hpp>
 
-#include <octopus/science/timestep_prediction.hpp>
+#include <octopus/science/dt_prediction.hpp>
 
 #endif // OCTOPUS_6B85CEFD_F97E_42AD_91FA_FEA7261EFFCB
 

@@ -180,7 +180,7 @@ octree_server::octree_server(
   , level_(init.level)
   , location_(init.location)
   , dx_(init.dx)
-  , dx0_(science().initial_spacestep())
+  , dx0_(science().initial_dx())
   , time_(init.time)
   , offset_(init.offset)
   , origin_(init.origin)
@@ -232,7 +232,7 @@ octree_server::octree_server(
   , level_(init.level)
   , location_(init.location)
   , dx_(init.dx)
-  , dx0_(science().initial_spacestep())
+  , dx0_(science().initial_dx())
   , time_(init.time)
   , offset_(init.offset)
   , origin_(init.origin)
@@ -623,7 +623,6 @@ void octree_server::tie_child_sibling(
 
 ///////////////////////////////////////////////////////////////////////////////
 // Ghost zone communication
-
 
 // REVIEW: I think step 2.) can come before step 1.).
 /// 0.) Push ghost zone data to our siblings and determine which ghost zones we
@@ -1490,8 +1489,8 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
 
                         zone(ii, jj, kk) = (*U_)(v);
 
-                        science().enforce_outflow
-                            (f, x_face_coords(v[0] + 1, v[1], v[2]));
+                        array<double, 3> c(x_face_coords(v[0] + 1, v[1], v[2]));
+                        science().enforce_outflow(*this, (*U_)(v), c, f);
                     }
 
             return zone;
@@ -1523,8 +1522,8 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
 
                         zone(ii, jj, kk) = (*U_)(v);
 
-                        science().enforce_outflow
-                            (f, x_face_coords(v[0], v[1], v[2]));
+                        array<double, 3> c(x_face_coords(v[0], v[1], v[2]));
+                        science().enforce_outflow(*this, (*U_)(v), c, f);
                     }
 
             return zone;
@@ -1558,8 +1557,8 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
 
                         zone(ii, jj, kk) = (*U_)(v);
 
-                        science().enforce_outflow
-                            (f, y_face_coords(v[0], v[1] + 1, v[2]));
+                        array<double, 3> c(y_face_coords(v[0], v[1] + 1, v[2]));
+                        science().enforce_outflow(*this, (*U_)(v), c, f);
                     }
 
             return zone;
@@ -1591,8 +1590,8 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
 
                         zone(ii, jj, kk) = (*U_)(v);
 
-                        science().enforce_outflow
-                            (f, y_face_coords(v[0], v[1], v[2]));
+                        array<double, 3> c(y_face_coords(v[0], v[1], v[2]));
+                        science().enforce_outflow(*this, (*U_)(v), c, f);
                     }
 
             return zone;
@@ -1626,13 +1625,12 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
 
                         zone(ii, jj, kk) = (*U_)(v);
 
-                        if (config().reflect_on_z)
-                            science().reflect_z(zone(ii, jj, kk));
-                        else
-                            science().enforce_outflow
-                                (f, z_face_coords(v[0], v[1], v[2] + 1));
+                        array<double, 3> c(z_face_coords(v[0], v[1], v[2] + 1));
 
-                        OCTOPUS_ASSERT(zone(ii, jj, kk)[0] > 0.0);
+                        if (config().reflect_on_z)
+                            science().reflect_z((*U_)(v));
+                        else
+                            science().enforce_outflow(*this, (*U_)(v), c, f);
                     }
 
             return zone;
@@ -1664,13 +1662,8 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
 
                         zone(ii, jj, kk) = (*U_)(v);
 
-                        if (config().reflect_on_z)
-                            science().reflect_z(zone(ii, jj, kk));
-                        else
-                            science().enforce_outflow
-                                (f, z_face_coords(v[0], v[1], v[2]));
-
-                        OCTOPUS_ASSERT(zone(ii, jj, kk)[0] > 0.0);
+                        array<double, 3> c(z_face_coords(v[0], v[1], v[2]));
+                        science().enforce_outflow(*this, (*U_)(v), c, f);
                     }
 
             return zone;
@@ -1690,7 +1683,7 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
 ///////////////////////////////////////////////////////////////////////////////
 // Child -> parent injection of state.
 
-void octree_server::child_to_parent_injection(
+void octree_server::child_to_parent_state_injection(
     boost::uint64_t phase
     )
 { // {{{
@@ -1701,10 +1694,10 @@ void octree_server::child_to_parent_injection(
     for (boost::uint64_t i = 0; i < 8; ++i)
         if (hpx::invalid_id != children_[i])
             recursion_is_parallelism.push_back
-                (children_[i].child_to_parent_injection_async(phase));
+                (children_[i].child_to_parent_state_injection_async(phase));
 
     // Invoke the kernel on ourselves ...
-    child_to_parent_injection_kernel(phase); 
+    child_to_parent_state_injection_kernel(phase); 
 
     // ... and block while our children compute.
     hpx::wait(recursion_is_parallelism); 
@@ -1712,7 +1705,7 @@ void octree_server::child_to_parent_injection(
 
 /// 0.) Wait for all children to signal us.
 /// 1.) Signal our parent.
-void octree_server::child_to_parent_injection_kernel(
+void octree_server::child_to_parent_state_injection_kernel(
     boost::uint64_t phase
     )
 { // {{{
@@ -1938,12 +1931,15 @@ void octree_server::sub_step_kernel(
 
     // Operations parallelizes by axis.
     compute_flux_kernel();
+
+    // TODO: Inject flux
+
     adjust_flux_kernel();
 
     sum_differentials_kernel();
     add_differentials_kernel(dt, beta);
 
-    child_to_parent_injection_kernel(phase + 1);
+    child_to_parent_state_injection_kernel(phase + 1);
 } // }}}
 
 void octree_server::add_differentials_kernel(double dt, double beta)
@@ -1959,7 +1955,7 @@ void octree_server::add_differentials_kernel(double dt, double beta)
 
                 D_(i, j, k) += science().source(*this, (*U_)(i, j, k), c);
 
-                // Here, you can see the temporal dependency.
+                // Discretization. 
                 (*U_)(i, j, k) = ((*U_)(i, j, k) + D_(i, j, k) * dt) * beta
                                + (*U0_)(i, j, k) * (1.0 - beta); 
 
@@ -1992,8 +1988,8 @@ void octree_server::compute_flux_kernel()
     ////////////////////////////////////////////////////////////////////////////    
     // Compute our own local fluxes locally in parallel. 
 
-    // Do two in other threads.
-    boost::array<hpx::future<void>, 2> xyz =
+    // Do two directions in other threads.
+    boost::array<hpx::future<void>, 2> xy =
     { {
         hpx::async(boost::bind
             (&octree_server::compute_x_flux_kernel, this/*, boost::ref(l)*/))
@@ -2005,8 +2001,8 @@ void octree_server::compute_flux_kernel()
     compute_z_flux_kernel(/*l*/);
 
     // Wait for the local x and y fluxes to be computed.
-    xyz[0].move();
-    xyz[1].move();
+    xy[0].move();
+    xy[1].move();
 } // }}}
 
 void octree_server::compute_x_flux_kernel()
@@ -2040,12 +2036,12 @@ void octree_server::compute_x_flux_kernel()
                 science().primitive_to_conserved(qr[i], coords);
     
                 double const a = (std::max)
-                    (science().max_eigenvalue(*this, x_axis, ql[i], coords)
-                   , science().max_eigenvalue(*this, x_axis, qr[i], coords));
+                    (science().max_eigenvalue(*this, ql[i], coords, x_axis)
+                   , science().max_eigenvalue(*this, qr[i], coords, x_axis));
     
                 state
-                    ql_flux = science().flux(*this, x_axis, ql[i], coords),
-                    qr_flux = science().flux(*this, x_axis, qr[i], coords);
+                    ql_flux = science().flux(*this, ql[i], coords, x_axis),
+                    qr_flux = science().flux(*this, qr[i], coords, x_axis);
     
                 FX_(i, j, k) = ((ql_flux + qr_flux)
                              - (qr[i] - ql[i]) * a) * 0.5;
@@ -2084,12 +2080,12 @@ void octree_server::compute_y_flux_kernel()
                 science().primitive_to_conserved(qr[j], coords);
     
                 double const a = (std::max)
-                    (science().max_eigenvalue(*this, y_axis, ql[j], coords)
-                   , science().max_eigenvalue(*this, y_axis, qr[j], coords));
+                    (science().max_eigenvalue(*this, ql[j], coords, y_axis)
+                   , science().max_eigenvalue(*this, qr[j], coords, y_axis));
     
                 state
-                    ql_flux = science().flux(*this, y_axis, ql[j], coords)
-                  , qr_flux = science().flux(*this, y_axis, qr[j], coords);
+                    ql_flux = science().flux(*this, ql[j], coords, y_axis)
+                  , qr_flux = science().flux(*this, qr[j], coords, y_axis);
      
                 FY_(i, j, k) = ((ql_flux + qr_flux)
                              - (qr[j] - ql[j]) * a) * 0.5;
@@ -2128,12 +2124,12 @@ void octree_server::compute_z_flux_kernel()
                 science().primitive_to_conserved(qr[k], coords);
     
                 double const a = (std::max)
-                    (science().max_eigenvalue(*this, z_axis, ql[k], coords)
-                   , science().max_eigenvalue(*this, z_axis, qr[k], coords));
+                    (science().max_eigenvalue(*this, ql[k], coords, z_axis)
+                   , science().max_eigenvalue(*this, qr[k], coords, z_axis));
     
                 state
-                    ql_flux = science().flux(*this, z_axis, ql[k], coords)
-                  , qr_flux = science().flux(*this, z_axis, qr[k], coords)
+                    ql_flux = science().flux(*this, ql[k], coords, z_axis)
+                  , qr_flux = science().flux(*this, qr[k], coords, z_axis)
                     ;
      
                 FZ_(i, j, k) = ((ql_flux + qr_flux)
@@ -2611,7 +2607,7 @@ void octree_server::refine()
 
     OCTOPUS_DUMP("refine: called link, doing c->p injection\n");
 
-    child_to_parent_injection(0);
+    child_to_parent_state_injection(0);
 
     OCTOPUS_DUMP("refine: c->p injection complete\n");
 } // }}}
@@ -2647,6 +2643,47 @@ void octree_server::sibling_refinement_signal(
         dependencies[i].move();
 
     hpx::wait(keep_alive);
+} // }}}
+    
+void octree_server::slice_z(slice_function const& f, double eps)
+{ // {{{
+    std::vector<hpx::future<void> > recursion_is_parallelism;
+    recursion_is_parallelism.reserve(8); 
+
+    for (std::size_t i = 0; i < 8; ++i)
+        if (hpx::invalid_id != children_[i])
+            recursion_is_parallelism.push_back
+                (children_[i].slice_z_async(f, eps));
+
+    slice_z_kernel(f, eps);
+
+    hpx::wait(recursion_is_parallelism);
+} // }}}
+
+void octree_server::slice_z_kernel(slice_function const& f, double eps)
+{ // {{{
+    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const gnx = config().grid_node_length;
+
+    // Make sure we are within epsilon of the equatorial plane.
+    if (!(  (z_center(bw) - 0.5 * dx_ < eps)
+         && (z_center(gnx - bw - 1) + 0.5 * dx_ >= eps)))
+        return;
+
+    boost::uint64_t k = 0;
+
+    for (boost::uint64_t kk = bw; kk < gnx - bw; ++kk)
+        if (  (eps >= z_center(kk) - 0.5 * dx_) 
+           && (eps < z_center(kk) + 0.5 * dx_))
+            k = kk;
+
+    // Loop over all the points in this plane.
+    for (boost::uint64_t i = bw; i < gnx - bw; ++i)
+        for (boost::uint64_t j = bw; j < gnx - bw; ++j)
+        {
+            array<double, 3> c = center_coords(i, j, k);
+            f(*this, (*U_)(i, j, k), c);
+        } 
 } // }}}
 
 }

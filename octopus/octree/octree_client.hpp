@@ -10,6 +10,7 @@
 
 #include <hpx/runtime/naming/name.hpp>
 #include <hpx/lcos/future.hpp>
+#include <hpx/util/function.hpp>
 
 #include <octopus/octree/octree_init_data.hpp>
 #include <octopus/child_index.hpp>
@@ -80,6 +81,14 @@ BOOST_SERIALIZATION_SPLIT_FREE(octopus::boundary_kind);
 
 namespace octopus
 {
+
+typedef hpx::util::function<
+    void(
+        octree_server&
+      , state&
+      , array<double, 3>&
+        )
+> slice_function; 
 
 // FIXME: Avoid using 'mutable'. 
 // NOTE: This class is NOT thread safe when it is a physical or AMR boundary.
@@ -603,15 +612,15 @@ struct OCTOPUS_EXPORT octree_client
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
-    // {{{ child_to_parent_injection
-    void child_to_parent_injection(
+    // {{{ child_to_parent_state_injection
+    void child_to_parent_state_injection(
         boost::uint64_t phase 
         ) const
     {
-        child_to_parent_injection_async(phase).get();
+        child_to_parent_state_injection_async(phase).get();
     }
 
-    hpx::future<void> child_to_parent_injection_async(
+    hpx::future<void> child_to_parent_state_injection_async(
         boost::uint64_t phase 
         ) const;
     // }}}
@@ -776,6 +785,35 @@ struct OCTOPUS_EXPORT octree_client
         hpx::util::function<T(state&)> const& f
       , hpx::util::function<T(T const&, T const&)> const& reducer
       , T const& initial = T()
+        ) const;
+    // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
+    // {{{ slice 
+    void slice_z(
+        slice_function const& f
+      , double eps = std::numeric_limits<double>::epsilon()
+        )
+    {
+        slice_z_async(f, eps).get();
+    }
+
+    hpx::future<void> slice_z_async(
+        slice_function const& f
+      , double eps = std::numeric_limits<double>::epsilon()
+        ) const;
+
+    void slice_z_leaf(
+        slice_function const& f
+      , double eps = std::numeric_limits<double>::epsilon()
+        )
+    {
+        slice_z_leaf_async(f, eps).get();
+    }
+
+    hpx::future<void> slice_z_leaf_async(
+        slice_function const& f
+      , double eps = std::numeric_limits<double>::epsilon()
         ) const;
     // }}}
 

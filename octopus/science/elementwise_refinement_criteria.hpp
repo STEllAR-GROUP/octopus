@@ -56,8 +56,10 @@ struct elementwise_refinement_criteria_base
                         = (bw + j) / 2 + idx.y() * ((gnx / 2) - bw);
                     boost::uint64_t const kd
                         = (bw + k) / 2 + idx.z() * ((gnx / 2) - bw);
+
+                    array<double, 3> loc = e.center_coords(id, jd, kd);
    
-                    if (derived().refine(e(id, jd, kd)))
+                    if (derived().refine(e, e(id, jd, kd), loc))
                         return true;
                 }
     
@@ -81,7 +83,9 @@ struct elementwise_refinement_criteria_base
                     boost::uint64_t const kd
                         = (bw + k) / 2 + idx.z() * ((gnx / 2) - bw);
 
-                    if (!derived().unrefine(e(id, jd, kd)))
+                    array<double, 3> loc = e.center_coords(id, jd, kd);
+
+                    if (!derived().unrefine(e, e(id, jd, kd), loc))
                         return false;
                 }
 

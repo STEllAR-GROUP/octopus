@@ -23,8 +23,7 @@ struct OCTOPUS_EXPORT writer_base
 {
     virtual ~writer_base() {}
 
-    // FIXME: It'd be nicer to just have one begin_epoch function at this point.
-
+    // FIXME: Would be nice to get rid of the "time" parameter.
     virtual void begin_epoch(
         octree_server& e
       , double time

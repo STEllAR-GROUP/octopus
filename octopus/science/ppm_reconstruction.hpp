@@ -6,42 +6,28 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#if !defined(OCTOPUS_0091D3AA_2B0C_4069_80E5_9EA08E57C45F)
-#define OCTOPUS_0091D3AA_2B0C_4069_80E5_9EA08E57C45F
+#if !defined(OCTOPUS_125247F0_F7B5_42E1_B3DD_957000B62E58)
+#define OCTOPUS_125247F0_F7B5_42E1_B3DD_957000B62E58
 
 #include <octopus/config.hpp>
 #include <octopus/state.hpp>
+#include <octopus/trivial_serialization.hpp>
 
 namespace octopus
 {
 
-struct OCTOPUS_EXPORT minmod_reconstruction
+struct OCTOPUS_EXPORT ppm_reconstruction : trivial_serialization
 {
-  private:
-    double theta_;
-
-  public:
-    minmod_reconstruction(double theta = 1.3) : theta_(theta) {}
-
-    // TODO: Verify the width with Dominic. 
-    enum { ghost_zone_width = 2 };
+    enum { ghost_zone_width = 3 };
 
     void operator()(
         std::vector<state> const& q0
       , std::vector<state>& ql
       , std::vector<state>& qr
         ) const;
-
-    template <typename Archive>
-    void serialize(Archive& ar, unsigned int)
-    {
-        ar & theta_;
-    }
 };
-
-// TODO: Port vanleer and ppm reconstruction from Dominic's code.
 
 }
 
-#endif // OCTOPUS_0091D3AA_2B0C_4069_80E5_9EA08E57C45F
+#endif // OCTOPUS_125247F0_F7B5_42E1_B3DD_957000B62E58
 

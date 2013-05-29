@@ -354,12 +354,12 @@ void octree_client::receive_ghost_zone_push(
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-hpx::future<void> octree_client::child_to_parent_injection_async(
+hpx::future<void> octree_client::child_to_parent_state_injection_async(
     boost::uint64_t phase 
     ) const
 {
     ensure_real();
-    return hpx::async<octree_server::child_to_parent_injection_action>
+    return hpx::async<octree_server::child_to_parent_state_injection_action>
         (gid_, phase);
 }
 
@@ -627,6 +627,25 @@ void octree_client::receive_sibling_refinement_signal_push(
     hpx::apply<octree_server::receive_sibling_refinement_signal_action>
         (gid_, phase, f); 
 }
+
+hpx::future<void> octree_client::slice_z_async(
+    slice_function const& f
+  , double eps 
+    ) const
+{
+    ensure_real();
+    return hpx::async<octree_server::slice_z_action>(gid_, f, eps); 
+}
+
+hpx::future<void> octree_client::slice_z_leaf_async(
+    slice_function const& f
+  , double eps 
+    ) const
+{
+    ensure_real();
+    return hpx::async<octree_server::slice_z_leaf_action>(gid_, f, eps); 
+}
+
 
 }
 

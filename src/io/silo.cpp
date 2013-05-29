@@ -90,7 +90,7 @@ void single_variable_silo_writer::stop_write_locked(mutex_type::scoped_lock& l)
     merged_ = false;
 }
 
-void perform_start_write(
+void silo_perform_start_write(
     boost::uint64_t step
   , double time
   , std::string const& file
@@ -100,17 +100,19 @@ void perform_start_write(
         (step, time, file);
 }
 
-void perform_stop_write()
+void silo_perform_stop_write()
 {
     science().output.cast<single_variable_silo_writer>()->stop_write();
 }
 
 }
 
-HPX_PLAIN_ACTION(octopus::perform_start_write, perform_start_write_action);
-HPX_ACTION_USES_MEDIUM_STACK(perform_start_write_action);
-HPX_PLAIN_ACTION(octopus::perform_stop_write, perform_stop_write_action);
-HPX_ACTION_USES_MEDIUM_STACK(perform_stop_write_action);
+HPX_PLAIN_ACTION(octopus::silo_perform_start_write
+               , silo_perform_start_write_action);
+HPX_ACTION_USES_MEDIUM_STACK(silo_perform_start_write_action);
+HPX_PLAIN_ACTION(octopus::silo_perform_stop_write
+               , silo_perform_stop_write_action);
+HPX_ACTION_USES_MEDIUM_STACK(silo_perform_stop_write_action);
 
 namespace octopus
 {
@@ -126,7 +128,7 @@ void single_variable_silo_writer::begin_epoch(
     std::vector<hpx::future<void> > futures;
     futures.reserve(targets.size());
 
-    perform_start_write_action act;
+    silo_perform_start_write_action act;
 
     for (boost::uint64_t i = 0; i < targets.size(); ++i)
     {
@@ -148,7 +150,7 @@ void single_variable_silo_writer::end_epoch(octree_server& e)
     std::vector<hpx::future<void> > futures;
     futures.reserve(targets.size());
 
-    perform_stop_write_action act;
+    silo_perform_stop_write_action act;
 
     for (boost::uint64_t i = 0; i < targets.size(); ++i)
         futures.push_back(hpx::async(act, targets[i]));

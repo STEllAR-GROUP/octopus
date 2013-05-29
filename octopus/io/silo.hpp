@@ -23,6 +23,8 @@
 
 // FIXME: If copied with an open file, this should probably assert.
 // FIXME: Naming for silo_writer breaks the general convention.
+// FIXME: The mutex is bad here, we end up serializing all I/O and leaving a ton
+// of threads waiting on the stack.
 
 namespace octopus
 { 

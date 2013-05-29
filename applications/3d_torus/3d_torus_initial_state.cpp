@@ -92,7 +92,7 @@ struct stepper : octopus::trivial_serialization
 
             root.apply(octopus::science().initialize);
             root.refine();
-            root.child_to_parent_injection(0);
+            root.child_to_parent_state_injection(0);
 
             std::cout << "REFINED LEVEL " << i << "\n";
         }

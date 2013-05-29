@@ -96,11 +96,12 @@ config_data config_from_ini()
     reader
         ("levels_of_refinement", cfg.levels_of_refinement, 0) 
 
-        ("runge_kutta_order", cfg.runge_kutta_order, 1) 
+        ("runge_kutta_order", cfg.runge_kutta_order, 3) 
         ("reflect_on_z", cfg.reflect_on_z, true) 
 
-        ("spatial_domain", cfg.spatial_domain, 1.5e-4) 
-        ("grid_node_length", cfg.grid_node_length, 12) 
+        ("spatial_domain", cfg.spatial_domain, 1.5) 
+        ("grid_node_length", cfg.grid_node_length, 12) // FIXME: This should be
+                                                       // computed dynamically. 
 
         ("temporal_domain", cfg.temporal_domain, 1.0) 
         ("temporal_prediction_gap", cfg.temporal_prediction_gap, 10) 

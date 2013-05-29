@@ -852,14 +852,14 @@ struct OCTOPUS_EXPORT octree_server
 
     ///////////////////////////////////////////////////////////////////////////
     // Child -> parent injection of state.
-    void child_to_parent_injection(
+    void child_to_parent_state_injection(
         boost::uint64_t phase
       /*, mutex_type::scoped_lock& l*/
         );
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                child_to_parent_injection,
-                                child_to_parent_injection_action);
+                                child_to_parent_state_injection,
+                                child_to_parent_state_injection_action);
 
   private:
     /// 0.) Unlock \a l.
@@ -867,7 +867,7 @@ struct OCTOPUS_EXPORT octree_server
     ///     the queue is ready.
     /// 2.) Relock \a l.
     /// 3.) Send a child -> parent injection up to our parent. 
-    void child_to_parent_injection_kernel(
+    void child_to_parent_state_injection_kernel(
         boost::uint64_t phase
       /*, mutex_type::scoped_lock& l*/
         );
@@ -1125,6 +1125,32 @@ struct OCTOPUS_EXPORT octree_server
         >
     {};
     // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
+    void slice_z(
+        slice_function const& f
+      , double eps = std::numeric_limits<double>::epsilon()
+        );
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                slice_z,
+                                slice_z_action);
+
+  private:
+    void slice_z_kernel(slice_function const& f, double eps);
+
+  public:
+    void slice_z_leaf(
+        slice_function const& f
+      , double eps = std::numeric_limits<double>::epsilon()
+        )
+    {
+        slice_z_kernel(f, eps);
+    }
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                slice_z_leaf,
+                                slice_z_leaf_action);
 };
 
 inline oid_type::oid_type(octree_server const& e)
@@ -1171,7 +1197,7 @@ OCTOPUS_REGISTER_ACTION(send_ghost_zone);
 OCTOPUS_REGISTER_ACTION(send_interpolated_ghost_zone);
 OCTOPUS_REGISTER_ACTION(send_mapped_ghost_zone);
 
-OCTOPUS_REGISTER_ACTION(child_to_parent_injection);
+OCTOPUS_REGISTER_ACTION(child_to_parent_state_injection);
 OCTOPUS_REGISTER_ACTION(receive_child_state);
 
 OCTOPUS_REGISTER_ACTION(apply);
@@ -1185,6 +1211,9 @@ OCTOPUS_REGISTER_ACTION(mark);
 OCTOPUS_REGISTER_ACTION(populate);
 OCTOPUS_REGISTER_ACTION(link);
 OCTOPUS_REGISTER_ACTION(receive_sibling_refinement_signal);
+
+OCTOPUS_REGISTER_ACTION(slice_z);
+OCTOPUS_REGISTER_ACTION(slice_z_leaf);
 
 #undef OCTOPUS_REGISTER_ACTION
 

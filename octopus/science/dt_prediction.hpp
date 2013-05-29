@@ -13,7 +13,7 @@
 #include <hpx/util/serialize_sequence.hpp>
 
 BOOST_FUSION_DEFINE_STRUCT(
-    (octopus), timestep_prediction,
+    (octopus), dt_prediction,
     (double, next_dt)
     (double, future_dt))
 
@@ -21,7 +21,7 @@ namespace boost { namespace serialization
 {
 
 template <typename Archive>
-void serialize(Archive& ar, octopus::timestep_prediction& p, unsigned int)
+void serialize(Archive& ar, octopus::dt_prediction& p, unsigned int)
 {
     hpx::util::serialize_sequence(ar, p);
 }

@@ -6,13 +6,14 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <octopus/science/reconstruction.hpp>
+#include <octopus/science/minmod_reconstruction.hpp>
 #include <octopus/engine/engine_interface.hpp>
 #include <octopus/math.hpp>
 
 namespace octopus
 {
 
+// FIXME: Put this in a header?
 void minmod_reconstruction::operator()(
     std::vector<state> const& q0
   , std::vector<state>& ql
@@ -25,21 +26,14 @@ void minmod_reconstruction::operator()(
 
     for (boost::uint64_t i = 1; i < gnx - 1; ++i)
     {
-        // up = q0[i + 1] - q0[i]
         state up = q0[i + 1] - q0[i];
-
-        // um = q0[i] - q0[i - 1]
         state um = q0[i] - q0[i - 1];
-
         slope[i] = minmod_theta(up, um, theta_);
     }
 
     for (boost::uint64_t i = 2; i < gnx - 1; ++i)
     {
-        // ql[i] = q0[i - 1] + slope[i - 1] / 2.0
         ql[i] = q0[i - 1] + (slope[i - 1] / 2.0);
-
-        //qr[i] = q0[i] - slope[i] / 2.0;
         qr[i] = q0[i] - (slope[i] / 2.0);
     }
 }

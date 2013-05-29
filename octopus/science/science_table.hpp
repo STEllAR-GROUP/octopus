@@ -10,7 +10,7 @@
 
 #include <octopus/octree/octree_server.hpp>
 #include <octopus/science/refinement_criteria.hpp>
-#include <octopus/science/timestep_prediction.hpp>
+#include <octopus/science/dt_prediction.hpp>
 #include <octopus/io/writer.hpp>
 #include <octopus/face.hpp>
 
@@ -62,7 +62,12 @@ struct science_table
     > initialize;
 
     hpx::util::function<
-        void(face, array<double, 3> const&)
+        void(
+            octree_server&
+          , state& 
+          , array<double, 3> const& 
+          , face 
+        )
     > enforce_outflow; 
 
     hpx::util::function<
@@ -79,29 +84,29 @@ struct science_table
     hpx::util::function<
         double(
             octree_server&
-          , axis
-          , state const& ///< State 
+          , state const& 
           , array<double, 3> const& 
+          , axis
             )
     > max_eigenvalue; 
 
     ///< The distance between zones in the root node/most coarse / refinement
     ///  level (aka level 0). 
     // h0, (2*GRID_DIM/double(GNX-2*BW)), TODO: validate min/max
-    hpx::util::function<double()> initial_spacestep;
+    hpx::util::function<double()> initial_dx;
 
     hpx::util::function<
         double(
             octree_server& ///< Root
             )
-    > initial_timestep;
+    > initial_dt;
 
     hpx::util::function<
         /// (timestep N + 1 size, timestep N + gap size)
-        timestep_prediction(
+        dt_prediction(
             octree_server& ///< Root
             )
-    > predict_timestep;
+    > predict_dt;
 
     hpx::util::function<
         void(
@@ -128,9 +133,9 @@ struct science_table
     hpx::util::function<
         state(
             octree_server&
-          , axis
-          , state& ///< State 
+          , state&
           , array<double, 3> const& 
+          , axis
             )
     > flux; 
 
@@ -147,9 +152,9 @@ struct science_table
      , enforce_limits()
      , reflect_z()
      , max_eigenvalue()
-     , initial_spacestep()
-     , initial_timestep()
-     , predict_timestep()
+     , initial_dx()
+     , initial_dt()
+     , predict_dt()
      , conserved_to_primitive()
      , primitive_to_conserved()
      , source()
@@ -173,10 +178,10 @@ struct science_table
         ar & reflect_z;
         ar & max_eigenvalue;
 
-        ar & initial_spacestep;
+        ar & initial_dx;
 
-        ar & initial_timestep;
-        ar & predict_timestep;
+        ar & initial_dt;
+        ar & predict_dt;
 
         ar & conserved_to_primitive;
         ar & primitive_to_conserved;

@@ -12,6 +12,8 @@
 #include <hpx/runtime.hpp>
 #include <hpx/exception.hpp>
 
+#include <octopus/traits.hpp>
+
 #include <boost/lexical_cast.hpp>
 
 namespace octopus
@@ -37,72 +39,53 @@ struct config_reader
     template <typename A, typename B>
     result_type operator()(std::string const& param, A& data, B dflt) const
     {
-        std::string key(prefix_);
-        key += ".";
-        key += param;
-
-        try
-        {
-            if (has_config_entry(key))
-            {
-                data = boost::lexical_cast<A>(hpx::get_config_entry(key, ""));
-            }
-            else
-            {
-                data = dflt;
-            }
-    
-        }
-    
-        catch (boost::bad_lexical_cast&)
-        {
-            // REVIEW: This is literally the only place where we throw directly
-            // instead of asserting.
-            std::string msg = boost::str(boost::format(
-                "bad INI parameter, '%1%' is not a valid value for %2%")
-                % hpx::get_config_entry(key, "") % key);
-            HPX_THROW_EXCEPTION(hpx::bad_parameter,
-                "octopus::config_from_ini", msg);
-        }
-
-        return *this;
+        typename is_bool<A>::type predicate;
+        return (*this)(param, data, dflt, predicate); 
     }
 
-    template <typename A>
-    result_type operator()(std::string const& param, A& data) const
-    {
-        std::string key(prefix_);
-        key += ".";
-        key += param;
-
-        try
-        {
-            if (has_config_entry(key))
-            {
-                data = boost::lexical_cast<A>(hpx::get_config_entry(key, ""));
-            }
-            else
-            {
-                data = A();
-            }
-        }
-    
-        catch (boost::bad_lexical_cast&)
-        {
-            // REVIEW: This is literally the only place where we throw directly
-            // instead of asserting.
-            std::string msg = boost::str(boost::format(
-                "bad INI parameter, '%1%' is not a valid value for %2%")
-                % hpx::get_config_entry(key, "") % key);
-            HPX_THROW_EXCEPTION(hpx::bad_parameter,
-                "octopus::config_from_ini", msg);
-        }
-
-        return *this;
-    }
-
+    template <typename A, typename B>
     result_type operator()(
-        std::string const& param, bool& data, bool dflt
+        std::string const& param
+      , A& data
+      , B dflt
+      , boost::mpl::false_
+        ) const
+    {
+        typedef typename proxied_type<A>::type T;
+
+        std::string key(prefix_);
+        key += ".";
+        key += param;
+
+        try
+        {
+            if (has_config_entry(key))
+                data = boost::lexical_cast<T>(hpx::get_config_entry(key, ""));
+            else
+                data = dflt;
+    
+        }
+    
+        catch (boost::bad_lexical_cast&)
+        {
+            // REVIEW: This is literally the only place where we throw directly
+            // instead of asserting.
+            std::string msg = boost::str(boost::format(
+                "bad INI parameter, '%1%' is not a valid value for %2%")
+                % hpx::get_config_entry(key, "") % key);
+            HPX_THROW_EXCEPTION(hpx::bad_parameter,
+                "octopus::config_from_ini", msg);
+        }
+
+        return *this;
+    }
+
+    template <typename A, typename B>
+    result_type operator()(
+        std::string const& param
+      , A& data
+      , B dflt
+      , boost::mpl::true_
         ) const
     {
         std::string key(prefix_);
@@ -130,50 +113,6 @@ struct config_reader
             else
             {
                 data = dflt;
-            }
-        }
-    
-        catch (boost::bad_lexical_cast&)
-        {
-            // REVIEW: This is literally the only place where we throw directly
-            // instead of asserting.
-            std::string msg = boost::str(boost::format(
-                "bad INI parameter, '%1%' is not a valid value for %2%")
-                % hpx::get_config_entry(key, "") % key);
-            HPX_THROW_EXCEPTION(hpx::bad_parameter,
-                "octopus::config_from_ini", msg);
-        }
-
-        return *this;
-    }
-
-    result_type operator()(std::string const& param, bool& data) const
-    {
-        std::string key(prefix_);
-        key += ".";
-        key += param;
-
-        try
-        {
-            if (has_config_entry(key))
-            {
-                std::string str = hpx::get_config_entry(key, "");
-
-                if ("true" == str) 
-                    data = true;
-                else if ("false" == str)
-                    data = false;
-                else
-                {
-                    boost::int64_t num
-                        = boost::lexical_cast<boost::int64_t>(str);
-
-                    data = num ? true : false;
-                } 
-            }
-            else
-            {
-                data = bool();
             }
         }
     

@@ -19,6 +19,8 @@
 #include <octopus/octree/octree_reduce.hpp>
 #include <octopus/octree/octree_apply_leaf.hpp>
 #include <octopus/math.hpp>
+#include <octopus/global_variable.hpp>
+#include <octopus/io/fstream.hpp>
 
 #if defined(OCTOPUS_HAVE_SILO)
     #include <octopus/io/silo.hpp>
@@ -34,132 +36,156 @@
 // FIXME: Proper configuration.
 // FIXME: Globals are bad mkay.
 
-// Gravitation constant.
-double const G = 1.0; // BIG_G
-
-// Mass of the central object.
-double const M_C = 2e-2;
-
-// Minimum value that rho is allowed to be.
-double const rho_floor = 1.0e-20;
-
-// Minimum value that internal energy is allowed to be. 
-double const internal_energy_floor = 1.0e-20;  
-
-// Minimum refinement density.
-double const min_refine_rho = 1.0e-6;
-
-// Polytropic index.
-double const GAMMA = 2.0; // EULER_GAMMA
-
 enum rotational_direction
 {
     rotate_clockwise,
     rotate_counterclockwise
 };
 
+enum momentum_conservation
+{
+    angular_momentum_conservation,
+    cartesian_momentum_conservation
+};
+
 ///////////////////////////////////////////////////////////////////////////////
-// Polytropic constant.
-std::vector<double> KAPPA = std::vector<double>();
+double const initial_cfl_factor = 1.0e-2;
 
-boost::atomic<double> kappa_buffer(0.0);
+double const cfl_factor = 0.4;
 
-inline double& kappa(boost::uint64_t step)
-{
-    return KAPPA[step % octopus::config().temporal_prediction_gap];
-}
+/// Gravitation constant.
+double const G = 1.0; 
 
-void update_kappa(double k)
-{
-    std::cout << "Updating kappa => " << k << "\n";
-    kappa_buffer.store(k);
-}
-HPX_PLAIN_ACTION(update_kappa, update_kappa_action);
-HPX_ACTION_HAS_CRITICAL_PRIORITY(update_kappa_action);
+/// Mass of the central object.
+double const M_C = 1.0;
 
-struct set_kappa_from_buffer
-{
-  private:
-    boost::uint64_t step_;
+/// Minimum value that internal energy is allowed to be. 
+double const internal_energy_floor = 1.0e-20;  
 
-  public:
-    set_kappa_from_buffer() : step_(0) {}
+/// Outer radius of the torus.
+double const R_outer = 1.0;
 
-    set_kappa_from_buffer(boost::uint64_t step) : step_(step) {}
+/// Polytropic index.
+double const gamma_ = 1.333; 
 
-    void operator()() const
-    {
-        kappa(step_) = kappa_buffer;
-    }
- 
-    template <typename Archive>
-    void serialize(Archive& ar, unsigned int)
-    {
-        ar & step_;
-    }
-};
+double const polytropic_n = 3.0;
 
-struct initialize_kappa
-{
-  private:
-    double kappa0_;
+/// Amplitude of the perturbation.
+double const kick_amplitude = 1e-2;
 
-  public:
-    initialize_kappa() : kappa0_(0.0) {}
+/// Angular speed of the frame, e.g. how fast the grid rotates.
+OCTOPUS_GLOBAL_VARIABLE((double), omega);
 
-    initialize_kappa(double kappa0) : kappa0_(kappa0) {}
+/// Direction of the torus' rotation.
+OCTOPUS_GLOBAL_VARIABLE((rotational_direction), rot_dir);
 
-    void operator()() const
-    {
-        kappa_buffer.store(kappa0_);
-        KAPPA.resize(octopus::config().temporal_prediction_gap, kappa0_);
-    }
+/// Advection scheme. 
+OCTOPUS_GLOBAL_VARIABLE((momentum_conservation), mom_cons);
 
-    template <typename Archive>
-    void serialize(Archive& ar, unsigned int)
-    {
-        ar & kappa0_;
-    }
-};
+/// If true, a rotating frame of reference is used. 
+OCTOPUS_GLOBAL_VARIABLE((bool), rotating_grid);
+
+/// Polytropic constant.
+OCTOPUS_GLOBAL_VARIABLE((double), kappa);
+
+/// The ratio of the inner radius to the outer radius, e.g. the thinnness of the
+/// torus. 
+OCTOPUS_GLOBAL_VARIABLE((double), X_in);
+
+/// Mode of the perturbation.
+OCTOPUS_GLOBAL_VARIABLE((boost::uint64_t), kick_mode);
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Mass density
-inline double&       rho(octopus::state& u)       { return u[0]; }
-inline double const& rho(octopus::state const& u) { return u[0]; }
+double&       rho(octopus::state& u)       { return u[0]; }
+double const& rho(octopus::state const& u) { return u[0]; }
 
 /// Momentum density (X-axis)
-inline double&       momentum_x(octopus::state& u)       { return u[1]; }
-inline double const& momentum_x(octopus::state const& u) { return u[1]; }
+double&       momentum_x(octopus::state& u)       { return u[1]; }
+double const& momentum_x(octopus::state const& u) { return u[1]; }
 
 /// Momentum density (Y-axis)
-inline double&       momentum_y(octopus::state& u)       { return u[2]; }
-inline double const& momentum_y(octopus::state const& u) { return u[2]; }
+double&       momentum_y(octopus::state& u)       { return u[2]; }
+double const& momentum_y(octopus::state const& u) { return u[2]; }
 
 /// Momentum density (Z-axis)
-inline double&       momentum_z(octopus::state& u)       { return u[3]; }
-inline double const& momentum_z(octopus::state const& u) { return u[3]; }
+double&       momentum_z(octopus::state& u)       { return u[3]; }
+double const& momentum_z(octopus::state const& u) { return u[3]; }
 
 /// Total energy of the gas 
-inline double&       total_energy(octopus::state& u)       { return u[4]; }
-inline double const& total_energy(octopus::state const& u) { return u[4]; }
+double&       total_energy(octopus::state& u)       { return u[4]; }
+double const& total_energy(octopus::state const& u) { return u[4]; }
 
 /// Entropy tracer
-inline double&       tau(octopus::state& u)       { return u[5]; }
-inline double const& tau(octopus::state const& u) { return u[5]; }
+double&       tau(octopus::state& u)       { return u[5]; }
+double const& tau(octopus::state const& u) { return u[5]; }
 
-inline double kinetic_energy(octopus::state const& s)
+double&       angular_momentum(octopus::state& u)       { return u[6]; }
+double const& angular_momentum(octopus::state const& u) { return u[6]; }
+
+enum { radial_momentum_idx = 7 };
+
+double radius(octopus::array<double, 3> const& v)
 {
-    return 0.5 * ( momentum_x(s) * momentum_x(s)
-                 + momentum_y(s) * momentum_y(s)
-                 + momentum_z(s) * momentum_z(s)) / rho(s);
+    return std::sqrt(v[0]*v[0] + v[1]*v[1]);
+}
+
+double radius(double x, double y)
+{
+    return std::sqrt(x*x + y*y);
+}
+
+double radial_momentum(
+    octopus::state const& u
+  , octopus::array<double, 3> const& v
+    )
+{
+    switch (mom_cons)
+    {
+        case angular_momentum_conservation:
+            return u[radial_momentum_idx]; 
+        case cartesian_momentum_conservation:
+        {
+            double const R = radius(v);
+            return momentum_x(u)*v[0]/R - momentum_y(u)*v[1]/R;
+        }
+        default: break;
+    }
+
+    OCTOPUS_ASSERT(false);
+    return 0.0;
+}
+
+double tangential_momentum(
+    octopus::state const& u
+  , octopus::array<double, 3> const& v
+    )
+{
+    double const R = radius(v);
+    
+    switch (mom_cons)
+    {
+        case angular_momentum_conservation:
+            return angular_momentum(u)/R - rho(u)*R*omega; 
+        case cartesian_momentum_conservation:
+            return momentum_y(u)*v[0]/R
+                 - momentum_x(u)*v[1]/R
+                 - rho(u)*R*omega;
+        default: break;
+    }
+
+    OCTOPUS_ASSERT(false);
+    return 0.0;
 }
 
 template <octopus::axis Axis>
-inline double gravity(double x, double y, double z)
+double gravity(octopus::array<double, 3> const& v)
 {
-    using std::sqrt;
+    double const x = v[0];
+    double const y = v[1];
+    double const z = v[2];
 
-    double const r = sqrt(x*x + y*y + z*z);
+    double const r = std::sqrt(x*x + y*y + z*z);
     double const F = -G*M_C/(r*r);
 
     switch (Axis)
@@ -169,10 +195,7 @@ inline double gravity(double x, double y, double z)
         case octopus::y_axis:
             return F*(y/r);
         case octopus::z_axis:
-        {
-            double const r_cyl = sqrt(x*x + y*y); 
-            return F*(z/r_cyl);
-        }
+            return F*(z/r);
         default: break;
     }
 
@@ -180,75 +203,150 @@ inline double gravity(double x, double y, double z)
     return 0.0; 
 }
 
-template <octopus::axis Axis>
-inline double gravity(octopus::array<double, 3> const& v)
+double radial_gravity(octopus::array<double, 3> const& v)
 {
-    return gravity<Axis>(v[0], v[1], v[2]); 
+    double const x = v[0];
+    double const y = v[1];
+    double const z = v[2];
+
+    double const r = std::sqrt(x*x + y*y + z*z);
+    double const R = radius(v);
+    double const F = -G*M_C/(r*r);
+
+    return F*(R/r);
+}
+
+template <octopus::axis Axis>
+double velocity(
+    octopus::state const& u
+  , octopus::array<double, 3> const& v
+    )
+{
+    double const x = v[0];
+    double const y = v[1];
+
+    double const R = radius(v);
+    double const st = tangential_momentum(u, v);
+    double const sr = radial_momentum(u, v);
+ 
+    switch (Axis)
+    {
+        case octopus::x_axis:
+            return (x*sr-y*st)/R/rho(u);
+        case octopus::y_axis:
+            return (y*sr-x*st)/R/rho(u);
+        case octopus::z_axis:
+            return momentum_z(u)/rho(u);
+        default: break;
+    }
+
+    OCTOPUS_ASSERT(false);
+    return 0.0; 
+}
+
+double kinetic_energy(
+    octopus::state const& u
+  , octopus::array<double, 3> const& v
+    )
+{
+    double const sr = radial_momentum(u, v);
+    double const st = tangential_momentum(u, v);
+    return 0.5 * (sr*sr + st*st + momentum_z(u)*momentum_z(u)) / rho(u); 
 }
 
 /// Gas pressure - polytropic equation of state.
-double pressure(octopus::state const& s, boost::uint64_t step)
+double pressure(octopus::state const& u)
 {
-    return kappa(step) * std::pow(rho(s), GAMMA);
+    return kappa * std::pow(rho(u), gamma_);
 }
 
-double speed_of_sound(octopus::state const& s, boost::uint64_t step)
+double speed_of_sound(octopus::state const& u)
 {
-    OCTOPUS_ASSERT(rho(s) > 0.0);
-    OCTOPUS_ASSERT(pressure(s, step) >= 0.0);
-    return std::sqrt(GAMMA * pressure(s, step) / rho(s)); 
+    OCTOPUS_ASSERT(rho(u) > 0.0);
+    OCTOPUS_ASSERT(pressure(u) >= 0.0);
+    return std::sqrt(gamma_ * pressure(u) / rho(u)); 
 }
 
-double orbital_period(double eps, double R_outer)
+// Omega at the radius with the highest pressure.
+double omega_R_0()
 {
-    double const R_inner = R_outer*(1.0 - eps)/(1.0 + eps);
-    double const h = sqrt(2.0*G*M_C*R_inner*R_outer/(R_inner + R_outer));
-    double const omega_R_max = (G*M_C)*(G*M_C)/(h*h*h);
+    double const j_H = std::sqrt(2.0*X_in/(1.0+X_in));
+    double const j_here = j_H*std::sqrt(G*M_C*R_outer);
+    return (G*M_C)*(G*M_C)/(j_here*j_here*j_here);
+}
+
+void initialize_omega()
+{
+    if (rotating_grid)
+        omega = omega_R_0();
+    else
+        omega = 0.0; 
+}
+
+double orbital_period()
+{
     double const pi = boost::math::constants::pi<double>();
+    return 2.0*pi/omega_R_0(); 
+}
 
-    return 2.0*pi/omega_R_max; 
+double z_max(double R)
+{
+    using std::pow;
+    using std::sqrt;
+
+    double const X = R/R_outer;
+    double const j_H = sqrt(2.0*X_in/(1.0+X_in));
+    double const C = 1.0/(1.0+X_in);
+    double const tmp = pow(C+0.5*(j_H/X)*(j_H/X), -2.0) - X*X;
+
+    return R_outer*sqrt(tmp);
+}
+
+double rho_max() 
+{
+    using std::pow;
+    using std::sqrt;
+
+    double const n = polytropic_n;
+
+    double const R_0 = R_outer*2.0*X_in/(1.0+X_in);        
+    double const j_H = sqrt(2.0*X_in/(1.0+X_in));
+    double const X_max = R_0/R_outer;
+    double const C = 1.0/(1.0+X_in);
+    double const H_max = 1.0/sqrt(X_max*X_max) - 0.5*(j_H/X_max)*(j_H/X_max)-C;
+
+    return pow(H_max/((n+1)*kappa), n);
+}
+
+double rho_floor()
+{
+    return 1.0e-10 * rho_max();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Kernels.
-struct initialize 
+struct initialize : octopus::trivial_serialization 
 { // {{{
-  private:
-    double eps_;
-    double R_outer_;
-    rotational_direction rotation_;
-
-  public:
-    initialize() : eps_(0.0), R_outer_(0.0), rotation_() {}
-
-    initialize(
-        double eps
-      , double R_outer
-      , rotational_direction rotation
-        )
-      : eps_(eps)
-      , R_outer_(R_outer)
-      , rotation_(rotation)
-    {}
-
     void operator()(octopus::octree_server& U) const
     {
         using std::pow;
         using std::sqrt;
-
-        double const kappa0 = 1.0;
+        using std::atan2;
+        using std::cos;
 
         double const ei0 = 1.0;
-        double const tau0 = pow(ei0, 1.0 / GAMMA);
-        double const rho1 = rho_floor;
+        double const tau0 = pow(ei0, 1.0 / gamma_);
+        double const rho1 = rho_floor();
         double const ei1 = internal_energy_floor;
-        double const tau1 = pow(ei1, 1.0 / GAMMA);
+        double const tau1 = pow(ei1, 1.0 / gamma_);
     
-        double const R_inner = R_outer_*(1.0 - eps_)/(1.0 + eps_);
+        double const R_inner = X_in * R_outer;
 
-        double const h = sqrt(2.0*G*M_C*R_inner*R_outer_/(R_inner + R_outer_));
+        double const C = 1.0/(1.0+X_in);
 
-        double const C = 0.5*pow(h/R_inner, 2) - G*M_C/R_inner;    
+        double const j_H = sqrt(2.0*X_in/(1.0+X_in));
+        // Conversion to "real" units (REVIEW: What does this mean?)
+        double const j_here = j_H*sqrt(G*M_C*R_outer); 
   
         boost::uint64_t const gnx = octopus::config().grid_node_length;
  
@@ -258,102 +356,120 @@ struct initialize
             {
                 for (boost::uint64_t k = 0; k < gnx; ++k)
                 {
-                    double const x = U.x_center(i);
-                    double const y = U.y_center(j);
-                    double const z = U.z_center(k);
+                    double const x_here = U.x_center(i);
+                    double const y_here = U.y_center(j);
+                    // REVIEW: Why do we do std::abs() here?
+                    double const z_here = std::abs(U.z_center(k));
   
-                    // Cylindrical R.  
-                    double const r = sqrt(pow(x, 2) + pow(y, 2));
+                    double const R = radius(x_here, y_here);
 
                     // DEBUGGING
-                    //std::cout << "r       = " << r       << "\n"
+                    //std::cout << "r       = " << R       << "\n"
                     //          << "R_inner = " << R_inner << "\n"
-                    //          << "R_outer = " << R_outer_ << "\n";
+                    //          << "R_outer = " << R_outer << "\n";
     
-                    if ((R_inner <= r) && (R_outer_ >= r))
+                    if ((R_inner <= R) && (R_outer >= R))
                     {
-                        double const z_max =
-                            sqrt(pow(G*M_C/(0.5*pow(h/r, 2) - C), 2) - r*r);
-
                         // DEBUGGING
-                        //std::cout << "z     = " << z     << "\n"
-                        //          << "z_max = " << z_max << "\n";
+                        //std::cout << "z     = " << z_here << "\n"
+                        //          << "z_max = " << z_max  << "\n";
 
-                        if (z <= z_max)
+                        if (z_here <= z_max(R))
                         {
-                            double const rho_here =
-                                  (0.5/kappa0)
-                                * (C + G*M_C/sqrt(r*r + z*z) - 0.5*pow(h/r, 2));
+                            double const X = R/R_outer;
+
+                            double const z = z_here/R_outer;
+                            double const H_here = 1.0/sqrt(X*X+z*z)
+                                                - 0.5*(j_H/X)*(j_H/X) - C;
+
+                            double const n = polytropic_n;
+                            double rho_here = (pow(H_here/((n+1)*kappa), n))
+                                            * G*M_C/R_outer;
+
+                            OCTOPUS_ASSERT(rho_here > 0.0);
+
+                            double const theta_here = atan2(y_here, x_here);
+
+                            if (kick_mode != 0)
+                                rho_here *= 1.0 + ( kick_amplitude
+                                                  * cos(kick_mode*theta_here));
+
+                            OCTOPUS_ASSERT(rho_here > 0.0);
 
                             rho(U(i, j, k)) = rho_here;
 
                             double& mom_x = momentum_x(U(i, j, k));
                             double& mom_y = momentum_y(U(i, j, k));
 
-                            mom_x = y*rho_here*h/pow(r, 2);
-                            mom_y = x*rho_here*h/pow(r, 2);
-
-                            if (rotate_counterclockwise == rotation_)
+                            switch (rot_dir)
                             {
-                                mom_x = (-y)*rho_here*h/pow(r, 2);
-                                mom_y = (+x)*rho_here*h/pow(r, 2);
+                                case rotate_counterclockwise:
+                                {
+                                    mom_x = (-y_here)*rho_here*j_here/pow(R, 2);
+                                    mom_y = (+x_here)*rho_here*j_here/pow(R, 2);
+                                    break;
+                                }
+
+                                case rotate_clockwise:
+                                {
+                                    mom_x = (+y_here)*rho_here*j_here/pow(R, 2);
+                                    mom_y = (-x_here)*rho_here*j_here/pow(R, 2);
+                                    break;
+                                }
+
+                                default: OCTOPUS_ASSERT(false);
                             }
 
-                            else if (rotate_clockwise == rotation_)
-                            {
-                                mom_x = (+y)*rho_here*h/pow(r, 2);
-                                mom_y = (-x)*rho_here*h/pow(r, 2);
-                            }
-
-                            else
-                                OCTOPUS_ASSERT(false);
-
-                            total_energy(U(i, j, k)) = ei0;
-                            tau(U(i, j, k))          = tau0;
+                            total_energy(U(i, j, k))     = ei0;
+                            tau(U(i, j, k))              = tau0;
+                            angular_momentum(U(i, j, k)) = j_here*rho_here;
                         }
 
                         else
                         {
-                            rho(U(i, j, k))          = rho1;
-                            momentum_x(U(i, j, k))   = 0.0; 
-                            momentum_y(U(i, j, k))   = 0.0;
-                            total_energy(U(i, j, k)) = ei1;  
-                            tau(U(i, j, k))          = tau1;
+                            rho(U(i, j, k))              = rho1;
+                            momentum_x(U(i, j, k))       = 0.0; 
+                            momentum_y(U(i, j, k))       = 0.0;
+                            total_energy(U(i, j, k))     = ei1;  
+                            tau(U(i, j, k))              = tau1;
+                            angular_momentum(U(i, j, k)) = 0.0;
                         }
                     }
                     
                     else
                     {
-                        rho(U(i, j, k))          = rho1;
-                        momentum_x(U(i, j, k))   = 0.0; 
-                        momentum_y(U(i, j, k))   = 0.0;
-                        total_energy(U(i, j, k)) = ei1;  
-                        tau(U(i, j, k))          = tau1;
+                        rho(U(i, j, k))              = rho1;
+                        momentum_x(U(i, j, k))       = 0.0; 
+                        momentum_y(U(i, j, k))       = 0.0;
+                        total_energy(U(i, j, k))     = ei1;  
+                        tau(U(i, j, k))              = tau1;
+                        angular_momentum(U(i, j, k)) = 0.0;
                     }
 
                     // DEBUGGING
-                    //std::cout << "(" << x << ", " << y << ", " << z << ") == "
+                    //std::cout << "(" << x_here
+                    //          << ", " << y_here
+                    //          << ", " << z_here << ") == "
                     //          << rho(U(i, j, k)) << "\n";
 
-                    momentum_z(U(i, j, k)) = 0.0; 
+                    momentum_z(U(i, j, k))          = 0.0; 
+                    U(i, j, k)[radial_momentum_idx] = 0.0;
 
-                    rho(U(i, j, k)) = (std::max)(rho(U(i, j, k)), rho_floor); 
+                    rho(U(i, j, k)) = (std::max)(rho(U(i, j, k)), rho_floor()); 
                 }
             }
         }
-    }
-
-    template <typename Archive>
-    void serialize(Archive& ar, unsigned int)
-    {
-        ar & eps_;
-        ar & R_outer_;
     }
 }; // }}}
 
 struct enforce_outflow : octopus::trivial_serialization
 {
-    void operator()(octopus::face f, octopus::array<double, 3> x) const
+    void operator()(
+        octopus::octree_server& U
+      , octopus::state& s
+      , octopus::array<double, 3> const& loc
+      , octopus::face f
+        ) const
     {
         // IMPLEMENT
     } 
@@ -363,20 +479,40 @@ struct enforce_lower_limits : octopus::trivial_serialization
 {
     void operator()(
         octopus::state& u
-      , octopus::array<double, 3> const& coords 
+      , octopus::array<double, 3> const& v 
         ) const
     {
-        rho(u) = (std::max)(rho(u), rho_floor); 
+        rho(u) = (std::max)(rho(u), rho_floor()); 
 
-        double const internal_energy
-            = total_energy(u) - kinetic_energy(u);
+        double const internal_energy = total_energy(u) - kinetic_energy(u, v);
 
         if (internal_energy > 0.1 * total_energy(u))
         {
-            using std::pow;
-            tau(u) = pow((std::max)(internal_energy, internal_energy_floor)
-                                  , 1.0 / GAMMA); 
+            tau(u) = std::pow((std::max)(internal_energy, internal_energy_floor)
+                                       , 1.0 / gamma_); 
         }
+
+        // Floor everything in the center of the grid.
+        double const R_inner = X_in * R_outer;
+
+        if (radius(v) < 0.5 * R_inner)
+        {
+            // REVIEW: Why don't we floor tau and energy? 
+            rho(u)                 = rho_floor();
+            momentum_x(u)          = 0.0;
+            momentum_y(u)          = 0.0;
+            momentum_z(u)          = 0.0;
+            angular_momentum(u)    = 0.0;
+            u[radial_momentum_idx] = 0.0;
+        }
+
+        // If we're not conserving angular momentum, define angular momentum 
+        // in terms of x and y momentum. 
+        // FIXME: Not sure this belongs in this particular function, or perhaps
+        // this hook should be renamed to be something more generic than
+        // enforce_lower_limits.
+        else if (mom_cons != angular_momentum_conservation)
+            angular_momentum(u) = momentum_y(u)*v[0] - momentum_x(u)*v[1];
     }
 };
 
@@ -392,22 +528,9 @@ struct max_eigenvalue : octopus::trivial_serialization
 {
     double operator()(
         octopus::octree_server& U
+      , octopus::state const& u
+      , octopus::array<double, 3> const& v 
       , octopus::axis a
-      , octopus::state const& s
-        ) const
-    {
-        octopus::array<double, 3> coords;
-        coords[0] = 0.0;
-        coords[1] = 0.0;
-        coords[2] = 0.0;
-        return (*this)(U, a, s, coords);
-    }
-
-    double operator()(
-        octopus::octree_server& U
-      , octopus::axis a
-      , octopus::state const& s
-      , octopus::array<double, 3> const& 
         ) const
     {
         using std::abs;
@@ -415,16 +538,16 @@ struct max_eigenvalue : octopus::trivial_serialization
         switch (a)
         {
             case octopus::x_axis:
-                return abs(momentum_x(s) / rho(s)) // velocity
-                     + speed_of_sound(s, U.get_step());
+                return abs(velocity<octopus::x_axis>(u, v)) 
+                     + speed_of_sound(u);
 
             case octopus::y_axis:
-                return abs(momentum_y(s) / rho(s)) // velocity
-                     + speed_of_sound(s, U.get_step());
+                return abs(velocity<octopus::y_axis>(u, v)) 
+                     + speed_of_sound(u);
 
             case octopus::z_axis:
-                return abs(momentum_z(s) / rho(s)) // velocity
-                     + speed_of_sound(s, U.get_step());
+                return abs(velocity<octopus::z_axis>(u, v)) 
+                     + speed_of_sound(u);
 
             default: { OCTOPUS_ASSERT(false); break; }
         }
@@ -433,70 +556,196 @@ struct max_eigenvalue : octopus::trivial_serialization
     }
 };
 
-struct cfl_treewise_compute_timestep : octopus::trivial_serialization
+// FIXME: Refactor reconstruction harness (nearly identical code is used in
+// octree_server for computing fluxes).
+struct cfl_treewise_compute_dt : octopus::trivial_serialization
 {
-    double operator()(octopus::octree_server& U) const
-    {
-        // REVIEW (zach): I need to initialize this to some value higher than
-        // any possible dt, I think...
-        // REVIEW: Should this be hardcoded. 
-        double dt_limit = 100.0;
+    cfl_treewise_compute_dt() {} 
 
-        boost::uint64_t const gnx = octopus::config().grid_node_length;
+    double compute_x_dt(octopus::octree_server& U) const
+    { // {{{ 
+        double dt_inv = 0.0; 
+
         boost::uint64_t const bw = octopus::science().ghost_zone_width;
-
-        for (boost::uint64_t i = bw; i < (gnx-bw); ++i)
-        {
-          for (boost::uint64_t j = bw; j < (gnx-bw); ++j)
+        boost::uint64_t const gnx = octopus::config().grid_node_length;
+    
+        std::vector<octopus::state> q0(gnx, octopus::state());
+        std::vector<octopus::state> ql(gnx, octopus::state());
+        std::vector<octopus::state> qr(gnx, octopus::state());
+    
+        for (boost::uint64_t k = bw; k < (gnx - bw); ++k)
+            for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
             {
-              for (boost::uint64_t k = bw; k < (gnx-bw); ++k)
+                for (boost::uint64_t i = 0; i < gnx; ++i)
                 {
-                    octopus::state const& u = U(i, j, k);
-                    double const dx = U.get_dx(); 
+                    q0[i] = U(i, j, k);
+        
+                    octopus::array<double, 3> loc = U.center_coords(i, j, k);
+        
+                    octopus::science().conserved_to_primitive(q0[i], loc);
+                }
+        
+                octopus::science().reconstruct(q0, ql, qr);
+        
+                for (boost::uint64_t i = bw; i < gnx - bw + 1; ++i)
+                {
+                    octopus::array<double, 3> loc = U.x_face_coords(i, j, k);
+        
+                    octopus::science().primitive_to_conserved(ql[i], loc);
+                    octopus::science().primitive_to_conserved(qr[i], loc);
+       
+                    double const l_dt_inv =
+                        (max_eigenvalue()(U, ql[i], loc, octopus::x_axis));
+                    double const r_dt_inv = 
+                        (max_eigenvalue()(U, qr[i], loc, octopus::x_axis));
 
-                    // FIXME: 0.4 shouldn't be hard coded.  
-                    double const dt_here_x
-                        = 0.4*dx/(max_eigenvalue()(U, octopus::x_axis, u));
-                    double const dt_here_y
-                        = 0.4*dx/(max_eigenvalue()(U, octopus::y_axis, u));
-                    double const dt_here_z
-                        = 0.4*dx/(max_eigenvalue()(U, octopus::z_axis, u));
-  
-                    dt_limit = (std::min)(dt_limit, dt_here_x);
-                    OCTOPUS_ASSERT(0.0 < dt_limit);
-                    dt_limit = (std::min)(dt_limit, dt_here_y);
-                    OCTOPUS_ASSERT(0.0 < dt_limit);
-                    dt_limit = (std::min)(dt_limit, dt_here_z);
-                    OCTOPUS_ASSERT(0.0 < dt_limit);
+                    dt_inv = octopus::maximum(dt_inv, l_dt_inv, r_dt_inv);
+                    OCTOPUS_ASSERT(0.0 < dt_inv);
                 }
             }
-        }
+
+        return cfl_factor * (1.0 / (dt_inv / (U.get_dx())));
+    } // }}}
+    
+    double compute_y_dt(octopus::octree_server& U) const
+    { // {{{ 
+        double dt_inv = 0.0; 
+
+        boost::uint64_t const bw = octopus::science().ghost_zone_width;
+        boost::uint64_t const gnx = octopus::config().grid_node_length;
+    
+        std::vector<octopus::state> q0(gnx, octopus::state());
+        std::vector<octopus::state> ql(gnx, octopus::state());
+        std::vector<octopus::state> qr(gnx, octopus::state());
+    
+        for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
+            for (boost::uint64_t k = bw; k < (gnx - bw); ++k)
+            {
+                for (boost::uint64_t j = 0; j < gnx; ++j)
+                {
+                    q0[j] = U(i, j, k);
+        
+                    octopus::array<double, 3> loc = U.center_coords(i, j, k);
+        
+                    octopus::science().conserved_to_primitive(q0[j], loc);
+                }
+        
+                octopus::science().reconstruct(q0, ql, qr);
+        
+                for (boost::uint64_t j = bw; j < gnx - bw + 1; ++j)
+                {
+                    octopus::array<double, 3> loc = U.y_face_coords(i, j, k);
+        
+                    octopus::science().primitive_to_conserved(ql[j], loc);
+                    octopus::science().primitive_to_conserved(qr[j], loc);
+        
+                    double const l_dt_inv =
+                        (max_eigenvalue()(U, ql[j], loc, octopus::y_axis));
+                    double const r_dt_inv = 
+                        (max_eigenvalue()(U, qr[j], loc, octopus::y_axis));
+
+                    dt_inv = octopus::maximum(dt_inv, l_dt_inv, r_dt_inv);
+                    OCTOPUS_ASSERT(0.0 < dt_inv);
+                }
+            }
+
+        return cfl_factor * (1.0 / (dt_inv / (U.get_dx())));
+    } // }}}
+    
+    double compute_z_dt(octopus::octree_server& U) const
+    { // {{{ 
+        double dt_inv = 0.0; 
+
+        boost::uint64_t const bw = octopus::science().ghost_zone_width;
+        boost::uint64_t const gnx = octopus::config().grid_node_length;
+    
+        std::vector<octopus::state> q0(gnx, octopus::state());
+        std::vector<octopus::state> ql(gnx, octopus::state());
+        std::vector<octopus::state> qr(gnx, octopus::state());
+    
+        for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
+            for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
+            {
+                for (boost::uint64_t k = 0; k < gnx; ++k)
+                {
+                    q0[k] = U(i, j, k);
+        
+                    octopus::array<double, 3> loc = U.center_coords(i, j, k);
+    
+                    octopus::science().conserved_to_primitive(q0[k], loc);
+                }
+        
+                octopus::science().reconstruct(q0, ql, qr);
+        
+                for (boost::uint64_t k = bw; k < gnx - bw + 1; ++k)
+                {
+                    octopus::array<double, 3> loc = U.z_face_coords(i, j, k);
+        
+                    octopus::science().primitive_to_conserved(ql[k], loc);
+                    octopus::science().primitive_to_conserved(qr[k], loc);
+        
+                    double const l_dt_inv =
+                        (max_eigenvalue()(U, ql[k], loc, octopus::z_axis));
+                    double const r_dt_inv =
+                        (max_eigenvalue()(U, qr[k], loc, octopus::z_axis));
+
+                    dt_inv = octopus::maximum(dt_inv, l_dt_inv, r_dt_inv);
+                    OCTOPUS_ASSERT(0.0 < dt_inv);
+                }
+            }
+
+        return cfl_factor * (1.0 / (dt_inv / (U.get_dx())));
+    } // }}}
+
+    // Compute maximum dt locally in parallel. 
+    double operator()(octopus::octree_server& U) const
+    {
+        // Do two directions in other threads.
+        boost::array<hpx::future<double>, 2> xy =
+        { {
+            hpx::async(boost::bind
+                (&cfl_treewise_compute_dt::compute_x_dt, this, boost::ref(U)))
+          , hpx::async(boost::bind
+                (&cfl_treewise_compute_dt::compute_y_dt, this, boost::ref(U)))
+        } };
+
+        // And do one direction here.
+        double dt_limit = compute_z_dt(U);
+        OCTOPUS_ASSERT(0.0 < dt_limit);
+
+        // Wait for the x and y computations.
+        dt_limit = (std::min)(dt_limit, xy[0].move());
+        OCTOPUS_ASSERT(0.0 < dt_limit);
+
+        dt_limit = (std::min)(dt_limit, xy[1].move());
+        OCTOPUS_ASSERT(0.0 < dt_limit);
 
         return dt_limit;
     }
 };
 
-struct cfl_initial_timestep : octopus::trivial_serialization
+struct cfl_initial_dt : octopus::trivial_serialization
 {
     double operator()(octopus::octree_server& root) const
     {
-        return 0.01 * root.reduce<double>(cfl_treewise_compute_timestep()
-                                        , octopus::minimum_functor()
-                                        , 100.0);
+        return initial_cfl_factor 
+             * root.reduce<double>(cfl_treewise_compute_dt()
+                                 , octopus::minimum_functor()
+                                 , std::numeric_limits<double>::max());
     }
 };
 
 // IMPLEMENT: Post prediction.
-struct cfl_predict_timestep
+struct cfl_predict_dt
 {
   private:
     double max_dt_growth_;
     double fudge_factor_;
 
   public:
-    cfl_predict_timestep() : max_dt_growth_(0.0), fudge_factor_(0.0) {}
+    cfl_predict_dt() : max_dt_growth_(0.0), fudge_factor_(0.0) {}
 
-    cfl_predict_timestep(
+    cfl_predict_dt(
         double max_dt_growth
       , double fudge_factor
         )
@@ -505,7 +754,7 @@ struct cfl_predict_timestep
     {}
 
     /// Returns the tuple (timestep N + 1 size, timestep N + gap size)
-    octopus::timestep_prediction operator()(
+    octopus::dt_prediction operator()(
         octopus::octree_server& root
         ) const
     {
@@ -514,11 +763,11 @@ struct cfl_predict_timestep
 
         OCTOPUS_ASSERT(0 == root.get_level());
 
-        double next_dt = root.reduce<double>(cfl_treewise_compute_timestep()
+        double next_dt = root.reduce<double>(cfl_treewise_compute_dt()
                                            , octopus::minimum_functor()
                                            , root.get_dt() * max_dt_growth_);
 
-        return octopus::timestep_prediction(next_dt, fudge_factor_ * next_dt); 
+        return octopus::dt_prediction(next_dt, fudge_factor_ * next_dt); 
     }
 
     template <typename Archive>
@@ -529,6 +778,9 @@ struct cfl_predict_timestep
     }
 };
 
+// Primitive variables are mass, velocity and pressure. Conserved variables
+// are mass, momentum and energy. 
+
 struct conserved_to_primitive : octopus::trivial_serialization
 {
     void operator()(
@@ -536,10 +788,15 @@ struct conserved_to_primitive : octopus::trivial_serialization
       , octopus::array<double, 3> const& v
         ) const
     {
-        total_energy(u) -= kinetic_energy(u);
-        momentum_x(u)   /= rho(u);
-        momentum_y(u)   /= rho(u);
-        momentum_z(u)   /= rho(u);
+        double const R = radius(v);
+
+        total_energy(u)        -= kinetic_energy(u, v);
+        momentum_x(u)          /= rho(u);
+        momentum_y(u)          /= rho(u);
+        momentum_z(u)          /= rho(u);
+        u[radial_momentum_idx] /= rho(u);
+        angular_momentum(u)    /= rho(u) * R;
+        angular_momentum(u)    -= omega * R;
     }
 };
 
@@ -547,53 +804,77 @@ struct primitive_to_conserved : octopus::trivial_serialization
 {
     void operator()(
         octopus::state& u
-      , octopus::array<double, 3> const& X
+      , octopus::array<double, 3> const& v
         ) const
     {
-        momentum_x(u)   *= rho(u);
-        momentum_y(u)   *= rho(u);
-        momentum_z(u)   *= rho(u);
-        total_energy(u) += kinetic_energy(u);
+        double const R = radius(v);
+
+        momentum_x(u)          *= rho(u);
+        momentum_y(u)          *= rho(u);
+        momentum_z(u)          *= rho(u);
+        total_energy(u)        += kinetic_energy(u, v);
+        u[radial_momentum_idx] *= rho(u);
+        angular_momentum(u)    += omega * R;
+        angular_momentum(u)    *= rho(u) * R;
     }
 };
 
 struct source : octopus::trivial_serialization
 {
     octopus::state operator()(
-        octopus::octree_server& 
+        octopus::octree_server& U 
       , octopus::state const& u
-      , octopus::array<double, 3> const& coords
+      , octopus::array<double, 3> const& v
         ) const
     {
         octopus::state s;
 
-        momentum_x(s) = rho(u)*gravity<octopus::x_axis>(coords);
-        momentum_y(s) = rho(u)*gravity<octopus::y_axis>(coords);
-        momentum_z(s) = rho(u)*gravity<octopus::z_axis>(coords);
+        double const R = radius(v);
+        double const p = pressure(u);
+        double const lz = angular_momentum(u);
+
+        // This is the radial momentum source term (independent of gravity).
+        s[radial_momentum_idx] += (p + std::pow(lz/R, 2)/rho(u))/R;
+
+        // Add half of the Coriolis force for rotating cartesian momentum.
+        momentum_x(s) += momentum_y(s)*omega;
+        momentum_y(s) -= momentum_x(s)*omega; 
+
+        // There won't be any gravity within a certain radius of the center.
+        if (R < 0.5*(X_in*R_outer))
+            return s;        
+
+        momentum_x(s) += rho(u)*gravity<octopus::x_axis>(v);
+        momentum_y(s) += rho(u)*gravity<octopus::y_axis>(v);
+        momentum_z(s) += rho(u)*gravity<octopus::z_axis>(v);
+
+        s[radial_momentum_idx] += rho(u)*radial_gravity(v);
 
         return s;
     }
 };
 
+// REVIEW: For rot_dir to work properly, do we need to make some changes here?
 struct flux : octopus::trivial_serialization
 {
     octopus::state operator()(
         octopus::octree_server& U
-      , octopus::axis a 
       , octopus::state& u
-      , octopus::array<double, 3> const& coords
+      , octopus::array<double, 3> const& loc
+      , octopus::axis a 
         ) const
     {
-        double p = pressure(u, U.get_step());
+        double const p = pressure(u);
+        double const R = radius(loc);
  
-        octopus::state fl(u);
+        octopus::state fl;
 
         switch (a)
         {
             case octopus::x_axis:
             {
                 // Velocity.
-                double const v = momentum_x(u) / rho(u);
+                double const v = velocity<octopus::x_axis>(u, loc);
 
                 for (boost::uint64_t i = 0; i < u.size(); ++i)
                     fl[i] = u[i] * v;
@@ -601,13 +882,15 @@ struct flux : octopus::trivial_serialization
                 momentum_x(fl)   += p;
                 total_energy(fl) += v * p;
 
+                angular_momentum(fl)    -= loc[1] * p;
+                fl[radial_momentum_idx] += loc[0] * p / R;
+
                 break;
             }
 
             case octopus::y_axis:
             {
-                // Velocity.
-                double const v = momentum_y(u) / rho(u);
+                double const v = velocity<octopus::y_axis>(u, loc);
 
                 for (boost::uint64_t i = 0; i < u.size(); ++i)
                     fl[i] = u[i] * v;
@@ -615,13 +898,15 @@ struct flux : octopus::trivial_serialization
                 momentum_y(fl)   += p;
                 total_energy(fl) += v * p;
 
+                angular_momentum(fl)    += loc[0] * p;
+                fl[radial_momentum_idx] += loc[1] * p / R;
+
                 break;
             }
 
             case octopus::z_axis:
             {
-                // Velocity.
-                double const v = momentum_z(u) / rho(u);
+                double const v = velocity<octopus::z_axis>(u, loc);
 
                 for (boost::uint64_t i = 0; i < u.size(); ++i)
                     fl[i] = u[i] * v;
@@ -639,24 +924,105 @@ struct flux : octopus::trivial_serialization
     }
 };
 
-struct refine_by_density
-  : octopus::elementwise_refinement_criteria_base<refine_by_density>
+struct refine_by_geometry
+  : octopus::elementwise_refinement_criteria_base<refine_by_geometry>
 {
     /// Returns true if we should refine the region that contains this point.
-    bool refine(octopus::state const& s)
+    bool refine(
+        octopus::octree_server& U
+      , octopus::state const& u
+      , octopus::array<double, 3> loc
+        )
     {
-        if (rho(s) >= min_refine_rho)
-            return true;
-        else
-            return false;
+        using std::sqrt;
+        using std::abs;
+
+        double const dx = U.get_dx();
+
+        double const xU = loc[0]+0.5*dx; // x upper
+        double const xL = loc[0]-0.5*dx; // x lower
+        double const yU = loc[1]+0.5*dx; // y upper
+        double const yL = loc[1]-0.5*dx; // y lower
+
+        double const radius0 = radius(loc[0], loc[1]); 
+        double const radius1 = radius(xU, yU);
+        double const radius2 = radius(xU, yL);
+        double const radius3 = radius(xL, yU);
+        double const radius4 = radius(xL, yL);
+
+        bool condition0 = (
+            abs(loc[2]+0.5*dx) < z_max(radius0) ||
+            abs(loc[2]-0.5*dx) < z_max(radius0)
+            );
+
+        bool condition1 = (
+            ((radius1 < R_outer) && (radius1 > X_in*R_outer)) ||  
+            ((radius2 < R_outer) && (radius2 > X_in*R_outer)) ||  
+            ((radius3 < R_outer) && (radius3 > X_in*R_outer)) ||  
+            ((radius4 < R_outer) && (radius4 > X_in*R_outer))
+            );
+
+        return condition0 && condition1;
     }
 
     /// If this returns true for all regions in a point, that region will be
     /// unrefined.
-    bool unrefine(octopus::state const& s)
+    bool unrefine(
+        octopus::octree_server& U
+      , octopus::state const& u
+      , octopus::array<double, 3> loc
+        )
     {
         // Unused currently.
         return false;
+    }
+
+    template <typename Archive>
+    void serialize(Archive& ar, const unsigned int)
+    {
+        typedef elementwise_refinement_criteria_base<refine_by_geometry>
+            base_type;
+        ar & hpx::util::base_object_nonvirt<base_type>(*this);
+    }
+};
+
+struct output_equatorial_plane : octopus::trivial_serialization
+{
+    struct slicer 
+    {
+      private:
+        std::ofstream* ofs_;
+
+      public:
+        slicer() : ofs_(0) {}
+
+        slicer(std::ofstream& ofs) : ofs_(&ofs) {}
+
+        void operator()(
+            octopus::octree_server& U
+          , octopus::state& u
+          , octopus::array<double, 3>& loc
+            ) const
+        {
+            (*ofs_) << loc[0] << " "
+                    << loc[1] << " "
+                    << rho(u) << " "
+                    << U.get_level() << "\n";
+        }
+
+        template <typename Archive>
+        void serialize(Archive& ar, const unsigned int)
+        {
+            OCTOPUS_ASSERT(false);
+        };
+    };
+
+    void operator()(
+        octopus::octree_server& U
+      , std::ofstream& ofs
+        ) const
+    {
+        U.slice_z_leaf(slicer(ofs), 1e-7);
     }
 };
 

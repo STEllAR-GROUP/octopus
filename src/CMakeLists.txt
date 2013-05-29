@@ -17,9 +17,11 @@ if(SILO_FOUND)
             engine/runtime_config.cpp
             octree/octree_client.cpp
             octree/octree_server.cpp
-            science/reconstruction.cpp
+            science/minmod_reconstruction.cpp
+            science/ppm_reconstruction.cpp
             science/science_table.cpp
             io/silo.cpp
+            io/fstream.cpp
     DEPENDENCIES ${SILO_LIBRARY} dl
     FOLDER "Core"
     ESSENTIAL)
@@ -34,8 +36,10 @@ else()
             engine/runtime_config.cpp
             octree/octree_client.cpp
             octree/octree_server.cpp
-            science/reconstruction.cpp
+            science/minmod_reconstruction.cpp
+            science/ppm_reconstruction.cpp
             science/science_table.cpp
+            io/fstream.cpp
     FOLDER "Core"
     ESSENTIAL)
 endif()
