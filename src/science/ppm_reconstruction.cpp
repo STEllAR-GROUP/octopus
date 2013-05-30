@@ -33,30 +33,30 @@ void ppm_reconstruction::operator()(
 
     for (boost::uint64_t i = 1; i < gnx - 2; ++i)
     {
-        qr[i] = (q0[i] + q0[i + 1]) * 0.5;
+        ql[i] = (q0[i] + q0[i + 1]) * 0.5;
         for (boost::uint64_t l = 0; l < slope[i].size(); ++l)
-            qr[i][l] += (slope[i][l] - slope[i + 1][l]) * (1.0 / 6.0);
-        ql[i] = qr[i - 1];
+            ql[i][l] += (slope[i][l] - slope[i + 1][l]) * (1.0 / 6.0);
+        qr[i] = ql[i - 1];
     }
 
     for (boost::uint64_t i = 2; i < gnx - 2; ++i)
     {
         for (boost::uint64_t l = 0; l < slope[i].size(); ++l)
         {
-            double const t0 = qr[i][l] - ql[i][l];
-            double const t1 = qr[i][l] + ql[i][l];
+            double const t0 = ql[i][l] - qr[i][l];
+            double const t1 = ql[i][l] + qr[i][l];
 
-            if ((qr[i][l] - q0[i][l]) * (q0[i][l] - ql[i][l]) <= 0.0)
-                qr[i][l] = ql[i][l] = q0[i][l];
+            if ((ql[i][l] - q0[i][l]) * (q0[i][l] - qr[i][l]) <= 0.0)
+                ql[i][l] = qr[i][l] = q0[i][l];
             else if (t0 * (q0[i][l] - 0.5 * t1) > (1.0 / 6.0) * t0 * t0)
-                ql[i][l] = 3.0 * q0[i][l] - 2.0 * qr[i][l];
-            else if (-(1.0 / 6.0) * t0 * t0 > t0 * (q0[i][l] - 0.5 * t1))
                 qr[i][l] = 3.0 * q0[i][l] - 2.0 * ql[i][l];
+            else if (-(1.0 / 6.0) * t0 * t0 > t0 * (q0[i][l] - 0.5 * t1))
+                ql[i][l] = 3.0 * q0[i][l] - 2.0 * qr[i][l];
         }
     }
 
     for (boost::uint64_t i = gnx - 3; i > 2; --i)
-        qr[i] = qr[i - 1];
+        ql[i] = ql[i - 1];
 }
 
 }

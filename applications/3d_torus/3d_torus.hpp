@@ -297,7 +297,7 @@ double z_max(double R)
     double const tmp = pow(C+0.5*(j_H/X)*(j_H/X), -2.0) - X*X;
 
     if (tmp <= 0.0)
-        return std::numeric_limits<double>::max();
+        return 0.0; 
 
     return R_outer*sqrt(tmp);
 }
