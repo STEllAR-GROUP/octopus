@@ -8,6 +8,8 @@
 
 #include "3d_torus.hpp"
 
+#include <fenv.h>
+
 #include <hpx/util/high_resolution_timer.hpp>
 
 void octopus_define_problem(
@@ -67,6 +69,11 @@ void octopus_define_problem(
         << ( boost::format("kick_mode                     = %i\n")
            % kick_mode.get())
         << "\n";
+
+    // FIXME: Move this into core code.
+	feenableexcept(FE_DIVBYZERO);
+	feenableexcept(FE_INVALID);
+	feenableexcept(FE_OVERFLOW);
 
     initialize_omega();
 

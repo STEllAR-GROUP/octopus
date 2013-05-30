@@ -20,6 +20,26 @@
 namespace octopus
 {
 
+template <typename T>
+inline bool compare_floating(T x, T y)
+{
+    T const epsilon = std::numeric_limits<T>::epsilon();
+ 
+    if ((x + epsilon >= y) && (x - epsilon <= y))
+        return true;
+    else
+        return false;
+}
+
+template <typename T>
+inline bool compare_floating(T x, T y, T epsilon)
+{
+    if ((x + epsilon >= y) && (x - epsilon <= y))
+        return true;
+    else
+        return false;
+}
+
 inline double maximum(double a, double b)
 {
     return (std::max)(a, b);

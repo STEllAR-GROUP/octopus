@@ -59,9 +59,6 @@ double const G = 1.0;
 /// Mass of the central object.
 double const M_C = 1.0;
 
-/// Minimum value that internal energy is allowed to be. 
-double const internal_energy_floor = 1.0e-20;  
-
 /// Outer radius of the torus.
 double const R_outer = 1.0;
 
@@ -299,6 +296,9 @@ double z_max(double R)
     double const C = 1.0/(1.0+X_in);
     double const tmp = pow(C+0.5*(j_H/X)*(j_H/X), -2.0) - X*X;
 
+    if (tmp <= 0.0)
+        return std::numeric_limits<double>::max();
+
     return R_outer*sqrt(tmp);
 }
 
@@ -318,7 +318,7 @@ double rho_max()
     return pow(H_max/((n+1)*kappa), n);
 }
 
-double rho_floor()
+double density_floor()
 {
     return 1.0e-10 * rho_max();
 }
@@ -336,8 +336,8 @@ struct initialize : octopus::trivial_serialization
 
         double const ei0 = 1.0;
         double const tau0 = pow(ei0, 1.0 / gamma_);
-        double const rho1 = rho_floor();
-        double const ei1 = internal_energy_floor;
+        double const rho1 = density_floor();
+        double const ei1 = density_floor();
         double const tau1 = pow(ei1, 1.0 / gamma_);
     
         double const R_inner = X_in * R_outer;
@@ -455,7 +455,8 @@ struct initialize : octopus::trivial_serialization
                     momentum_z(U(i, j, k))          = 0.0; 
                     U(i, j, k)[radial_momentum_idx] = 0.0;
 
-                    rho(U(i, j, k)) = (std::max)(rho(U(i, j, k)), rho_floor()); 
+                    rho(U(i, j, k)) = (std::max)(rho(U(i, j, k))
+                                               , density_floor()); 
                 }
             }
         }
@@ -482,13 +483,14 @@ struct enforce_lower_limits : octopus::trivial_serialization
       , octopus::array<double, 3> const& v 
         ) const
     {
-        rho(u) = (std::max)(rho(u), rho_floor()); 
+        rho(u) = (std::max)(rho(u), density_floor()); 
 
-        double const internal_energy = total_energy(u) - kinetic_energy(u, v);
+        double const internal_energy =
+            (std::max)(total_energy(u) - kinetic_energy(u, v), density_floor());
 
         if (internal_energy > 0.1 * total_energy(u))
         {
-            tau(u) = std::pow((std::max)(internal_energy, internal_energy_floor)
+            tau(u) = std::pow((std::max)(internal_energy, density_floor())
                                        , 1.0 / gamma_); 
         }
 
@@ -498,7 +500,7 @@ struct enforce_lower_limits : octopus::trivial_serialization
         if (radius(v) < 0.5 * R_inner)
         {
             // REVIEW: Why don't we floor tau and energy? 
-            rho(u)                 = rho_floor();
+            rho(u)                 = density_floor();
             momentum_x(u)          = 0.0;
             momentum_y(u)          = 0.0;
             momentum_z(u)          = 0.0;
