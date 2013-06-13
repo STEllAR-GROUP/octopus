@@ -252,15 +252,15 @@ struct max_eigenvalue : octopus::trivial_serialization
         switch (a)
         {
             case octopus::x_axis:
-                return abs(momentum_x(s) / rho(s)) // velocity
+                return std::fabs(momentum_x(s) / rho(s)) // velocity
                      + speed_of_sound(s);
 
             case octopus::y_axis:
-                return abs(momentum_y(s) / rho(s)) // velocity
+                return std::fabs(momentum_y(s) / rho(s)) // velocity
                      + speed_of_sound(s);
 
             case octopus::z_axis:
-                return abs(momentum_z(s) / rho(s)) // velocity
+                return std::fabs(momentum_z(s) / rho(s)) // velocity
                      + speed_of_sound(s);
 
             default: { OCTOPUS_ASSERT(false); break; }

@@ -25,7 +25,6 @@ namespace octopus
 void single_variable_silo_writer::start_write_locked(
     boost::uint64_t step
   , double time
-  , std::string const& file
   , mutex_type::scoped_lock& l
     )
 {
@@ -39,7 +38,7 @@ void single_variable_silo_writer::start_write_locked(
 
     try
     {
-        std::string s = boost::str( boost::format(file)
+        std::string s = boost::str( boost::format(file_name_)
                                   % hpx::get_locality_id() % step_);
         file_ = DBCreate(s.c_str(), DB_CLOBBER, DB_LOCAL, NULL, DB_PDB);
     }
@@ -48,14 +47,14 @@ void single_variable_silo_writer::start_write_locked(
     {
         try
         {
-            std::string s = boost::str( boost::format(file)
+            std::string s = boost::str( boost::format(file_name_)
                                       % hpx::get_locality_id());
             file_ = DBCreate(s.c_str(), DB_CLOBBER, DB_LOCAL, NULL, DB_PDB);
         }
         // FIXME: Catch the specific boost.format exception.
         catch (...)
         {
-            file_ = DBCreate(file.c_str()
+            file_ = DBCreate(file_name_.c_str()
                            , DB_CLOBBER, DB_LOCAL, NULL, DB_PDB);
         }
     }
@@ -93,11 +92,10 @@ void single_variable_silo_writer::stop_write_locked(mutex_type::scoped_lock& l)
 void silo_perform_start_write(
     boost::uint64_t step
   , double time
-  , std::string const& file
     )
 {
     science().output.cast<single_variable_silo_writer>()->start_write
-        (step, time, file);
+        (step, time);
 }
 
 void silo_perform_stop_write()
@@ -120,7 +118,6 @@ namespace octopus
 void single_variable_silo_writer::begin_epoch(
     octree_server& e
   , double time
-  , std::string const& file
     )
 {
     std::vector<hpx::id_type> const& targets = localities();
@@ -132,12 +129,7 @@ void single_variable_silo_writer::begin_epoch(
 
     for (boost::uint64_t i = 0; i < targets.size(); ++i)
     {
-        if (file.empty())
-            futures.emplace_back(hpx::async
-                (act, targets[i], e.get_step(), time, file_name_));
-        else
-            futures.emplace_back(hpx::async
-                (act, targets[i], e.get_step(), time, file));
+        futures.emplace_back(hpx::async(act, targets[i], e.get_step(), time));
     }
 
     hpx::wait(futures);

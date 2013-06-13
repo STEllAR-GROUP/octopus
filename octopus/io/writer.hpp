@@ -27,7 +27,6 @@ struct OCTOPUS_EXPORT writer_base
     virtual void begin_epoch(
         octree_server& e
       , double time
-      , std::string const& file
         )
     { }
 
@@ -41,6 +40,7 @@ struct OCTOPUS_EXPORT writer_base
     void serialize(Archive& ar, const unsigned int) {}
 };
 
+// FIXME: Move support.
 struct writer
 {
   private:
@@ -51,6 +51,10 @@ struct writer
 
     writer(writer const& other)
       : ptr_(other.ptr_)
+    {}
+
+    writer(writer_base const& other)
+      : ptr_(other.clone())
     {}
 
     writer& operator=(writer const& other)
@@ -68,10 +72,9 @@ struct writer
     void begin_epoch(
         octree_server& e
       , double time
-      , std::string const& file
         )
     {
-        ptr_->begin_epoch(e, time, file);
+        ptr_->begin_epoch(e, time);
     }
 
     void end_epoch(octree_server& e) const

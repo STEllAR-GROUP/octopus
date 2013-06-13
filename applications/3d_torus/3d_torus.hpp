@@ -20,6 +20,7 @@
 #include <octopus/octree/octree_apply_leaf.hpp>
 #include <octopus/math.hpp>
 #include <octopus/global_variable.hpp>
+#include <octopus/io/multi_writer.hpp>
 #include <octopus/io/fstream.hpp>
 
 #if defined(OCTOPUS_HAVE_SILO)
@@ -360,7 +361,7 @@ struct initialize : octopus::trivial_serialization
                     double const x_here = U.x_center(i);
                     double const y_here = U.y_center(j);
                     // REVIEW: Why do we do std::abs() here?
-                    double const z_here = std::abs(U.z_center(k));
+                    double const z_here = std::fabs(U.z_center(k));
   
                     double const R = radius(x_here, y_here);
 
@@ -537,20 +538,18 @@ struct max_eigenvalue : octopus::trivial_serialization
       , octopus::axis a
         ) const
     {
-        using std::abs;
-
         switch (a)
         {
             case octopus::x_axis:
-                return abs(velocity<octopus::x_axis>(u, v)) 
+                return std::fabs(velocity<octopus::x_axis>(u, v)) 
                      + speed_of_sound(u);
 
             case octopus::y_axis:
-                return abs(velocity<octopus::y_axis>(u, v)) 
+                return std::fabs(velocity<octopus::y_axis>(u, v)) 
                      + speed_of_sound(u);
 
             case octopus::z_axis:
-                return abs(velocity<octopus::z_axis>(u, v)) 
+                return std::fabs(velocity<octopus::z_axis>(u, v)) 
                      + speed_of_sound(u);
 
             default: { OCTOPUS_ASSERT(false); break; }
@@ -1003,8 +1002,8 @@ struct refine_by_geometry
         double const radius4 = radius(xL, yL);
 
         bool condition0 = (
-            abs(loc[2]+0.5*dx) < z_max(radius0) ||
-            abs(loc[2]-0.5*dx) < z_max(radius0)
+            std::fabs(loc[2]+0.5*dx) < z_max(radius0) ||
+            std::fabs(loc[2]-0.5*dx) < z_max(radius0)
             );
 
         bool condition1 = (
@@ -1038,7 +1037,7 @@ struct refine_by_geometry
     }
 };
 
-struct output_equatorial_z_plane : octopus::trivial_serialization
+struct output_equatorial_plane 
 {
     struct slicer 
     {
@@ -1078,13 +1077,26 @@ struct output_equatorial_z_plane : octopus::trivial_serialization
         };
     };
 
+  private:
+    octopus::axis axis_;
+  public:
+    output_equatorial_plane() : axis_() {}
+
+    output_equatorial_plane(octopus::axis a) : axis_(a) {}
+
     void operator()(
         octopus::octree_server& U
       , std::ofstream& ofs
         ) const
     {
-        U.slice_leaf(slicer(ofs), octopus::z_axis, 1e-7);
+        U.slice_leaf(slicer(ofs), axis_, 1e-7);
     }
+
+    template <typename Archive>
+    void serialize(Archive& ar, const unsigned int)
+    {
+        ar & axis_;
+    };
 };
 
 #endif // OCTOPUS_9BA6055C_E7A9_4A16_8A24_B8B410AA1A14

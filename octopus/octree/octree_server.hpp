@@ -1130,14 +1130,9 @@ struct OCTOPUS_EXPORT octree_server
         client_from_this().output();
     }
 
-    void output(std::string const& file)
+    void output(double time)
     {
-        client_from_this().output(file);
-    }
-
-    void output(double time, std::string const& file = "")
-    {
-        client_from_this().output(time, file);
+        client_from_this().output(time);
     }
 
     ///////////////////////////////////////////////////////////////////////////

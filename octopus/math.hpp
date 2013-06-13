@@ -103,7 +103,7 @@ inline T sign(T a)
 ///////////////////////////////////////////////////////////////////////////////
 inline double minmod(double a, double b)
 {
-    return 0.5 * (sign(a) + sign(b)) * (std::min)(std::abs(a), std::abs(b));
+    return 0.5 * (sign(a) + sign(b)) * (std::min)(std::fabs(a), std::fabs(b));
 }
 
 inline double minmod(double a, double b, double c)

@@ -78,12 +78,11 @@ struct OCTOPUS_EXPORT fstream_writer : writer_base
     void start_write(
         boost::uint64_t step
       , double time
-      , std::string const& file
         );
 
     void stop_write();
 
-    void begin_epoch(octree_server& e, double time, std::string const& file);
+    void begin_epoch(octree_server& e, double time);
 
     void end_epoch(octree_server& e);
 

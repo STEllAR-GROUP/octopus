@@ -98,12 +98,35 @@ void octopus_define_problem(
 
     sci.refine_policy = refine_by_geometry();
 
-//    #if defined(OCTOPUS_HAVE_SILO)
-//        sci.output = octopus::single_variable_silo_writer(0, "rho");
-//    #endif
+/*
+    octopus::multi_writer mw;
 
-    sci.output = octopus::fstream_writer(output_equatorial_z_plane()
-                                       , "slice_z_L%06u_S%06u.dat");
+    #if defined(OCTOPUS_HAVE_SILO)
+        mw.add_writer(octopus::single_variable_silo_writer(0, "rho"));
+    #endif
+
+    mw.add_writer(octopus::fstream_writer(
+        output_equatorial_plane(octopus::x_axis)
+      , "slice_x_L%06u_S%06u.dat"));
+
+    mw.add_writer(octopus::fstream_writer(
+        output_equatorial_plane(octopus::y_axis)
+      , "slice_y_L%06u_S%06u.dat"));
+
+    mw.add_writer(octopus::fstream_writer(
+        output_equatorial_plane(octopus::z_axis)
+      , "slice_z_L%06u_S%06u.dat"));
+
+    sci.output = mw;
+*/
+/*
+    #if defined(OCTOPUS_HAVE_SILO)
+        sci.output = octopus::single_variable_silo_writer(0, "rho");
+    #endif
+*/
+    sci.output = octopus::fstream_writer(
+        output_equatorial_plane(octopus::z_axis)
+      , "slice_z_L%06u_S%06u.dat");
 }
 
 struct stepper 

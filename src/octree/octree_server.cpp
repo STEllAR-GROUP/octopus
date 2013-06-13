@@ -2779,12 +2779,12 @@ void octree_server::remark_kernel()
             {
 
                 // Relative to the X exterior relative.
-                face corner_f0;
-                face corner_f1;
+                face corner_f0 = invalid_face;
+                face corner_f1 = invalid_face;
     
-                face xy_edge_f;
-                face yz_edge_f;
-                face zx_edge_f;
+                face xy_edge_f = invalid_face;
+                face yz_edge_f = invalid_face;
+                face zx_edge_f = invalid_face;
     
                 child_index corner_kid = invert(get_child_index());
     
@@ -2803,9 +2803,9 @@ void octree_server::remark_kernel()
                     corner_f0 = YL; 
                     corner_f1 = ZL;
     
+                    zx_edge_f = XU; 
                     xy_edge_f = YU;
                     yz_edge_f = ZU;
-                    zx_edge_f = XU; 
                 }
     
                 else if (kid == child_index(0, 0, 1))
@@ -2813,9 +2813,9 @@ void octree_server::remark_kernel()
                     corner_f0 = YL; 
                     corner_f1 = ZU;
     
+                    zx_edge_f = XU; 
                     xy_edge_f = YU;
                     yz_edge_f = ZL;
-                    zx_edge_f = XU; 
                 }
      
                 else if (kid == child_index(0, 1, 0))
@@ -2823,9 +2823,9 @@ void octree_server::remark_kernel()
                     corner_f0 = YU; 
                     corner_f1 = ZL;
     
+                    zx_edge_f = XU; 
                     xy_edge_f = YL;
                     yz_edge_f = ZU;
-                    zx_edge_f = XU; 
                 }
     
                 else if (kid == child_index(0, 1, 1))
@@ -2833,9 +2833,9 @@ void octree_server::remark_kernel()
                     corner_f0 = YU; 
                     corner_f1 = ZU;
     
+                    zx_edge_f = XU; 
                     xy_edge_f = YL;
                     yz_edge_f = ZL;
-                    zx_edge_f = XU; 
                 }
     
                 else if (kid == child_index(1, 0, 0))
@@ -2843,9 +2843,9 @@ void octree_server::remark_kernel()
                     corner_f0 = YL; 
                     corner_f1 = ZL;
     
+                    zx_edge_f = XL; 
                     xy_edge_f = YU;
                     yz_edge_f = ZU;
-                    zx_edge_f = XL; 
                 }
     
                 else if (kid == child_index(1, 0, 1))
@@ -2853,9 +2853,9 @@ void octree_server::remark_kernel()
                     corner_f0 = YL; 
                     corner_f1 = ZU;
     
+                    zx_edge_f = XL; 
                     xy_edge_f = YU;
                     yz_edge_f = ZL;
-                    zx_edge_f = XL; 
                 }
      
                 else if (kid == child_index(1, 1, 0))
@@ -2863,9 +2863,9 @@ void octree_server::remark_kernel()
                     corner_f0 = YU; 
                     corner_f1 = ZL;
     
+                    zx_edge_f = XL; 
                     xy_edge_f = YL;
                     yz_edge_f = ZU;
-                    zx_edge_f = XL; 
                 }
     
                 else if (kid == child_index(1, 1, 1))
@@ -2873,9 +2873,9 @@ void octree_server::remark_kernel()
                     corner_f0 = YU; 
                     corner_f1 = ZU;
     
+                    zx_edge_f = XL; 
                     xy_edge_f = YL;
                     yz_edge_f = ZL;
-                    zx_edge_f = XL; 
                 }
     
 /*
@@ -2888,15 +2888,13 @@ void octree_server::remark_kernel()
                     siblings_[r.exterior_x_face].require_sibling_child_async
                         (xy_edge_kid, invert(xy_edge_f)));
    
-/* 
                 markings.push_back(
                     siblings_[r.exterior_y_face].require_sibling_child_async
-                        (yz_edge_kid, yz_edge_f));
+                        (yz_edge_kid, invert(yz_edge_f)));
    
                 markings.push_back(
                     siblings_[r.exterior_z_face].require_sibling_child_async
-                        (zx_edge_kid, zx_edge_f));
-*/
+                        (zx_edge_kid, invert(zx_edge_f)));
             }
 
         }
@@ -2926,15 +2924,12 @@ void octree_server::refine()
 
     if (config().levels_of_refinement - 1 > 0)
     {
-//        for (boost::uint64_t i = 0; i < config().levels_of_refinement - 1; ++i)
-//        {
+        for (boost::uint64_t i = 0; i < config().levels_of_refinement - 1; ++i)
+        {
             remark();
             populate();
             link();
-            remark();
-            populate();
-            link();
-//        }
+        }
     }
 
     OCTOPUS_DUMP("refine: finished remark passes, doing c->p injection\n");

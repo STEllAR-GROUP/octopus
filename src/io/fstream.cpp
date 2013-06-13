@@ -18,7 +18,6 @@ namespace octopus
 void fstream_writer::start_write(
     boost::uint64_t step
   , double time
-  , std::string const& file
     )
 {
     mutex_type::scoped_lock l(mtx_);
@@ -29,7 +28,7 @@ void fstream_writer::start_write(
 
     try
     {
-        std::string s = boost::str( boost::format(file)
+        std::string s = boost::str( boost::format(file_name_)
                                   % hpx::get_locality_id() % step);
         file_.open(s, std::fstream::binary); 
     }
@@ -38,14 +37,14 @@ void fstream_writer::start_write(
     {
         try
         {
-            std::string s = boost::str( boost::format(file)
+            std::string s = boost::str( boost::format(file_name_)
                                       % hpx::get_locality_id());
             file_.open(s, std::fstream::binary); 
         }
         // FIXME: Catch the specific boost.format exception.
         catch (...)
         {
-            file_.open(file, std::fstream::binary); 
+            file_.open(file_name_, std::fstream::binary); 
         }
     }
 
@@ -63,10 +62,9 @@ void fstream_writer::stop_write()
 void fstream_perform_start_write(
     boost::uint64_t step
   , double time
-  , std::string const& file
     )
 {
-    science().output.cast<fstream_writer>()->start_write(step, time, file);
+    science().output.cast<fstream_writer>()->start_write(step, time);
 }
 
 void fstream_perform_stop_write()
@@ -87,7 +85,6 @@ namespace octopus
 void fstream_writer::begin_epoch(
     octree_server& e
   , double time
-  , std::string const& file
     )
 {
     std::vector<hpx::id_type> const& targets = localities();
@@ -99,12 +96,7 @@ void fstream_writer::begin_epoch(
 
     for (boost::uint64_t i = 0; i < targets.size(); ++i)
     {
-        if (file.empty())
-            futures.emplace_back(hpx::async
-                (act, targets[i], e.get_step(), time, file_name_));
-        else
-            futures.emplace_back(hpx::async
-                (act, targets[i], e.get_step(), time, file));
+        futures.emplace_back(hpx::async(act, targets[i], e.get_step(), time));
     }
 
     hpx::wait(futures);

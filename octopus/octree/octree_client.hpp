@@ -815,21 +815,13 @@ struct OCTOPUS_EXPORT octree_client
 
     hpx::future<void> output_async() const;
 
-    void output(std::string const& file) const
+    void output(double time) const
     {
-        return output_async(file).get();
-    }
-
-    hpx::future<void> output_async(std::string const& file) const;
-
-    void output(double time, std::string const& file = "") const
-    {
-        return output_async(time, file).get();
+        return output_async(time).get();
     }
 
     hpx::future<void> output_async(
         double time
-      , std::string const& file = ""
         ) const;
     // }}}
 

@@ -477,31 +477,17 @@ struct begin_io_epoch_locally
     typedef void result_type;
 
     boost::optional<double> time_;
-    std::string file_;
 
-    begin_io_epoch_locally() : time_(), file_() {}
+    begin_io_epoch_locally() : time_() {}
 
-    begin_io_epoch_locally(
-        std::string const& file
-        )
-      : time_()
-      , file_(file)
-    {}
-
-    begin_io_epoch_locally(
-        double time  
-      , std::string const& file
-        )
-      : time_(time)
-      , file_(file)
-    {}
+    begin_io_epoch_locally(double time) : time_(time) {}
 
     result_type operator()(octree_server& root) const
     {
         if (time_)
-            science().output.begin_epoch(root, *time_, file_ );
+            science().output.begin_epoch(root, *time_);
         else
-            science().output.begin_epoch(root, root.get_time(), file_);
+            science().output.begin_epoch(root, root.get_time());
     }
 
     template <typename Archive>
@@ -513,8 +499,6 @@ struct begin_io_epoch_locally
 
         if (time_)
             ar & *time_;
-            
-        ar & file_;
     }
 
     template <typename Archive>
@@ -530,8 +514,6 @@ struct begin_io_epoch_locally
             ar & time;
             time_.reset(time);
         }
- 
-        ar & file_;
     }
 
     BOOST_SERIALIZATION_SPLIT_MEMBER();
@@ -621,28 +603,13 @@ hpx::future<void> octree_client::output_async() const
 }
 
 // TODO: Make sure we are only called on the root node.
-hpx::future<void> octree_client::output_async(std::string const& file) const
-{
-    ensure_real();
-
-    begin_io_epoch_locally begin_functor(file);
-
-    hpx::future<void> begin = apply_leaf_async<void>(begin_functor);
-    hpx::future<void> out   = begin.then(output_continuation(*this, begin));
-    hpx::future<void> end   = out.then(end_io_epoch_continuation(*this, out));
- 
-    return end;
-}
-
-// TODO: Make sure we are only called on the root node.
 hpx::future<void> octree_client::output_async(
     double time 
-  , std::string const& file
     ) const
 {
     ensure_real();
 
-    begin_io_epoch_locally begin_functor(time, file);
+    begin_io_epoch_locally begin_functor(time);
 
     hpx::future<void> begin = apply_leaf_async<void>(begin_functor);
     hpx::future<void> out   = begin.then(output_continuation(*this, begin));
