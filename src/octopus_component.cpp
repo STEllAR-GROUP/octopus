@@ -31,11 +31,14 @@ HPX_REGISTER_MINIMAL_COMPONENT_FACTORY(
         BOOST_PP_CAT(octopus_octree_server_, BOOST_PP_CAT(name, _action)))  \
     /**/
 
+OCTOPUS_REGISTER_ACTION(set_time);
 OCTOPUS_REGISTER_ACTION(set_buffer_links);
 OCTOPUS_REGISTER_ACTION(clear_refinement_marks);
 
 OCTOPUS_REGISTER_ACTION(create_child);
 OCTOPUS_REGISTER_ACTION(require_child);
+OCTOPUS_REGISTER_ACTION(require_sibling_child);
+OCTOPUS_REGISTER_ACTION(require_corner_child);
 OCTOPUS_REGISTER_ACTION(remove_nephew);
 OCTOPUS_REGISTER_ACTION(set_sibling);
 OCTOPUS_REGISTER_ACTION(tie_sibling);
@@ -55,6 +58,9 @@ OCTOPUS_REGISTER_ACTION(send_mapped_ghost_zone);
 OCTOPUS_REGISTER_ACTION(child_to_parent_state_injection);
 OCTOPUS_REGISTER_ACTION(receive_child_state);
 
+OCTOPUS_REGISTER_ACTION(child_to_parent_flux_injection);
+OCTOPUS_REGISTER_ACTION(receive_child_flux);
+
 OCTOPUS_REGISTER_ACTION(apply);
 
 OCTOPUS_REGISTER_ACTION(step);
@@ -65,10 +71,11 @@ OCTOPUS_REGISTER_ACTION(refine);
 OCTOPUS_REGISTER_ACTION(mark);
 OCTOPUS_REGISTER_ACTION(populate);
 OCTOPUS_REGISTER_ACTION(link);
+OCTOPUS_REGISTER_ACTION(remark);
 OCTOPUS_REGISTER_ACTION(receive_sibling_refinement_signal);
 
-OCTOPUS_REGISTER_ACTION(slice_z);
-OCTOPUS_REGISTER_ACTION(slice_z_leaf);
+OCTOPUS_REGISTER_ACTION(slice);
+OCTOPUS_REGISTER_ACTION(slice_leaf);
 
 #undef OCTOPUS_REGISTER_ACTION
 

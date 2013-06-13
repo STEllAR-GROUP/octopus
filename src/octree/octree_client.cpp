@@ -75,8 +75,7 @@ octree_client::octree_client(
 
     v *= (gnx - 2 * bw);
 
-    offset_ = sib_offset;
-    offset_ += v;
+    offset_ = sib_offset + v;
     offset_ -= source_offset * 2;
 } // }}}
 
@@ -114,6 +113,15 @@ void octree_client::create_root(
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+hpx::future<void> octree_client::set_time_async(
+    double time
+  , boost::uint64_t step 
+    ) const
+{
+    ensure_real();
+    return hpx::async<octree_server::set_time_action>(gid_, time, step);
+}
+
 hpx::future<void> octree_client::set_buffer_links_async(
     hpx::id_type const& future_self
   , hpx::id_type const& past_self
@@ -146,6 +154,27 @@ hpx::future<void> octree_client::require_child_async(
     ) const
 {
     return hpx::async<octree_server::require_child_action>(gid_, kid);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+hpx::future<void> octree_client::require_sibling_child_async(
+    child_index kid
+  , face f
+    ) const
+{
+    return hpx::async<octree_server::require_sibling_child_action>
+        (gid_, kid, f);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+hpx::future<void> octree_client::require_corner_child_async(
+    child_index kid
+  , face f0
+  , face f1
+    ) const
+{
+    return hpx::async<octree_server::require_corner_child_action>
+        (gid_, kid, f0, f1);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -389,6 +418,44 @@ void octree_client::receive_child_state_push(
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+hpx::future<void> octree_client::child_to_parent_flux_injection_async(
+    boost::uint64_t phase 
+  , axis a
+    ) const
+{
+    ensure_real();
+    return hpx::async<octree_server::child_to_parent_flux_injection_action>
+        (gid_, phase, a);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+hpx::future<void> octree_client::receive_child_flux_async(
+    boost::uint64_t step ///< For debugging purposes.
+  , boost::uint64_t phase 
+  , axis a
+  , child_index idx 
+  , BOOST_RV_REF(vector3d<state>) zone
+    ) const
+{
+    ensure_real();
+    return hpx::async<octree_server::receive_child_flux_action>
+        (gid_, step, phase, a, idx, boost::move(zone));
+}
+
+void octree_client::receive_child_flux_push(
+    boost::uint64_t step ///< For debugging purposes.
+  , boost::uint64_t phase 
+  , axis a
+  , child_index idx 
+  , BOOST_RV_REF(vector3d<state>) zone
+    ) const
+{
+    ensure_real();
+    hpx::apply<octree_server::receive_child_flux_action>
+        (gid_, step, phase, a, idx, boost::move(zone));
+}
+
+///////////////////////////////////////////////////////////////////////////////
 hpx::future<void> octree_client::apply_async(
     hpx::util::function<void(octree_server&)> const& f
     ) const
@@ -608,6 +675,12 @@ hpx::future<void> octree_client::link_async() const
     return hpx::async<octree_server::link_action>(gid_);
 }
 
+hpx::future<void> octree_client::remark_async() const
+{
+    ensure_real();
+    return hpx::async<octree_server::remark_action>(gid_);
+}
+
 hpx::future<void> octree_client::receive_sibling_refinement_signal_async(
     boost::uint64_t phase
   , face f
@@ -628,24 +701,25 @@ void octree_client::receive_sibling_refinement_signal_push(
         (gid_, phase, f); 
 }
 
-hpx::future<void> octree_client::slice_z_async(
+hpx::future<void> octree_client::slice_async(
     slice_function const& f
+  , axis a
   , double eps 
     ) const
 {
     ensure_real();
-    return hpx::async<octree_server::slice_z_action>(gid_, f, eps); 
+    return hpx::async<octree_server::slice_action>(gid_, f, a, eps); 
 }
 
-hpx::future<void> octree_client::slice_z_leaf_async(
+hpx::future<void> octree_client::slice_leaf_async(
     slice_function const& f
+  , axis a
   , double eps 
     ) const
 {
     ensure_real();
-    return hpx::async<octree_server::slice_z_leaf_action>(gid_, f, eps); 
+    return hpx::async<octree_server::slice_leaf_action>(gid_, f, a, eps); 
 }
-
 
 }
 

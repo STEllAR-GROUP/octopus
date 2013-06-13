@@ -124,7 +124,9 @@ inline std::ostream& operator<<(std::ostream& os, child_index idx)
     return os;
 }
 
-OCTOPUS_EXPORT child_index invert(face f, child_index const& idx);
+OCTOPUS_EXPORT child_index invert(face f, child_index idx);
+
+OCTOPUS_EXPORT child_index invert(child_index idx);
 
 }
 

@@ -13,6 +13,8 @@
 #include <octopus/trivial_serialization.hpp>
 #include <octopus/state.hpp>
 
+#include <boost/cstdint.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <vector>
@@ -21,7 +23,7 @@ namespace octopus
 {
 
 template <typename T>
-inline bool compare_floating(T x, T y)
+inline bool compare_real(T x, T y)
 {
     T const epsilon = std::numeric_limits<T>::epsilon();
  
@@ -32,12 +34,19 @@ inline bool compare_floating(T x, T y)
 }
 
 template <typename T>
-inline bool compare_floating(T x, T y, T epsilon)
+inline bool compare_real(T x, T y, T epsilon)
 {
     if ((x + epsilon >= y) && (x - epsilon <= y))
         return true;
     else
         return false;
+}
+
+template <typename T>
+inline boost::uint64_t hex_real(T x)
+{
+    boost::uint64_t* hex = (boost::uint64_t*) &x;
+    return *hex;
 }
 
 inline double maximum(double a, double b)

@@ -26,6 +26,7 @@
     #include <octopus/io/silo.hpp>
 #endif
 
+#include <boost/format.hpp>
 #include <boost/atomic.hpp>
 #include <boost/math/constants/constants.hpp>
 
@@ -117,10 +118,10 @@ double const& total_energy(octopus::state const& u) { return u[4]; }
 double&       tau(octopus::state& u)       { return u[5]; }
 double const& tau(octopus::state const& u) { return u[5]; }
 
-double&       angular_momentum(octopus::state& u)       { return u[6]; }
-double const& angular_momentum(octopus::state const& u) { return u[6]; }
+enum { radial_momentum_idx = 6 };
 
-enum { radial_momentum_idx = 7 };
+double&       angular_momentum(octopus::state& u)       { return u[7]; }
+double const& angular_momentum(octopus::state const& u) { return u[7]; }
 
 double radius(octopus::array<double, 3> const& v)
 {
@@ -231,7 +232,7 @@ double velocity(
         case octopus::x_axis:
             return (x*sr-y*st)/R/rho(u);
         case octopus::y_axis:
-            return (y*sr-x*st)/R/rho(u);
+            return (y*sr+x*st)/R/rho(u);
         case octopus::z_axis:
             return momentum_z(u)/rho(u);
         default: break;
@@ -320,7 +321,7 @@ double rho_max()
 
 double density_floor()
 {
-    return 1.0e-10 * rho_max();
+    return 1e-10 * rho_max();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -384,7 +385,7 @@ struct initialize : octopus::trivial_serialization
 
                             double const n = polytropic_n;
                             double rho_here = (pow(H_here/((n+1)*kappa), n))
-                                            * G*M_C/R_outer;
+                                            * (G*M_C/R_outer);
 
                             OCTOPUS_ASSERT(rho_here > 0.0);
 
@@ -455,8 +456,8 @@ struct initialize : octopus::trivial_serialization
                     momentum_z(U(i, j, k))          = 0.0; 
                     U(i, j, k)[radial_momentum_idx] = 0.0;
 
-                    rho(U(i, j, k)) = (std::max)(rho(U(i, j, k))
-                                               , density_floor()); 
+//                    rho(U(i, j, k)) = (std::max)(rho(U(i, j, k))
+//                                               , density_floor()); 
                 }
             }
         }
@@ -483,10 +484,10 @@ struct enforce_lower_limits : octopus::trivial_serialization
       , octopus::array<double, 3> const& v 
         ) const
     {
+/*
         rho(u) = (std::max)(rho(u), density_floor()); 
 
-        double const internal_energy =
-            (std::max)(total_energy(u) - kinetic_energy(u, v), density_floor());
+        double const internal_energy = total_energy(u) - kinetic_energy(u, v);
 
         if (internal_energy > 0.1 * total_energy(u))
         {
@@ -515,6 +516,7 @@ struct enforce_lower_limits : octopus::trivial_serialization
         // enforce_lower_limits.
         else if (mom_cons != angular_momentum_conservation)
             angular_momentum(u) = momentum_y(u)*v[0] - momentum_x(u)*v[1];
+*/
     }
 };
 
@@ -767,7 +769,7 @@ struct cfl_predict_dt
 
         double next_dt = root.reduce<double>(cfl_treewise_compute_dt()
                                            , octopus::minimum_functor()
-                                           , root.get_dt() * max_dt_growth_);
+                                           , std::numeric_limits<double>::max());
 
         return octopus::dt_prediction(next_dt, fudge_factor_ * next_dt); 
     }
@@ -814,10 +816,10 @@ struct primitive_to_conserved : octopus::trivial_serialization
         momentum_x(u)          *= rho(u);
         momentum_y(u)          *= rho(u);
         momentum_z(u)          *= rho(u);
-        total_energy(u)        += kinetic_energy(u, v);
         u[radial_momentum_idx] *= rho(u);
         angular_momentum(u)    += omega * R;
         angular_momentum(u)    *= rho(u) * R;
+        total_energy(u)        += kinetic_energy(u, v);
     }
 };
 
@@ -831,6 +833,25 @@ struct source : octopus::trivial_serialization
     {
         octopus::state s;
 
+        if (  octopus::compare_real(v[0], -1.26562, 1e-5)
+           && octopus::compare_real(v[1], -1.45312, 1e-5)
+           && octopus::compare_real(v[2], 0.046875, 1e-5))
+        {
+            std::stringstream ss;
+            ss << ( boost::format("SOURCE U (%g, %g, %g):")
+                  % v[0] % v[1] % v[2]); 
+            for (boost::uint64_t i = 0; i < u.size(); ++i)
+                ss << ( boost::format(" %.16x")
+                      % octopus::hex_real(u[i]));
+            ss << "\n";
+//            ss << ( boost::format("Z GRAVITY: %.17e\n")
+//                  % gravity<octopus::z_axis>(v));
+            std::cout << ss.str();
+        }
+
+        return s;
+
+/*
         double const R = radius(v);
         double const p = pressure(u);
         double const lz = angular_momentum(u);
@@ -839,8 +860,8 @@ struct source : octopus::trivial_serialization
         s[radial_momentum_idx] += (p + std::pow(lz/R, 2)/rho(u))/R;
 
         // Add half of the Coriolis force for rotating cartesian momentum.
-        momentum_x(s) += momentum_y(s)*omega;
-        momentum_y(s) -= momentum_x(s)*omega; 
+        momentum_x(s) += momentum_y(u)*omega;
+        momentum_y(s) -= momentum_x(u)*omega; 
 
         // There won't be any gravity within a certain radius of the center.
         if (R < 0.5*(X_in*R_outer))
@@ -853,6 +874,7 @@ struct source : octopus::trivial_serialization
         s[radial_momentum_idx] += rho(u)*radial_gravity(v);
 
         return s;
+*/
     }
 };
 
@@ -863,6 +885,7 @@ struct flux : octopus::trivial_serialization
         octopus::octree_server& U
       , octopus::state& u
       , octopus::array<double, 3> const& loc
+      , octopus::array<boost::uint64_t, 3> const& idx
       , octopus::axis a 
         ) const
     {
@@ -884,8 +907,35 @@ struct flux : octopus::trivial_serialization
                 momentum_x(fl)   += p;
                 total_energy(fl) += v * p;
 
-                angular_momentum(fl)    -= loc[1] * p;
                 fl[radial_momentum_idx] += loc[0] * p / R;
+                angular_momentum(fl)    -= loc[1] * p;
+
+                if (  octopus::compare_real(U.x_center(idx[0]), -1.26562, 1e-5)
+                   && octopus::compare_real(U.y_center(idx[1]), -1.45312, 1e-5)
+                   && octopus::compare_real(U.z_center(idx[2]), 0.046875, 1e-5))
+                {
+                    std::stringstream ss;
+                    ss << ( boost::format("X FLUX U (%g, %g, %g):")
+                          % U.x_center(idx[0])
+                          % U.y_center(idx[1])
+                          % U.z_center(idx[2]));
+                    for (boost::uint64_t i = 0; i < fl.size(); ++i)
+                        ss << ( boost::format(" %.16x")
+                              % octopus::hex_real(u[i]));
+                    ss << "\n";
+                    ss << ( boost::format("X FLUX (%g, %g, %g):")
+                          % U.x_center(idx[0])
+                          % U.y_center(idx[1])
+                          % U.z_center(idx[2]));
+                    for (boost::uint64_t i = 0; i < fl.size(); ++i)
+                        ss << ( boost::format(" %.16x")
+                              % octopus::hex_real(fl[i]));
+                    ss << "\n";
+                    ss << (boost::format("RADIUS: %.17e\n") % R);
+                    ss << (boost::format("PRESSURE: %.17e\n") % p);
+                    ss << (boost::format("VELOCITY: %.17e\n") % v);
+                    std::cout << ss.str();
+                }
 
                 break;
             }
@@ -900,8 +950,8 @@ struct flux : octopus::trivial_serialization
                 momentum_y(fl)   += p;
                 total_energy(fl) += v * p;
 
-                angular_momentum(fl)    += loc[0] * p;
                 fl[radial_momentum_idx] += loc[1] * p / R;
+                angular_momentum(fl)    += loc[0] * p;
 
                 break;
             }
@@ -988,7 +1038,7 @@ struct refine_by_geometry
     }
 };
 
-struct output_equatorial_plane : octopus::trivial_serialization
+struct output_equatorial_z_plane : octopus::trivial_serialization
 {
     struct slicer 
     {
@@ -1006,10 +1056,19 @@ struct output_equatorial_plane : octopus::trivial_serialization
           , octopus::array<double, 3>& loc
             ) const
         {
-            (*ofs_) << loc[0] << " "
-                    << loc[1] << " "
-                    << rho(u) << " "
-                    << U.get_level() << "\n";
+            (*ofs_) << ( boost::format("%g %g %g %i")
+                       % loc[0]
+                       % loc[1]
+                       % loc[2]
+                       % U.get_level());
+
+            for (boost::uint64_t i = 0; i < u.size(); ++i)
+            {
+                (*ofs_) << ( boost::format(" %016x")
+                           % octopus::hex_real(u[i]));
+            }
+
+            (*ofs_) << "\n";
         }
 
         template <typename Archive>
@@ -1024,7 +1083,7 @@ struct output_equatorial_plane : octopus::trivial_serialization
       , std::ofstream& ofs
         ) const
     {
-        U.slice_z_leaf(slicer(ofs), 1e-7);
+        U.slice_leaf(slicer(ofs), octopus::z_axis, 1e-7);
     }
 };
 

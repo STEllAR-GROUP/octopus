@@ -16,8 +16,8 @@ science_table default_science_table()
 
     sci.physical_boundaries = physical_boundaries_at_zero();
 
-    sci.reconstruct = ppm_reconstruction(); 
-    sci.ghost_zone_width = ppm_reconstruction::ghost_zone_width;
+    sci.reconstruct = minmod_reconstruction(); 
+    sci.ghost_zone_width = minmod_reconstruction::ghost_zone_width;
 
     sci.initial_dx = initial_dx();
 

@@ -150,8 +150,8 @@ void octree_server::initialize_queues()
     for (boost::uint64_t i = 0; i < (config().runge_kutta_order + 1); ++i)
         children_state_deps_.push_back(children_state_dependencies());
 
-    for (boost::uint64_t i = 0; i < (config().runge_kutta_order); ++i)
-        adjust_flux_deps_.push_back(children_state_dependencies());
+    for (boost::uint64_t i = 0; i < (config().runge_kutta_order * 3); ++i)
+        children_flux_deps_.push_back(children_state_dependencies());
 
     // Just hard-code the size of the refinement queue.
     for (boost::uint64_t i = 0; i < 5; ++i)
@@ -172,7 +172,7 @@ octree_server::octree_server(
   , marked_for_refinement_()
   , ghost_zone_deps_()
   , children_state_deps_()
-  , adjust_flux_deps_()
+  , children_flux_deps_()
   , refinement_deps_()
   , parent_(init.parent)
   , siblings_()
@@ -224,7 +224,7 @@ octree_server::octree_server(
   , marked_for_refinement_()
   , ghost_zone_deps_()
   , children_state_deps_()
-  , adjust_flux_deps_()
+  , children_flux_deps_()
   , refinement_deps_()
   , parent_(init.parent)
   , siblings_()
@@ -308,9 +308,29 @@ void octree_server::prepare_compute_queues()
         for (boost::uint64_t j = 0; j < 6; ++j)
             children_state_deps_[i](j).reset();
 
-    for (boost::uint64_t i = 0; i < adjust_flux_deps_.size(); ++i)
+    for (boost::uint64_t i = 0; i < children_flux_deps_.size(); ++i)
         for (boost::uint64_t j = 0; j < 6; ++j)
-            adjust_flux_deps_[i](j).reset();
+            children_flux_deps_[i](j).reset();
+} // }}}
+
+void octree_server::set_time(
+    double time
+  , boost::uint64_t step
+    )
+{ // {{{
+    std::vector<hpx::future<void> > recursion_is_parallelism;
+    recursion_is_parallelism.reserve(8); 
+
+    for (std::size_t i = 0; i < 8; ++i)
+        if (hpx::invalid_id != children_[i])
+            recursion_is_parallelism.push_back
+                (children_[i].set_time_async(time, step));
+
+    time_ = time;
+    step_ = step;
+
+    hpx::wait(recursion_is_parallelism);
+
 } // }}}
 
 void octree_server::clear_refinement_marks()
@@ -1115,7 +1135,7 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const k_out = k - bw; 
 
                         ///////////////////////////////////////////////////////
-                        bool const i0 = (amr_offset[0] + i) % 2 ? true : false;
+                        bool const i0 = (amr_offset[0] + i_out) % 2 ? true : false;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
@@ -1125,14 +1145,16 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
 
                         state u = (*U_)(i_in, j_in, k_in); 
 
-                        u = minmod((*U_)(i_in + 1, j_in, k_in) - u
-                                 , u - (*U_)(i_in - 1, j_in, k_in));
+                        state a = (*U_)(i_in + 1, j_in, k_in) - u;
+                        state b = u - (*U_)(i_in - 1, j_in, k_in);
+
+                        u = minmod(a, b);
 
                         if (1 == i0)
                             u = -u;
 
-                        output(i_out, j_out, k_out)  = (*U_)(i_in, j_in, k_in);
-                        output(i_out, j_out, k_out) -= u * 0.25;
+                        output(i_out, j_out, k_out)  = (*U_)(i_in, j_in, k_in) - u * 0.25; 
+//                        output(i_out, j_out, k_out) -= u * 0.25;
 
                         // FIXME: This is too specific to Dominic/Zach's
                         // code, move this into the science table.
@@ -1164,7 +1186,7 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const k_out = k - bw; 
 
                         ///////////////////////////////////////////////////////
-                        bool const i0 = (amr_offset[0] + i) % 2 ? true : false;
+                        bool const i0 = (amr_offset[0] + i_out) % 2 ? true : false;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
@@ -1174,14 +1196,16 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
 
                         state u = (*U_)(i_in, j_in, k_in); 
 
-                        u = minmod((*U_)(i_in + 1, j_in, k_in) - u
-                                 , u - (*U_)(i_in - 1, j_in, k_in));
+                        state a = (*U_)(i_in + 1, j_in, k_in) - u;
+                        state b = u - (*U_)(i_in - 1, j_in, k_in);
+
+                        u = minmod(a, b);
 
                         if (1 == i0)
                             u = -u;
 
-                        output(i_out, j_out, k_out)  = (*U_)(i_in, j_in, k_in);
-                        output(i_out, j_out, k_out) -= u * 0.25;
+                        output(i_out, j_out, k_out)  = (*U_)(i_in, j_in, k_in) - u * 0.25;
+//                        output(i_out, j_out, k_out) -= u * 0.25;
 
                         // FIXME: This is too specific to Dominic/Zach's
                         // code, move this into the science table.
@@ -1215,7 +1239,7 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const k_out = k - bw; 
 
                         //////////////////////////////////////////////////////
-                        bool const j0 = (amr_offset[1] + j) % 2 ? true : false;
+                        bool const j0 = (amr_offset[1] + j_out) % 2 ? true : false;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
@@ -1225,14 +1249,16 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
 
                         state u = (*U_)(i_in, j_in, k_in); 
 
-                        u = minmod((*U_)(i_in, j_in + 1, k_in) - u
-                                 , u - (*U_)(i_in, j_in - 1, k_in));
+                        state a = (*U_)(i_in, j_in + 1, k_in) - u;
+                        state b = u - (*U_)(i_in, j_in - 1, k_in);
+
+                        u = minmod(a, b); 
 
                         if (1 == j0)
                             u = -u;
 
-                        output(i_out, j_out, k_out)  = (*U_)(i_in, j_in, k_in);
-                        output(i_out, j_out, k_out) -= u * 0.25;
+                        output(i_out, j_out, k_out)  = (*U_)(i_in, j_in, k_in) - u * 0.25;
+//                        output(i_out, j_out, k_out) -= u * 0.25;
 
                         // FIXME: This is too specific to Dominic/Zach's
                         // code, move this into the science table.
@@ -1264,7 +1290,7 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const k_out = k - bw; 
 
                         ///////////////////////////////////////////////////////
-                        bool const j0 = (amr_offset[1] + j) % 2 ? true : false;
+                        bool const j0 = (amr_offset[1] + j_out) % 2 ? true : false;
 
                         ///////////////////////////////////////////////////////
                         boost::uint64_t const i_in = (amr_offset[0] + i) / 2;
@@ -1273,14 +1299,16 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
 
                         state u = (*U_)(i_in, j_in, k_in); 
 
-                        u = minmod((*U_)(i_in, j_in + 1, k_in) - u
-                                 , u - (*U_)(i_in, j_in - 1, k_in));
+                        state a = (*U_)(i_in, j_in + 1, k_in) - u;
+                        state b = u - (*U_)(i_in, j_in - 1, k_in);
+
+                        u = minmod(a, b);
 
                         if (1 == j0)
                             u = -u;
 
-                        output(i_out, j_out, k_out)  = (*U_)(i_in, j_in, k_in);
-                        output(i_out, j_out, k_out) -= u * 0.25;
+                        output(i_out, j_out, k_out)  = (*U_)(i_in, j_in, k_in) - u * 0.25; 
+//                        output(i_out, j_out, k_out) -= u * 0.25;
 
                         // FIXME: This is too specific to Dominic/Zach's
                         // code, move this into the science table.
@@ -1314,7 +1342,7 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const k_out = k - bw;
 
                         ///////////////////////////////////////////////////////
-                        bool const k0 = (amr_offset[2] + k) % 2 ? true : false;
+                        bool const k0 = (amr_offset[2] + k_out) % 2 ? true : false;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
@@ -1324,14 +1352,16 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
 
                         state u = (*U_)(i_in, j_in, k_in); 
 
-                        u = minmod((*U_)(i_in, j_in, k_in + 1) - u
-                                 , u - (*U_)(i_in, j_in, k_in - 1));
+                        state a = (*U_)(i_in, j_in, k_in + 1) - u;
+                        state b = u - (*U_)(i_in, j_in, k_in - 1);
+
+                        u = minmod(a, b);
 
                         if (1 == k0)
                             u = -u;
 
-                        output(i_out, j_out, k_out)  = (*U_)(i_in, j_in, k_in);
-                        output(i_out, j_out, k_out) -= u * 0.25;
+                        output(i_out, j_out, k_out)  = (*U_)(i_in, j_in, k_in) - u * 0.25;
+//                        output(i_out, j_out, k_out) -= u * 0.25;
 
                         // FIXME: This is too specific to Dominic/Zach's
                         // code, move this into the science table.
@@ -1363,7 +1393,7 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const k_out = k - (gnx - 2 * bw);
 
                         ///////////////////////////////////////////////////////
-                        bool const k0 = (amr_offset[2] + k) % 2 ? true : false;
+                        bool const k0 = (amr_offset[2] + k_out) % 2 ? true : false;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
@@ -1373,14 +1403,16 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
 
                         state u = (*U_)(i_in, j_in, k_in); 
 
-                        u = minmod((*U_)(i_in, j_in, k_in + 1) - u
-                                 , u - (*U_)(i_in, j_in, k_in - 1));
+                        state a = (*U_)(i_in, j_in, k_in + 1) - u;
+                        state b = u - (*U_)(i_in, j_in, k_in - 1);
+
+                        u = minmod(a, b);
 
                         if (1 == k0)
                             u = -u;
 
-                        output(i_out, j_out, k_out)  = (*U_)(i_in, j_in, k_in);
-                        output(i_out, j_out, k_out) -= u * 0.25;
+                        output(i_out, j_out, k_out)  = (*U_)(i_in, j_in, k_in) - u * 0.25;
+//                        output(i_out, j_out, k_out) -= u * 0.25;
 
                         // FIXME: This is too specific to Dominic/Zach's
                         // code, move this into the science table.
@@ -1696,11 +1728,11 @@ void octree_server::child_to_parent_state_injection(
             recursion_is_parallelism.push_back
                 (children_[i].child_to_parent_state_injection_async(phase));
 
-    // Invoke the kernel on ourselves ...
-    child_to_parent_state_injection_kernel(phase); 
-
-    // ... and block while our children compute.
+    // Block while our children compute ...
     hpx::wait(recursion_is_parallelism); 
+
+    // ... and invoke the kernel on ourselves.
+    child_to_parent_state_injection_kernel(phase); 
 } // }}}
 
 /// 0.) Wait for all children to signal us.
@@ -1709,6 +1741,7 @@ void octree_server::child_to_parent_state_injection_kernel(
     boost::uint64_t phase
     )
 { // {{{
+/*
     std::vector<hpx::future<void> > dependencies;
     
     bool has_children = false;
@@ -1758,9 +1791,10 @@ void octree_server::child_to_parent_state_injection_kernel(
     {
         OCTOPUS_ASSERT(level_ != 0);
 
-        parent_.receive_child_state_push(step_, phase,
+        parent_.receive_child_state(step_, phase,
             get_child_index(), send_child_state());
     }
+*/
 } // }}}
 
 void octree_server::add_child_state(
@@ -1816,19 +1850,77 @@ vector3d<state> octree_server::send_child_state()
                 boost::uint64_t const jj = ((j + bw) / 2) - bw; 
                 boost::uint64_t const kk = ((k + bw) / 2) - bw; 
 
-                state(ii, jj, kk)  = (*U_)(i + 0, j + 0, k + 0);
-                state(ii, jj, kk) += (*U_)(i + 1, j + 0, k + 0);
-                state(ii, jj, kk) += (*U_)(i + 0, j + 1, k + 0);
-                state(ii, jj, kk) += (*U_)(i + 1, j + 1, k + 0);
-                state(ii, jj, kk) += (*U_)(i + 0, j + 0, k + 1);
-                state(ii, jj, kk) += (*U_)(i + 1, j + 0, k + 1);
-                state(ii, jj, kk) += (*U_)(i + 0, j + 1, k + 1);
-                state(ii, jj, kk) += (*U_)(i + 1, j + 1, k + 1);
-                state(ii, jj, kk) *= 0.125;
+/*
+                state(ii, jj, kk)  = (*U_)(i + 0, j + 0, k + 0) * 0.125;
+                state(ii, jj, kk) += (*U_)(i + 1, j + 0, k + 0) * 0.125;
+                state(ii, jj, kk) += (*U_)(i + 0, j + 1, k + 0) * 0.125;
+                state(ii, jj, kk) += (*U_)(i + 1, j + 1, k + 0) * 0.125;
+                state(ii, jj, kk) += (*U_)(i + 0, j + 0, k + 1) * 0.125;
+                state(ii, jj, kk) += (*U_)(i + 1, j + 0, k + 1) * 0.125;
+                state(ii, jj, kk) += (*U_)(i + 0, j + 1, k + 1) * 0.125;
+                state(ii, jj, kk) += (*U_)(i + 1, j + 1, k + 1) * 0.125;
+*/
+
+                state(ii, jj, kk) = ( (*U_)(i + 0, j + 0, k + 0)
+                                    + (*U_)(i + 1, j + 0, k + 0)
+                                    + (*U_)(i + 0, j + 1, k + 0)
+                                    + (*U_)(i + 1, j + 1, k + 0)
+                                    + (*U_)(i + 0, j + 0, k + 1)
+                                    + (*U_)(i + 1, j + 0, k + 1)
+                                    + (*U_)(i + 0, j + 1, k + 1)
+                                    + (*U_)(i + 1, j + 1, k + 1)) * 0.125;
             }
 
     return state; 
 } // }}}
+
+///////////////////////////////////////////////////////////////////////////////
+// Child -> parent injection of flux.
+
+void octree_server::child_to_parent_flux_injection(
+    boost::uint64_t phase
+  , axis a
+    )
+{ // {{{
+    std::vector<hpx::future<void> > recursion_is_parallelism;
+
+    recursion_is_parallelism.reserve(8);
+    
+    for (boost::uint64_t i = 0; i < 8; ++i)
+        if (hpx::invalid_id != children_[i])
+            recursion_is_parallelism.push_back
+                (children_[i].child_to_parent_flux_injection_async(phase, a));
+
+    // Block while our children compute ...
+    hpx::wait(recursion_is_parallelism); 
+
+    // ... and invoke the kernel on ourselves.
+    child_to_parent_flux_injection_kernel(phase, a); 
+
+} // }}}
+
+// IMPLEMENT
+void octree_server::child_to_parent_flux_injection_kernel(
+    boost::uint64_t phase
+  , axis a
+    )
+{ 
+} 
+
+// IMPLEMENT
+void octree_server::add_child_flux(
+    axis a ///< Bound parameter.
+  , child_index idx ///< Bound parameter.
+  , hpx::future<vector3d<state> > state_f
+    )
+{ 
+} 
+
+// IMPLEMENT
+vector3d<state> octree_server::send_child_flux(axis a)
+{ 
+    return vector3d<state>(); 
+} 
 
 ///////////////////////////////////////////////////////////////////////////////
 // Tree traversal.
@@ -1930,11 +2022,7 @@ void octree_server::sub_step_kernel(
     prepare_differentials_kernel();
 
     // Operations parallelizes by axis.
-    compute_flux_kernel();
-
-    // TODO: Inject flux
-
-    adjust_flux_kernel();
+    compute_flux_kernel(phase + 1);
 
     sum_differentials_kernel();
     add_differentials_kernel(dt, beta);
@@ -1947,20 +2035,25 @@ void octree_server::add_differentials_kernel(double dt, double beta)
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
 
-    for (boost::uint64_t i = bw; i < gnx - bw; ++i)
-        for (boost::uint64_t j = bw; j < gnx - bw; ++j)
-            for (boost::uint64_t k = bw; k < gnx - bw; ++k)
-            {
-                array<double, 3> c = center_coords(i, j, k);
+    indexer2d<1> const indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
+    for (boost::uint64_t index = 0; index <= indexer.maximum; ++index)
+    {
+        for (boost::uint64_t i = bw; i < gnx - bw; ++i)
+        {
+            boost::uint64_t k = indexer.y(index);
+            boost::uint64_t j = indexer.x(index);
 
-                D_(i, j, k) += science().source(*this, (*U_)(i, j, k), c);
+            array<double, 3> c = center_coords(i, j, k);
 
-                // Discretization. 
-                (*U_)(i, j, k) = ((*U_)(i, j, k) + D_(i, j, k) * dt) * beta
-                               + (*U0_)(i, j, k) * (1.0 - beta); 
+            D_(i, j, k) += science().source(*this, (*U_)(i, j, k), c);
 
-                science().enforce_limits((*U_)(i, j, k), c);
-            }
+            // Discretization. 
+            (*U_)(i, j, k) = (*U_)(i, j, k) * beta + D_(i, j, k) * dt * beta
+                           + (*U0_)(i, j, k) * (1.0 - beta); 
+
+            science().enforce_limits((*U_)(i, j, k), c);
+        }
+    }
 
     (*FO_) = ((*FO_) + DFO_ * dt) * beta + (*FO0_) * (1.0 - beta);
 } // }}}
@@ -1983,7 +2076,7 @@ void octree_server::prepare_differentials_kernel()
                 }
 } // }}}
 
-void octree_server::compute_flux_kernel()
+void octree_server::compute_flux_kernel(boost::uint64_t phase)
 { // {{{ 
     ////////////////////////////////////////////////////////////////////////////    
     // Compute our own local fluxes locally in parallel. 
@@ -2014,39 +2107,47 @@ void octree_server::compute_x_flux_kernel()
     std::vector<state> ql(gnx, state());
     std::vector<state> qr(gnx, state());
 
-    for (boost::uint64_t k = bw; k < (gnx - bw); ++k)
-        for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
+    indexer2d<1> const indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
+    for (boost::uint64_t index = 0; index <= indexer.maximum; ++index)
+    {
+        boost::uint64_t k = indexer.y(index);
+        boost::uint64_t j = indexer.x(index);
+
+        for (boost::uint64_t i = 0; i < gnx; ++i)
         {
-            for (boost::uint64_t i = 0; i < gnx; ++i)
-            {
-                q0[i] = (*U_)(i, j, k);
+            q0[i] = (*U_)(i, j, k);
     
-                array<double, 3> coords = center_coords(i, j, k);
+            array<double, 3> coords = center_coords(i, j, k);
     
-                science().conserved_to_primitive(q0[i], coords);
-            }
-    
-            science().reconstruct(q0, ql, qr);
-    
-            for (boost::uint64_t i = bw; i < gnx - bw + 1; ++i)
-            {
-                array<double, 3> coords = x_face_coords(i, j, k);
-    
-                science().primitive_to_conserved(ql[i], coords);
-                science().primitive_to_conserved(qr[i], coords);
-    
-                double const a = (std::max)
-                    (science().max_eigenvalue(*this, ql[i], coords, x_axis)
-                   , science().max_eigenvalue(*this, qr[i], coords, x_axis));
-    
-                state
-                    ql_flux = science().flux(*this, ql[i], coords, x_axis),
-                    qr_flux = science().flux(*this, qr[i], coords, x_axis);
-    
-                FX_(i, j, k) = ((ql_flux + qr_flux)
-                             - (qr[i] - ql[i]) * a) * 0.5;
-            }
+            science().conserved_to_primitive(q0[i], coords);
         }
+    
+        science().reconstruct(q0, ql, qr);
+    
+        for (boost::uint64_t i = bw; i < gnx - bw + 1; ++i)
+        {
+            array<double, 3> coords = x_face_coords(i, j, k);
+    
+            science().primitive_to_conserved(ql[i], coords);
+            science().primitive_to_conserved(qr[i], coords);
+    
+            double const a = (std::max)
+                (science().max_eigenvalue(*this, ql[i], coords, x_axis)
+               , science().max_eigenvalue(*this, qr[i], coords, x_axis));
+   
+            array<boost::uint64_t, 3> idx;
+            idx[0] = i;
+            idx[1] = j;
+            idx[2] = k;
+    
+            state
+                ql_flux = science().flux(*this, ql[i], coords, idx, x_axis),
+                qr_flux = science().flux(*this, qr[i], coords, idx, x_axis);
+
+            FX_(i, j, k) = ((ql_flux + qr_flux)
+                         - (qr[i] - ql[i]) * a) * 0.5;
+        }
+    }
 } // }}}
 
 void octree_server::compute_y_flux_kernel()
@@ -2058,39 +2159,47 @@ void octree_server::compute_y_flux_kernel()
     std::vector<state> ql(gnx, state());
     std::vector<state> qr(gnx, state());
 
-    for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
-        for (boost::uint64_t k = bw; k < (gnx - bw); ++k)
+    indexer2d<1> const indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
+    for (boost::uint64_t index = 0; index <= indexer.maximum; ++index)
+    {
+        boost::uint64_t k = indexer.y(index);
+        boost::uint64_t i = indexer.x(index);
+
+        for (boost::uint64_t j = 0; j < gnx; ++j)
         {
-            for (boost::uint64_t j = 0; j < gnx; ++j)
-            {
-                q0[j] = (*U_)(i, j, k);
+            q0[j] = (*U_)(i, j, k);
     
-                array<double, 3> coords = center_coords(i, j, k);
+            array<double, 3> coords = center_coords(i, j, k);
     
-                science().conserved_to_primitive(q0[j], coords);
-            }
-    
-            science().reconstruct(q0, ql, qr);
-    
-            for (boost::uint64_t j = bw; j < gnx - bw + 1; ++j)
-            {
-                array<double, 3> coords = y_face_coords(i, j, k);
-    
-                science().primitive_to_conserved(ql[j], coords);
-                science().primitive_to_conserved(qr[j], coords);
-    
-                double const a = (std::max)
-                    (science().max_eigenvalue(*this, ql[j], coords, y_axis)
-                   , science().max_eigenvalue(*this, qr[j], coords, y_axis));
-    
-                state
-                    ql_flux = science().flux(*this, ql[j], coords, y_axis)
-                  , qr_flux = science().flux(*this, qr[j], coords, y_axis);
-     
-                FY_(i, j, k) = ((ql_flux + qr_flux)
-                             - (qr[j] - ql[j]) * a) * 0.5;
-            }
+            science().conserved_to_primitive(q0[j], coords);
         }
+    
+        science().reconstruct(q0, ql, qr);
+    
+        for (boost::uint64_t j = bw; j < gnx - bw + 1; ++j)
+        {
+            array<double, 3> coords = y_face_coords(i, j, k);
+    
+            science().primitive_to_conserved(ql[j], coords);
+            science().primitive_to_conserved(qr[j], coords);
+    
+            double const a = (std::max)
+                (science().max_eigenvalue(*this, ql[j], coords, y_axis)
+               , science().max_eigenvalue(*this, qr[j], coords, y_axis));
+
+            array<boost::uint64_t, 3> idx;
+            idx[0] = i;
+            idx[1] = j;
+            idx[2] = k;
+ 
+            state
+                ql_flux = science().flux(*this, ql[j], coords, idx, y_axis)
+              , qr_flux = science().flux(*this, qr[j], coords, idx, y_axis);
+
+            FY_(i, j, k) = ((ql_flux + qr_flux)
+                         - (qr[j] - ql[j]) * a) * 0.5;
+        }
+    }
 } // }}}
 
 void octree_server::compute_z_flux_kernel()
@@ -2102,45 +2211,48 @@ void octree_server::compute_z_flux_kernel()
     std::vector<state> ql(gnx, state());
     std::vector<state> qr(gnx, state());
 
-    for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
-        for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
+    indexer2d<1> const indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
+    for (boost::uint64_t index = 0; index <= indexer.maximum; ++index)
+    {
+        boost::uint64_t j = indexer.y(index);
+        boost::uint64_t i = indexer.x(index);
+
+        for (boost::uint64_t k = 0; k < gnx; ++k)
         {
-            for (boost::uint64_t k = 0; k < gnx; ++k)
-            {
-                q0[k] = (*U_)(i, j, k);
+            q0[k] = (*U_)(i, j, k);
     
-                array<double, 3> coords = center_coords(i, j, k);
+            array<double, 3> coords = center_coords(i, j, k);
 
-                science().conserved_to_primitive(q0[k], coords);
-            }
-    
-            science().reconstruct(q0, ql, qr);
-    
-            for (boost::uint64_t k = bw; k < gnx - bw + 1; ++k)
-            {
-                array<double, 3> coords = z_face_coords(i, j, k);
-    
-                science().primitive_to_conserved(ql[k], coords);
-                science().primitive_to_conserved(qr[k], coords);
-    
-                double const a = (std::max)
-                    (science().max_eigenvalue(*this, ql[k], coords, z_axis)
-                   , science().max_eigenvalue(*this, qr[k], coords, z_axis));
-    
-                state
-                    ql_flux = science().flux(*this, ql[k], coords, z_axis)
-                  , qr_flux = science().flux(*this, qr[k], coords, z_axis)
-                    ;
-     
-                FZ_(i, j, k) = ((ql_flux + qr_flux)
-                             - (qr[k] - ql[k]) * a) * 0.5;
-            }
+            science().conserved_to_primitive(q0[k], coords);
         }
-} // }}}
+    
+        science().reconstruct(q0, ql, qr);
+    
+        for (boost::uint64_t k = bw; k < gnx - bw + 1; ++k)
+        {
+            array<double, 3> coords = z_face_coords(i, j, k);
+    
+            science().primitive_to_conserved(ql[k], coords);
+            science().primitive_to_conserved(qr[k], coords);
+    
+            double const a = (std::max)
+                (science().max_eigenvalue(*this, ql[k], coords, z_axis)
+               , science().max_eigenvalue(*this, qr[k], coords, z_axis));
 
-void octree_server::adjust_flux_kernel()
-{ // {{{ IMPLEMENT
-
+            array<boost::uint64_t, 3> idx;
+            idx[0] = i;
+            idx[1] = j;
+            idx[2] = k;
+    
+            state
+                ql_flux = science().flux(*this, ql[k], coords, idx, z_axis)
+              , qr_flux = science().flux(*this, qr[k], coords, idx, z_axis)
+                ;
+     
+            FZ_(i, j, k) = ((ql_flux + qr_flux)
+                         - (qr[k] - ql[k]) * a) * 0.5;
+        }
+    }
 } // }}}
 
 void octree_server::sum_differentials_kernel()
@@ -2148,34 +2260,56 @@ void octree_server::sum_differentials_kernel()
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
 
-    double const dxinv = 1.0 / dx_;
+    double const dx_inv = 1.0 / dx_;
 
     ///////////////////////////////////////////////////////////////////////////
     // Kernel.
     // NOTE: This is probably too tight a loop to parallelize with HPX, but
     // could be vectorized. 
-    for (boost::uint64_t i = bw; i < gnx - bw; ++i)
-        for (boost::uint64_t j = bw; j < gnx - bw; ++j)
+    {
+        indexer2d<1> const indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
+        for (boost::uint64_t index = 0; index <= indexer.maximum; ++index)
         {
-            for (boost::uint64_t k = bw; k < gnx - bw; ++k)
-            {
-                D_(i, j, k) -= (FX_(i + 1, j, k) - FX_(i, j, k)) * dxinv;
-                D_(i, j, k) -= (FY_(i, j + 1, k) - FY_(i, j, k)) * dxinv;
-                D_(i, j, k) -= (FZ_(i, j, k + 1) - FZ_(i, j, k)) * dxinv;
-            }
+            boost::uint64_t k = indexer.y(index);
+            boost::uint64_t j = indexer.x(index);
 
-            // i = y-axis, j = z-axis 
-            DFO_ += (FX_(gnx - bw, i, j) - FX_(bw, i, j)) * dx_ * dx_;
-
-            // i = x-axis, j = z-axis 
-            DFO_ += (FY_(i, gnx - bw, j) - FY_(i, bw, j)) * dx_ * dx_;
-        
-            // i = x-axis, j = y-axis 
-            if (config().reflect_on_z)
-                DFO_ += (FZ_(i, j, gnx - bw)) * dx_ * dx_;
-            else
-                DFO_ += (FZ_(i, j, gnx - bw) - FZ_(i, j, bw)) * dx_ * dx_;
+            for (boost::uint64_t i = bw; i < gnx - bw; ++i)
+                D_(i, j, k) -= FX_(i + 1, j, k) * dx_inv - FX_(i, j, k) * dx_inv;
+    
+            DFO_ += (FX_(gnx - bw, j, k) - FX_(bw, j, k)) * dx_ * dx_;
         }
+    }
+    
+    {
+        indexer2d<1> const indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
+        for (boost::uint64_t index = 0; index <= indexer.maximum; ++index)
+        {
+            boost::uint64_t k = indexer.y(index);
+            boost::uint64_t j = indexer.x(index);
+
+            for (boost::uint64_t i = bw; i < gnx - bw; ++i)
+                D_(i, j, k) -= FY_(i, j + 1, k) * dx_inv - FY_(i, j, k) * dx_inv;
+    
+            DFO_ += (FY_(j, gnx - bw, k) - FY_(j, bw, k)) * dx_ * dx_;
+        }
+    }
+
+    {
+        indexer2d<1> const indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
+        for (boost::uint64_t index = 0; index <= indexer.maximum; ++index)
+        {
+            boost::uint64_t k = indexer.y(index);
+            boost::uint64_t j = indexer.x(index);
+
+            for (boost::uint64_t i = bw; i < gnx - bw; ++i)
+                D_(i, j, k) -= FZ_(i, j, k + 1) * dx_inv - FZ_(i, j, k) * dx_inv;
+    
+            if (config().reflect_on_z)
+                DFO_ += (FZ_(j, k, gnx - bw)) * dx_ * dx_;
+            else
+                DFO_ += (FZ_(j, k, gnx - bw) - FZ_(j, k, bw)) * dx_ * dx_;
+        }
+    }
 } // }}}
 
 void octree_server::copy_and_regrid()
@@ -2366,9 +2500,10 @@ void octree_server::populate_kernel()
     {
         child_index const kid(i);
 
-        if (marked_for_refinement_.test(kid))
+        if (  marked_for_refinement_.test(kid)
+           && children_[i] == hpx::invalid_id)
         {
-            OCTOPUS_ASSERT(hpx::invalid_id == children_[i]);
+            //OCTOPUS_ASSERT(hpx::invalid_id == children_[i]);
             // REVIEW: This is a weird way to do this.
             new_children.push_back(hpx::async(boost::bind
                 (&octree_server::create_child, this, kid)));
@@ -2585,6 +2720,194 @@ void octree_server::link_child(
     }
 } // }}}
 
+void octree_server::remark()
+{ // {{{
+    if (level_ == config().levels_of_refinement)
+        return;
+
+    std::vector<hpx::future<void> > recursion_is_parallelism;
+    recursion_is_parallelism.reserve(8); 
+
+    remark_kernel();
+
+//    sibling_refinement_signal(0);
+
+    for (std::size_t i = 0; i < 8; ++i)
+        if (  (hpx::invalid_id != children_[i])
+           && (level_ + 1) != config().levels_of_refinement)
+            recursion_is_parallelism.push_back(children_[i].remark_async());
+
+    hpx::wait(recursion_is_parallelism);
+
+//    sibling_refinement_signal(1);
+} // }}}
+
+void octree_server::remark_kernel()
+{ // {{{ 
+    OCTOPUS_ASSERT(level_ != config().levels_of_refinement);
+
+    std::vector<hpx::future<void> > markings;
+    markings.reserve(8*3);
+
+    mutex_type::scoped_lock l(mtx_);
+
+    for (boost::uint64_t i = 0; i < 8; ++i)
+    {
+        child_index kid(i);
+
+        OCTOPUS_ASSERT(children_[i].real()
+                    || (  children_[i].kind() == invalid_boundary
+                       && children_[i] == hpx::invalid_id));
+
+        if (marked_for_refinement_.test(kid))
+        {
+            relatives r(kid);
+
+/*
+            OCTOPUS_ASSERT
+                (  (invalid_boundary != siblings_[r.exterior_x_face].kind())
+                && (amr_boundary != siblings_[r.exterior_x_face].kind()));
+            OCTOPUS_ASSERT
+                (  (invalid_boundary != siblings_[r.exterior_y_face].kind())
+                && (amr_boundary != siblings_[r.exterior_y_face].kind()));
+            OCTOPUS_ASSERT
+                (  (invalid_boundary != siblings_[r.exterior_z_face].kind())
+                && (amr_boundary != siblings_[r.exterior_z_face].kind()));
+*/
+
+            if (0 != level_)
+            {
+
+                // Relative to the X exterior relative.
+                face corner_f0;
+                face corner_f1;
+    
+                face xy_edge_f;
+                face yz_edge_f;
+                face zx_edge_f;
+    
+                child_index corner_kid = invert(get_child_index());
+    
+                child_index xy_edge_kid
+                    = invert(r.exterior_x_face, invert(r.exterior_y_face, get_child_index())); 
+//                    = invert(r.exterior_y_face, get_child_index()); 
+                child_index yz_edge_kid
+                    = invert(r.exterior_y_face, invert(r.exterior_z_face, get_child_index())); 
+//                    = invert(r.exterior_z_face, get_child_index()); 
+                child_index zx_edge_kid
+                    = invert(r.exterior_z_face, invert(r.exterior_x_face, get_child_index())); 
+//                    = invert(r.exterior_x_face, get_child_index()); 
+    
+                if      (kid == child_index(0, 0, 0))
+                {
+                    corner_f0 = YL; 
+                    corner_f1 = ZL;
+    
+                    xy_edge_f = YU;
+                    yz_edge_f = ZU;
+                    zx_edge_f = XU; 
+                }
+    
+                else if (kid == child_index(0, 0, 1))
+                {
+                    corner_f0 = YL; 
+                    corner_f1 = ZU;
+    
+                    xy_edge_f = YU;
+                    yz_edge_f = ZL;
+                    zx_edge_f = XU; 
+                }
+     
+                else if (kid == child_index(0, 1, 0))
+                {
+                    corner_f0 = YU; 
+                    corner_f1 = ZL;
+    
+                    xy_edge_f = YL;
+                    yz_edge_f = ZU;
+                    zx_edge_f = XU; 
+                }
+    
+                else if (kid == child_index(0, 1, 1))
+                {
+                    corner_f0 = YU; 
+                    corner_f1 = ZU;
+    
+                    xy_edge_f = YL;
+                    yz_edge_f = ZL;
+                    zx_edge_f = XU; 
+                }
+    
+                else if (kid == child_index(1, 0, 0))
+                {
+                    corner_f0 = YL; 
+                    corner_f1 = ZL;
+    
+                    xy_edge_f = YU;
+                    yz_edge_f = ZU;
+                    zx_edge_f = XL; 
+                }
+    
+                else if (kid == child_index(1, 0, 1))
+                {
+                    corner_f0 = YL; 
+                    corner_f1 = ZU;
+    
+                    xy_edge_f = YU;
+                    yz_edge_f = ZL;
+                    zx_edge_f = XL; 
+                }
+     
+                else if (kid == child_index(1, 1, 0))
+                {
+                    corner_f0 = YU; 
+                    corner_f1 = ZL;
+    
+                    xy_edge_f = YL;
+                    yz_edge_f = ZU;
+                    zx_edge_f = XL; 
+                }
+    
+                else if (kid == child_index(1, 1, 1))
+                {
+                    corner_f0 = YU; 
+                    corner_f1 = ZU;
+    
+                    xy_edge_f = YL;
+                    yz_edge_f = ZL;
+                    zx_edge_f = XL; 
+                }
+    
+/*
+                markings.push_back(
+                    siblings_[r.exterior_x_face].require_corner_child_async(
+                        corner_kid, corner_f0, corner_f1));
+*/
+    
+                markings.push_back(
+                    siblings_[r.exterior_x_face].require_sibling_child_async
+                        (xy_edge_kid, invert(xy_edge_f)));
+   
+/* 
+                markings.push_back(
+                    siblings_[r.exterior_y_face].require_sibling_child_async
+                        (yz_edge_kid, yz_edge_f));
+   
+                markings.push_back(
+                    siblings_[r.exterior_z_face].require_sibling_child_async
+                        (zx_edge_kid, zx_edge_f));
+*/
+            }
+
+        }
+    }
+
+    {
+        hpx::util::unlock_the_lock<mutex_type::scoped_lock> ul(l);
+        hpx::wait(markings); 
+    }
+} // }}}
+
 void octree_server::refine()
 { // {{{
     OCTOPUS_ASSERT(0 == level_);
@@ -2594,18 +2917,27 @@ void octree_server::refine()
     clear_refinement_marks();
 
     OCTOPUS_DUMP("refine: calling mark\n");
-
     mark();
-
     OCTOPUS_DUMP("refine: called mark, calling populate\n");
-
     populate();
-
     OCTOPUS_DUMP("refine: called populate, calling link\n");
-
     link();
+    OCTOPUS_DUMP("refine: called link, performing remark passes\n");
 
-    OCTOPUS_DUMP("refine: called link, doing c->p injection\n");
+    if (config().levels_of_refinement - 1 > 0)
+    {
+//        for (boost::uint64_t i = 0; i < config().levels_of_refinement - 1; ++i)
+//        {
+            remark();
+            populate();
+            link();
+            remark();
+            populate();
+            link();
+//        }
+    }
+
+    OCTOPUS_DUMP("refine: finished remark passes, doing c->p injection\n");
 
     child_to_parent_state_injection(0);
 
@@ -2645,7 +2977,7 @@ void octree_server::sibling_refinement_signal(
     hpx::wait(keep_alive);
 } // }}}
     
-void octree_server::slice_z(slice_function const& f, double eps)
+void octree_server::slice(slice_function const& f, axis a, double eps)
 { // {{{
     std::vector<hpx::future<void> > recursion_is_parallelism;
     recursion_is_parallelism.reserve(8); 
@@ -2653,11 +2985,63 @@ void octree_server::slice_z(slice_function const& f, double eps)
     for (std::size_t i = 0; i < 8; ++i)
         if (hpx::invalid_id != children_[i])
             recursion_is_parallelism.push_back
-                (children_[i].slice_z_async(f, eps));
+                (children_[i].slice_async(f, a, eps));
 
-    slice_z_kernel(f, eps);
+    slice_leaf(f, a, eps);
 
     hpx::wait(recursion_is_parallelism);
+} // }}}
+
+void octree_server::slice_x_kernel(slice_function const& f, double eps)
+{ // {{{
+    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const gnx = config().grid_node_length;
+
+    // Make sure we are within epsilon of the equatorial plane.
+    if (!(  (x_center(bw) - 0.5 * dx_ < eps)
+         && (x_center(gnx - bw - 1) + 0.5 * dx_ >= eps)))
+        return;
+
+    boost::uint64_t i = 0;
+
+    for (boost::uint64_t ii = bw; ii < gnx - bw; ++ii)
+        if (  (eps >= x_center(ii) - 0.5 * dx_) 
+           && (eps < x_center(ii) + 0.5 * dx_))
+            i = ii;
+
+    // Loop over all the points in this plane.
+    for (boost::uint64_t j = bw; j < gnx - bw; ++j)
+        for (boost::uint64_t k = bw; k < gnx - bw; ++k)
+        {
+            array<double, 3> c = center_coords(i, j, k);
+            f(*this, (*U_)(i, j, k), c);
+        } 
+} // }}}
+
+void octree_server::slice_y_kernel(slice_function const& f, double eps)
+{ // {{{
+    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const gnx = config().grid_node_length;
+
+    // Make sure we are within epsilon of the equatorial plane.
+    if (!(  (x_center(bw) - 0.5 * dx_ < eps)
+         && (x_center(gnx - bw - 1) + 0.5 * dx_ >= eps)))
+        return;
+
+    boost::uint64_t j = 0;
+
+    for (boost::uint64_t jj = bw; jj < gnx - bw; ++jj)
+        if (  (eps >= y_center(jj) - 0.5 * dx_) 
+           && (eps < y_center(jj) + 0.5 * dx_))
+            j = jj;
+
+    // Loop over all the points in this plane.
+    for (boost::uint64_t i = bw; i < gnx - bw; ++i)
+        for (boost::uint64_t k = bw; k < gnx - bw; ++k)
+        {
+            array<double, 3> c = center_coords(i, j, k);
+            f(*this, (*U_)(i, j, k), c);
+        } 
 } // }}}
 
 void octree_server::slice_z_kernel(slice_function const& f, double eps)
@@ -2680,6 +3064,8 @@ void octree_server::slice_z_kernel(slice_function const& f, double eps)
     // Loop over all the points in this plane.
     for (boost::uint64_t i = bw; i < gnx - bw; ++i)
         for (boost::uint64_t j = bw; j < gnx - bw; ++j)
+//    for (boost::uint64_t i = 0; i < gnx; ++i)
+//        for (boost::uint64_t j = 0; j < gnx; ++j)
         {
             array<double, 3> c = center_coords(i, j, k);
             f(*this, (*U_)(i, j, k), c);

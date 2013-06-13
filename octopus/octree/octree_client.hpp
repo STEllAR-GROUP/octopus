@@ -361,6 +361,22 @@ struct OCTOPUS_EXPORT octree_client
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
+    // {{{ set_time
+    void set_time(
+        double time
+      , boost::uint64_t step 
+        ) const
+    {
+        set_time_async(time, step).get();        
+    }
+
+    hpx::future<void> set_time_async(
+        double time
+      , boost::uint64_t step 
+        ) const;
+    // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
     // {{{ set_buffer_links
     void set_buffer_links(
         hpx::id_type const& future_self
@@ -411,6 +427,40 @@ struct OCTOPUS_EXPORT octree_client
 
     hpx::future<void> require_child_async(
         child_index kid
+        ) const;
+    // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
+    // {{{ require_sibling_child
+    void require_sibling_child(
+        child_index kid
+      , face f
+        ) const
+    {
+        require_sibling_child_async(kid, f).get(); 
+    }
+
+    hpx::future<void> require_sibling_child_async(
+        child_index kid
+      , face f
+        ) const;
+    // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
+    // {{{ require_corner_child
+    void require_corner_child(
+        child_index kid
+      , face f0
+      , face f1
+        ) const
+    {
+        require_corner_child_async(kid, f0, f1).get(); 
+    }
+
+    hpx::future<void> require_corner_child_async(
+        child_index kid
+      , face f0
+      , face f1
         ) const;
     // }}}
 
@@ -653,6 +703,52 @@ struct OCTOPUS_EXPORT octree_client
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
+    // {{{ child_to_parent_flux_injection
+    void child_to_parent_flux_injection(
+        boost::uint64_t phase 
+      , axis a
+        ) const
+    {
+        child_to_parent_flux_injection_async(phase, a).get();
+    }
+
+    hpx::future<void> child_to_parent_flux_injection_async(
+        boost::uint64_t phase 
+      , axis a
+        ) const;
+    // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
+    // {{{ receive_child_flux
+    void receive_child_flux(
+        boost::uint64_t step ///< For debugging purposes.
+      , boost::uint64_t phase 
+      , axis a
+      , child_index idx 
+      , BOOST_RV_REF(vector3d<state>) zone
+        ) const
+    {
+        receive_child_flux_async(step, phase, a, idx, boost::move(zone)).get();
+    }
+
+    hpx::future<void> receive_child_flux_async(
+        boost::uint64_t step ///< For debugging purposes.
+      , boost::uint64_t phase 
+      , axis a
+      , child_index idx 
+      , BOOST_RV_REF(vector3d<state>) zone
+        ) const;
+
+    void receive_child_flux_push(
+        boost::uint64_t step ///< For debugging purposes.
+      , boost::uint64_t phase 
+      , axis a
+      , child_index idx 
+      , BOOST_RV_REF(vector3d<state>) zone
+        ) const;
+    // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
     // {{{ step 
     void step() const
     {
@@ -691,6 +787,13 @@ struct OCTOPUS_EXPORT octree_client
     }
 
     hpx::future<void> link_async() const;
+
+    void remark() const
+    {
+        return remark_async().get();
+    }
+
+    hpx::future<void> remark_async() const;
 
     hpx::future<void> receive_sibling_refinement_signal_async(
         boost::uint64_t phase
@@ -790,29 +893,33 @@ struct OCTOPUS_EXPORT octree_client
 
     ///////////////////////////////////////////////////////////////////////////
     // {{{ slice 
-    void slice_z(
+    void slice(
         slice_function const& f
+      , axis a
       , double eps = std::numeric_limits<double>::epsilon()
         )
     {
-        slice_z_async(f, eps).get();
+        slice_async(f, a, eps).get();
     }
 
-    hpx::future<void> slice_z_async(
+    hpx::future<void> slice_async(
         slice_function const& f
+      , axis a 
       , double eps = std::numeric_limits<double>::epsilon()
         ) const;
 
-    void slice_z_leaf(
+    void slice_leaf(
         slice_function const& f
+      , axis a
       , double eps = std::numeric_limits<double>::epsilon()
         )
     {
-        slice_z_leaf_async(f, eps).get();
+        slice_leaf_async(f, a, eps).get();
     }
 
-    hpx::future<void> slice_z_leaf_async(
+    hpx::future<void> slice_leaf_async(
         slice_function const& f
+      , axis a
       , double eps = std::numeric_limits<double>::epsilon()
         ) const;
     // }}}

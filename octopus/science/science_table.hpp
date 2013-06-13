@@ -135,6 +135,7 @@ struct science_table
             octree_server&
           , state&
           , array<double, 3> const& 
+          , array<boost::uint64_t, 3> const& 
           , axis
             )
     > flux; 

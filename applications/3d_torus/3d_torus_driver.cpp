@@ -79,6 +79,7 @@ void octopus_define_problem(
 
     std::cout << "R_0     = " << (R_outer*2.0*X_in/(1.0+X_in)) << "\n";
     std::cout << "R_inner = " << (X_in*R_outer) << "\n";
+    std::cout << "rho_max = " << rho_max() << "\n";
     std::cout << "omega   = " << omega.get() << "\n";
     std::cout << "period  = " << orbital_period() << "\n\n";
 
@@ -101,8 +102,8 @@ void octopus_define_problem(
 //        sci.output = octopus::single_variable_silo_writer(0, "rho");
 //    #endif
 
-    sci.output = octopus::fstream_writer(output_equatorial_plane()
-                                       , "slice_L%06u_S%06u.dat");
+    sci.output = octopus::fstream_writer(output_equatorial_z_plane()
+                                       , "slice_z_L%06u_S%06u.dat");
 }
 
 struct stepper 
@@ -117,34 +118,49 @@ struct stepper
 
     void operator()(octopus::octree_server& root) const
     {
-        for ( std::size_t i = 0
-            ; i < (octopus::config().levels_of_refinement + 1)
-            ; ++i)
-        {
-            root.apply(octopus::science().initialize);
-            root.refine();
+        boost::uint64_t refine_passes = 0;
 
-            std::cout << "REFINED LEVEL " << i << std::endl;
+        if (octopus::config().levels_of_refinement != 0)
+        {
+            if (octopus::config().levels_of_refinement > 1)
+                refine_passes = octopus::config().levels_of_refinement;
+            else
+                refine_passes = 2;
         }
+
+        root.apply(octopus::science().initialize);
+
+        for (boost::uint64_t i = 0; i < refine_passes; ++i)
+        {
+            root.refine();
+            root.apply(octopus::science().initialize);
+
+            std::cout << "REFINEMENT PASS " << (i+1)
+                      << " OF " << refine_passes << std::endl;
+        }
+
+
+        root.child_to_parent_state_injection(0);
 
 //        #if defined(OCTOPUS_HAVE_SILO)
 //            root.output(root.get_time() / period_, "U_L%06u_initial.silo");
 //        #endif
 
-        root.output(root.get_time() / period_, "slice_L%06u_initial.dat");
+        root.output(0.0);
  
         std::ofstream dt_file("dt.csv");
         std::ofstream speed_file("speed.csv");
  
         //dt_file    << "step, time [orbits], dt [orbits], output & refine?\n";
         //speed_file << "step, speed [orbits/hours], output & refine?\n";
-        dt_file    << "step, time [orbits], dt [orbits], output\n";
-        speed_file << "step, speed [orbits/hours], output\n";
+        dt_file    << "# step, time [orbits], dt [orbits], dt cfl [orbits], output?\n";
+        speed_file << "# step, speed [orbits/hours], output?\n";
  
         ///////////////////////////////////////////////////////////////////////
         // Crude, temporary stepper.
     
-        root.post_dt(root.apply_leaf(octopus::science().initial_dt));
+//        root.post_dt(root.apply_leaf(octopus::science().initial_dt));
+        root.post_dt(initial_cfl_factor*0.001);
         double next_output_time = octopus::config().output_frequency * period_;
 
         hpx::reset_active_counters();
@@ -175,13 +191,15 @@ struct stepper
             }
   
             // IMPLEMENT: Futurize w/ continutation.
-            octopus::dt_prediction prediction
-                = root.apply_leaf(octopus::science().predict_dt);
-    
+//            octopus::dt_prediction prediction
+//                = root.apply_leaf(octopus::science().predict_dt);
+ 
+            octopus::dt_prediction prediction(0.001, 0.001);
+   
             OCTOPUS_ASSERT(0.0 < prediction.next_dt);
             OCTOPUS_ASSERT(0.0 < prediction.future_dt);
 
-            root.post_dt(prediction.next_dt);
+            root.post_dt(std::min(prediction.next_dt, root.get_dt() * 1.25));
 
             ///////////////////////////////////////////////////////////////////
             // I/O of stats
@@ -210,6 +228,7 @@ struct stepper
             dt_file << this_step << ", "
                     << (this_time / period_) << ", "
                     << (this_dt / period_) << ", "
+                    << (prediction.next_dt / period_) << ", "
                     << output_and_refine << std::endl; 
 
             // Record speed. 

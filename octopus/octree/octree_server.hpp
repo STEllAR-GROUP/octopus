@@ -198,12 +198,12 @@ struct OCTOPUS_EXPORT octree_server
     /// Bryce's math for the # of communications per step (for TVD RK):
     ///
     ///     * 1 ghost zone communication at the end of each step.
-    ///     * 1 ghost zone communication, 1 flux adjustment and 1 child ->
-    ///       parent injection during each sub step.
+    ///     * 1 ghost zone communication, 3 child -> parent injections and 1
+    ///       child -> parent injection during each sub step.
     ///
-    /// RK1, 2 GZ comms + 1 flux adjust + 1 c -> p injections = 4 comms
-    /// RK2, 3 GZ comms + 2 flux adjust + 2 c -> p injections = 7 comms 
-    /// RK3, 4 GZ comms + 3 flux adjust + 3 c -> p injections = 10 comms 
+    /// RK1, 2 GZ comms + 3 c->p flux + 1 c->p state = 6 comms
+    /// RK2, 3 GZ comms + 6 c->p flux + 2 c->p state = 11 comms 
+    /// RK3, 4 GZ comms + 9 c->p flux + 3 c->p state = 16 comms 
 
     // Queue for incoming ghost zones.
     // NOTE: Elements of this queue should be cleared but not removed until the
@@ -219,13 +219,13 @@ struct OCTOPUS_EXPORT octree_server
     // we don't have that child.
     std::vector<children_state_dependencies> children_state_deps_;
 
-    // Queue for flux adjustment.
+    // Queue for incoming flux from our children.
     // NOTE: Elements of this queue should be cleared but not removed until the
     // end of each timestep. This is necessary to ensure that indices into this
     // vector remain the same throughout the entire step. 
     // NOTE: Some of these may be empty; if they are, these indicates that
     // we don't have that child.
-    std::vector<children_state_dependencies> adjust_flux_deps_;
+    std::vector<children_state_dependencies> children_flux_deps_;
 
     std::vector<sibling_sync_dependencies> refinement_deps_;
 
@@ -570,6 +570,15 @@ struct OCTOPUS_EXPORT octree_server
     ///////////////////////////////////////////////////////////////////////////
     void prepare_compute_queues();
 
+    void set_time(
+        double time
+      , boost::uint64_t step
+        );
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                set_time,
+                                set_time_action);
+
     void set_buffer_links(
         hpx::id_type const& future_self
       , hpx::id_type const& past_self
@@ -626,6 +635,33 @@ struct OCTOPUS_EXPORT octree_server
                                 require_child,
                                 require_child_action);
 
+    // FIXME: Use remotable futures.
+    void require_sibling_child(
+        child_index kid
+     ,  face f
+        )
+    {
+        if (siblings_[f].kind() == amr_boundary)
+            siblings_[f].require_child(kid); 
+    }
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                require_sibling_child,
+                                require_sibling_child_action);
+
+    // FIXME: Use remotable futures.
+    void require_corner_child(
+        child_index kid
+     ,  face f0
+     ,  face f1
+        )
+    {
+        siblings_[f0].require_sibling_child(kid, f1); 
+    }
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                require_corner_child,
+                                require_corner_child_action);
     void remove_nephew(
         octree_client const& nephew
       , face f
@@ -854,7 +890,6 @@ struct OCTOPUS_EXPORT octree_server
     // Child -> parent injection of state.
     void child_to_parent_state_injection(
         boost::uint64_t phase
-      /*, mutex_type::scoped_lock& l*/
         );
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
@@ -862,14 +897,11 @@ struct OCTOPUS_EXPORT octree_server
                                 child_to_parent_state_injection_action);
 
   private:
-    /// 0.) Unlock \a l.
-    /// 1.) Blocks until the child -> parent injection that is at \a phase in 
-    ///     the queue is ready.
-    /// 2.) Relock \a l.
-    /// 3.) Send a child -> parent injection up to our parent. 
+    /// 0.) Blocks until the child -> parent state injection that is at \a phase
+    ///     in the queue is ready.
+    /// 1.) Send a child -> parent state injection up to our parent. 
     void child_to_parent_state_injection_kernel(
         boost::uint64_t phase
-      /*, mutex_type::scoped_lock& l*/
         );
 
     // FIXME: Rvalue reference kung-fo must be applied here.
@@ -881,7 +913,7 @@ struct OCTOPUS_EXPORT octree_server
 
   public:
     // FIXME: Rvalue reference kung-fo must be applied here.
-    /// Called by our siblings.
+    /// Called by our children.
     void receive_child_state(
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
@@ -916,6 +948,70 @@ struct OCTOPUS_EXPORT octree_server
 
   public:
     ///////////////////////////////////////////////////////////////////////////
+    // Child -> parent injection of flux.
+    void child_to_parent_flux_injection(
+        boost::uint64_t phase
+      , axis a
+        );
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                child_to_parent_flux_injection,
+                                child_to_parent_flux_injection_action);
+
+  private:
+    /// 0.) Blocks until the child -> parent flux injection that is at \a phase
+    ///     in the queue is ready.
+    /// 1.) Send a child -> parent flux injection up to our parent. 
+    void child_to_parent_flux_injection_kernel(
+        boost::uint64_t phase
+      , axis a
+        );
+
+    // FIXME: Rvalue reference kung-fo must be applied here.
+    /// Callback used to wait for a particular child flux. 
+    void add_child_flux(
+        axis a ///< Bound parameter.
+      , child_index idx ///< Bound parameter.
+      , hpx::future<vector3d<state> > state_f
+        );
+
+  public:
+    // FIXME: Rvalue reference kung-fo must be applied here.
+    /// Called by our children.
+    void receive_child_flux(
+        boost::uint64_t step ///< For debugging purposes.
+      , boost::uint64_t phase 
+      , axis a
+      , child_index idx 
+      , vector3d<state> const& s
+        )
+    { // {{{
+        OCTOPUS_ASSERT_MSG(step_ == step,
+            "cross-timestep communication occurred, octree is ill-formed");
+
+        OCTOPUS_ASSERT_FMT_MSG(
+            phase < children_flux_deps_.size(),
+            "phase + axis (%1%) is greater than the children flux queue "
+            "length (%2%)",
+            (phase + a) % children_flux_deps_.size());
+
+        OCTOPUS_ASSERT(boost::uint64_t(idx) < 8);
+
+        // NOTE (wash): boost::move should be safe here, zone is a temporary,
+        // even if we're local to the caller. Plus, ATM set_value requires the
+        // value to be moved to it.
+        children_flux_deps_[phase + a](idx).post(s);
+    } // }}}
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                receive_child_flux,
+                                receive_child_flux_action);
+
+  private:
+    vector3d<state> send_child_flux(axis a);
+
+  public:
+    ///////////////////////////////////////////////////////////////////////////
     void step_recurse(double dt);
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
@@ -942,7 +1038,7 @@ struct OCTOPUS_EXPORT octree_server
     void prepare_differentials_kernel(); 
 
     // Operations on each axis overlap each other.
-    void compute_flux_kernel();
+    void compute_flux_kernel(boost::uint64_t phase);
 
     // Reads from U_, writes to FX_.
     void compute_x_flux_kernel();
@@ -953,14 +1049,10 @@ struct OCTOPUS_EXPORT octree_server
     // Reads from U_, writes to FZ_.
     void compute_z_flux_kernel();
 
-    // IMPLEMENT 
-    void adjust_flux_kernel();
-
     void sum_differentials_kernel();
 
   public:
     ///////////////////////////////////////////////////////////////////////////
-    // IMPLEMENT
     void copy_and_regrid();
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
@@ -985,6 +1077,13 @@ struct OCTOPUS_EXPORT octree_server
                                 link,
                                 link_action);  
 
+    // FIXME: Remove the need for this + the second populate/link pass.
+    void remark();
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                remark,
+                                remark_action);  
+
   private:
     void mark_kernel();
 
@@ -998,6 +1097,8 @@ struct OCTOPUS_EXPORT octree_server
         std::vector<hpx::future<void> >& links
       , child_index kid
         );
+
+    void remark_kernel();
 
   public:
     void refine();
@@ -1127,30 +1228,48 @@ struct OCTOPUS_EXPORT octree_server
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
-    void slice_z(
+    void slice(
         slice_function const& f
+      , axis a
       , double eps = std::numeric_limits<double>::epsilon()
         );
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                slice_z,
-                                slice_z_action);
+                                slice,
+                                slice_action);
 
   private:
+    void slice_x_kernel(slice_function const& f, double eps);
+
+    void slice_y_kernel(slice_function const& f, double eps);
+
     void slice_z_kernel(slice_function const& f, double eps);
 
   public:
-    void slice_z_leaf(
+    void slice_leaf(
         slice_function const& f
+      , axis a
       , double eps = std::numeric_limits<double>::epsilon()
         )
     {
-        slice_z_kernel(f, eps);
+        switch (a)
+        {
+            case axis::x_axis:
+                slice_x_kernel(f, eps);
+                break;
+            case axis::y_axis:
+                slice_y_kernel(f, eps);
+                break;
+            case axis::z_axis:
+                slice_z_kernel(f, eps);
+                break;
+            default: OCTOPUS_ASSERT(false); break; 
+        };
     }
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                slice_z_leaf,
-                                slice_z_leaf_action);
+                                slice_leaf,
+                                slice_leaf_action);
 };
 
 inline oid_type::oid_type(octree_server const& e)
@@ -1176,11 +1295,14 @@ inline oid_type& oid_type::operator=(octree_server const& e)
     /**/
 
 // FIXME: Make sure this is in order.
+OCTOPUS_REGISTER_ACTION(set_time);
 OCTOPUS_REGISTER_ACTION(set_buffer_links);
 OCTOPUS_REGISTER_ACTION(clear_refinement_marks);
 
 OCTOPUS_REGISTER_ACTION(create_child);
 OCTOPUS_REGISTER_ACTION(require_child);
+OCTOPUS_REGISTER_ACTION(require_sibling_child);
+OCTOPUS_REGISTER_ACTION(require_corner_child);
 OCTOPUS_REGISTER_ACTION(remove_nephew);
 OCTOPUS_REGISTER_ACTION(set_sibling);
 OCTOPUS_REGISTER_ACTION(tie_sibling);
@@ -1200,6 +1322,9 @@ OCTOPUS_REGISTER_ACTION(send_mapped_ghost_zone);
 OCTOPUS_REGISTER_ACTION(child_to_parent_state_injection);
 OCTOPUS_REGISTER_ACTION(receive_child_state);
 
+OCTOPUS_REGISTER_ACTION(child_to_parent_flux_injection);
+OCTOPUS_REGISTER_ACTION(receive_child_flux);
+
 OCTOPUS_REGISTER_ACTION(apply);
 
 OCTOPUS_REGISTER_ACTION(step);
@@ -1210,10 +1335,11 @@ OCTOPUS_REGISTER_ACTION(refine);
 OCTOPUS_REGISTER_ACTION(mark);
 OCTOPUS_REGISTER_ACTION(populate);
 OCTOPUS_REGISTER_ACTION(link);
+OCTOPUS_REGISTER_ACTION(remark);
 OCTOPUS_REGISTER_ACTION(receive_sibling_refinement_signal);
 
-OCTOPUS_REGISTER_ACTION(slice_z);
-OCTOPUS_REGISTER_ACTION(slice_z_leaf);
+OCTOPUS_REGISTER_ACTION(slice);
+OCTOPUS_REGISTER_ACTION(slice_leaf);
 
 #undef OCTOPUS_REGISTER_ACTION
 
