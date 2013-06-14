@@ -485,7 +485,6 @@ struct enforce_lower_limits : octopus::trivial_serialization
       , octopus::array<double, 3> const& v 
         ) const
     {
-/*
         rho(u) = (std::max)(rho(u), density_floor()); 
 
         double const internal_energy = total_energy(u) - kinetic_energy(u, v);
@@ -517,7 +516,6 @@ struct enforce_lower_limits : octopus::trivial_serialization
         // enforce_lower_limits.
         else if (mom_cons != angular_momentum_conservation)
             angular_momentum(u) = momentum_y(u)*v[0] - momentum_x(u)*v[1];
-*/
     }
 };
 
