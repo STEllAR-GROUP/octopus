@@ -1741,7 +1741,6 @@ void octree_server::child_to_parent_state_injection_kernel(
     boost::uint64_t phase
     )
 { // {{{
-/*
     std::vector<hpx::future<void> > dependencies;
     
     bool has_children = false;
@@ -1794,7 +1793,6 @@ void octree_server::child_to_parent_state_injection_kernel(
         parent_.receive_child_state(step_, phase,
             get_child_index(), send_child_state());
     }
-*/
 } // }}}
 
 void octree_server::add_child_state(
