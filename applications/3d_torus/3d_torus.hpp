@@ -832,6 +832,7 @@ struct source : octopus::trivial_serialization
     {
         octopus::state s;
 
+/*
         if (  octopus::compare_real(v[0], -1.26562, 1e-5)
            && octopus::compare_real(v[1], -1.45312, 1e-5)
            && octopus::compare_real(v[2], 0.046875, 1e-5))
@@ -849,8 +850,8 @@ struct source : octopus::trivial_serialization
         }
 
         return s;
+*/
 
-/*
         double const R = radius(v);
         double const p = pressure(u);
         double const lz = angular_momentum(u);
@@ -873,7 +874,6 @@ struct source : octopus::trivial_serialization
         s[radial_momentum_idx] += rho(u)*radial_gravity(v);
 
         return s;
-*/
     }
 };
 
