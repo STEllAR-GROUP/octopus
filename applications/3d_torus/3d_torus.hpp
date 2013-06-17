@@ -469,12 +469,92 @@ struct enforce_outflow : octopus::trivial_serialization
 {
     void operator()(
         octopus::octree_server& U
-      , octopus::state& s
+      , octopus::state& u
       , octopus::array<double, 3> const& loc
       , octopus::face f
         ) const
     {
-        // IMPLEMENT
+        switch (f)
+        {
+            case octopus::XU:
+            {
+                if (velocity<octopus::x_axis>(u, loc) > 0.0)
+                {
+                    total_energy(u) -= 0.5*momentum_x(u)*momentum_x(u)/rho(u);
+                    momentum_x(u) = 0.0;
+
+//                    double const vy = velocity<octopus::y_axis>(u, loc);
+                    double const R = radius(loc);
+                    angular_momentum(u) = loc[0]*velocity<octopus::y_axis>(u, loc)*rho(u);
+                    u[radial_momentum_idx] = loc[1]*velocity<octopus::y_axis>(u, loc)*rho(u)/R;
+                }
+                break;
+            }
+            case octopus::XL:
+            {
+                if (velocity<octopus::x_axis>(u, loc) < 0.0)
+                {
+                    total_energy(u) -= 0.5*momentum_x(u)*momentum_x(u)/rho(u);
+                    momentum_x(u) = 0.0;
+
+//                    double const vy = velocity<octopus::y_axis>(u, loc);
+                    double const R = radius(loc);
+                    angular_momentum(u) = loc[0]*velocity<octopus::y_axis>(u, loc)*rho(u);
+                    u[radial_momentum_idx] = loc[1]*velocity<octopus::y_axis>(u, loc)*rho(u)/R;
+                }
+                break;
+            }
+
+            case octopus::YU:
+            {
+                if (velocity<octopus::y_axis>(u, loc) > 0.0)
+                {
+                    total_energy(u) -= 0.5*momentum_y(u)*momentum_y(u)/rho(u);
+                    momentum_y(u) = 0.0;
+
+//                    double const vx = velocity<octopus::x_axis>(u, loc);
+                    double const R = radius(loc);
+                    angular_momentum(u) = -loc[1]*velocity<octopus::x_axis>(u, loc)*rho(u);
+                    u[radial_momentum_idx] = loc[0]*velocity<octopus::x_axis>(u, loc)*rho(u)/R;
+                }
+                break;
+            }
+            case octopus::YL:
+            {
+                if (velocity<octopus::y_axis>(u, loc) < 0.0)
+                {
+                    total_energy(u) -= 0.5*momentum_y(u)*momentum_y(u)/rho(u);
+                    momentum_y(u) = 0.0;
+
+//                    double const vx = velocity<octopus::x_axis>(u, loc);
+                    double const R = radius(loc);
+                    angular_momentum(u) = -loc[1]*velocity<octopus::x_axis>(u, loc)*rho(u);
+                    u[radial_momentum_idx] = loc[0]*velocity<octopus::x_axis>(u, loc)*rho(u)/R;
+                }
+                break;
+            }
+
+            case octopus::ZU:
+            {
+                if (momentum_z(u) > 0.0)
+                {
+                    total_energy(u) -= 0.5*momentum_z(u)*momentum_z(u)/rho(u);
+                    momentum_z(u) = 0.0;
+                }
+                break;
+            }
+            case octopus::ZL:
+            {
+                if (momentum_z(u) < 0.0)
+                {
+                    total_energy(u) -= 0.5*momentum_z(u)*momentum_z(u)/rho(u);
+                    momentum_z(u) = 0.0;
+                }
+                break;
+            }
+
+            default: OCTOPUS_ASSERT(false); break;
+        }
     } 
 };
 
@@ -907,6 +987,7 @@ struct flux : octopus::trivial_serialization
                 fl[radial_momentum_idx] += loc[0] * p / R;
                 angular_momentum(fl)    -= loc[1] * p;
 
+/*
                 if (  octopus::compare_real(U.x_center(idx[0]), -1.26562, 1e-5)
                    && octopus::compare_real(U.y_center(idx[1]), -1.45312, 1e-5)
                    && octopus::compare_real(U.z_center(idx[2]), 0.046875, 1e-5))
@@ -933,6 +1014,7 @@ struct flux : octopus::trivial_serialization
                     ss << (boost::format("VELOCITY: %.17e\n") % v);
                     std::cout << ss.str();
                 }
+*/
 
                 break;
             }

@@ -1500,7 +1500,7 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
         ///         for k in [BW, GNX - BW)
         case XL:
         {
-            vector3d<state> zone
+            vector3d<state> gz
                 (
                 /* [0, BW) */         bw
               , /* [BW, GNX - BW) */  gnx - 2 * bw
@@ -1514,18 +1514,18 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
                         array<boost::uint64_t, 3> v =
                             map_location(f, gnx - 2 * bw + i, j, k);
 
-                        // Adjusted indices (for output ghost zone). 
+                        // Adjusted indices (for output ghost gz). 
                         boost::uint64_t const ii = i;
                         boost::uint64_t const jj = j - bw;
                         boost::uint64_t const kk = k - bw; 
 
-                        zone(ii, jj, kk) = (*U_)(v);
+                        gz(ii, jj, kk) = (*U_)(v);
 
                         array<double, 3> c(x_face_coords(v[0] + 1, v[1], v[2]));
-                        science().enforce_outflow(*this, (*U_)(v), c, f);
+                        science().enforce_outflow(*this, gz(ii, jj, kk), c, f);
                     }
 
-            return zone;
+            return gz;
         } 
 
         /// for i in [GNX - BW, GNX)
@@ -1533,7 +1533,7 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
         ///         for k in [BW, GNX - BW)
         case XU:
         {
-            vector3d<state> zone
+            vector3d<state> gz
                 (
                 /* [GNX - BW, GNX) */ bw
               , /* [BW, GNX - BW) */  gnx - 2 * bw
@@ -1547,18 +1547,18 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
                         array<boost::uint64_t, 3> v =
                             map_location(f, 2 * bw + i - gnx, j, k);
 
-                        // Adjusted indices (for output ghost zone). 
+                        // Adjusted indices (for output ghost gz). 
                         boost::uint64_t const ii = i - (gnx - bw);
                         boost::uint64_t const jj = j - bw;
                         boost::uint64_t const kk = k - bw; 
 
-                        zone(ii, jj, kk) = (*U_)(v);
+                        gz(ii, jj, kk) = (*U_)(v);
 
                         array<double, 3> c(x_face_coords(v[0], v[1], v[2]));
-                        science().enforce_outflow(*this, (*U_)(v), c, f);
+                        science().enforce_outflow(*this, gz(ii, jj, kk), c, f);
                     }
 
-            return zone;
+            return gz;
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -1568,7 +1568,7 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
         ///         for k in [BW, GNX - BW)
         case YL:
         {
-            vector3d<state> zone
+            vector3d<state> gz
                 (
                 /* [BW, GNX - BW) */  gnx - 2 * bw
               , /* [0, BW) */         bw
@@ -1582,18 +1582,18 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
                         array<boost::uint64_t, 3> v =
                             map_location(f, i, gnx - 2 * bw + j, k);
 
-                        // Adjusted indices (for output ghost zone). 
+                        // Adjusted indices (for output ghost gz). 
                         boost::uint64_t const ii = i - bw;
                         boost::uint64_t const jj = j;
                         boost::uint64_t const kk = k - bw; 
 
-                        zone(ii, jj, kk) = (*U_)(v);
+                        gz(ii, jj, kk) = (*U_)(v);
 
                         array<double, 3> c(y_face_coords(v[0], v[1] + 1, v[2]));
-                        science().enforce_outflow(*this, (*U_)(v), c, f);
+                        science().enforce_outflow(*this, gz(ii, jj, kk), c, f);
                     }
 
-            return zone;
+            return gz;
         } 
 
         /// for i in [BW, GNX - BW)
@@ -1601,7 +1601,7 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
         ///         for k in [BW, GNX - BW)
         case YU:
         {
-            vector3d<state> zone
+            vector3d<state> gz
                 (
                 /* [BW, GNX - BW) */  gnx - 2 * bw
               , /* [GNX - BW, GNX) */ bw
@@ -1615,18 +1615,18 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
                         array<boost::uint64_t, 3> v =
                             map_location(f, i, 2 * bw + j - gnx, k);
 
-                        // Adjusted indices (for output ghost zone). 
+                        // Adjusted indices (for output ghost gz). 
                         boost::uint64_t const ii = i - bw;
                         boost::uint64_t const jj = j - (gnx - bw);
                         boost::uint64_t const kk = k - bw; 
 
-                        zone(ii, jj, kk) = (*U_)(v);
+                        gz(ii, jj, kk) = (*U_)(v);
 
                         array<double, 3> c(y_face_coords(v[0], v[1], v[2]));
-                        science().enforce_outflow(*this, (*U_)(v), c, f);
+                        science().enforce_outflow(*this, gz(ii, jj, kk), c, f);
                     }
 
-            return zone;
+            return gz;
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -1636,7 +1636,7 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
         ///         for k in [0, BW)
         case ZL:
         {
-            vector3d<state> zone
+            vector3d<state> gz
                 (
                 /* [BW, GNX - BW) */  gnx - 2 * bw
               , /* [BW, GNX - BW) */  gnx - 2 * bw
@@ -1650,22 +1650,23 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
                         array<boost::uint64_t, 3> v =
                             map_location(f, i, j, gnx - 2 * bw + k);
 
-                        // Adjusted indices (for output ghost zone). 
+                        // Adjusted indices (for output ghost gz). 
                         boost::uint64_t const ii = i - bw;
                         boost::uint64_t const jj = j - bw; 
                         boost::uint64_t const kk = k;
 
-                        zone(ii, jj, kk) = (*U_)(v);
+                        gz(ii, jj, kk) = (*U_)(v);
 
                         array<double, 3> c(z_face_coords(v[0], v[1], v[2] + 1));
 
                         if (config().reflect_on_z)
-                            science().reflect_z((*U_)(v));
+                            science().reflect_z(gz(ii, jj, kk));
                         else
-                            science().enforce_outflow(*this, (*U_)(v), c, f);
+                            science().enforce_outflow
+                                (*this, gz(ii, jj, kk), c, f);
                     }
 
-            return zone;
+            return gz;
         } 
 
         /// for i in [BW, GNX - BW)
@@ -1673,7 +1674,7 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
         ///         for k in [GNX - BW, GNX)
         case ZU:
         {
-            vector3d<state> zone
+            vector3d<state> gz
                 (
                 /* [BW, GNX - BW) */  gnx - 2 * bw
               , /* [BW, GNX - BW) */  gnx - 2 * bw
@@ -1687,18 +1688,18 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
                         array<boost::uint64_t, 3> v =  
                             map_location(f, i, j, 2 * bw + k - gnx);
 
-                        // Adjusted indices (for output ghost zone). 
+                        // Adjusted indices (for output ghost gz). 
                         boost::uint64_t const ii = i - bw;
                         boost::uint64_t const jj = j - bw; 
                         boost::uint64_t const kk = k - (gnx - bw);
 
-                        zone(ii, jj, kk) = (*U_)(v);
+                        gz(ii, jj, kk) = (*U_)(v);
 
                         array<double, 3> c(z_face_coords(v[0], v[1], v[2]));
-                        science().enforce_outflow(*this, (*U_)(v), c, f);
+                        science().enforce_outflow(*this, gz(ii, jj, kk), c, f);
                     }
 
-            return zone;
+            return gz;
         }
 
         default:
