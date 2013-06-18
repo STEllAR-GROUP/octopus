@@ -267,7 +267,10 @@ octree_server::octree_server(
 double octree_server::x_face(boost::uint64_t i) const
 { // {{{
     boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const gnx = science().ghost_zone_width;
     double const grid_dim = config().spatial_domain;
+
+//    double const dx0 = (2.0 * gnx / double(gnx - 2 * bw));
 
     return double(offset_[0] + i) * dx_ - grid_dim - bw * dx0_ - origin_[0];
 } // }}}
@@ -277,7 +280,10 @@ double octree_server::x_face(boost::uint64_t i) const
 double octree_server::y_face(boost::uint64_t i) const
 { // {{{
     boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const gnx = config().grid_node_length;
     double const grid_dim = config().spatial_domain;
+
+//    double const dx0 = (2.0 * gnx / double(gnx - 2 * bw));
 
     return double(offset_[1] + i) * dx_ - grid_dim - bw * dx0_ - origin_[1];
 } // }}}
@@ -287,7 +293,10 @@ double octree_server::y_face(boost::uint64_t i) const
 double octree_server::z_face(boost::uint64_t i) const
 { // {{{
     boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const gnx = science().ghost_zone_width;
     double const grid_dim = config().spatial_domain;
+
+//    double const dx0 = (2.0 * gnx / double(gnx - 2 * bw));
 
     if (config().reflect_on_z)
         return double(offset_[2] + i) * dx_ - bw * dx0_ - origin_[2];
@@ -1453,7 +1462,7 @@ array<boost::uint64_t, 3> map_location(
     v[1] = j;
     v[2] = k;
 
-    switch (invert(f))
+    switch (f)
     {
         case XU:
             v[0] = bw;
@@ -1507,17 +1516,22 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
               , /* [BW, GNX - BW) */  gnx - 2 * bw
                 );
 
-            for (boost::uint64_t i = 0; i < bw; ++i)
+            for (boost::uint64_t i = bw; i < (2 * bw); ++i)
                 for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
                     {
                         array<boost::uint64_t, 3> v =
-                            map_location(f, gnx - 2 * bw + i, j, k);
+//                            map_location(f, gnx - 2 * bw + i, j, k);
+                            map_location(f, i, j, k);
 
-                        // Adjusted indices (for output ghost gz). 
-                        boost::uint64_t const ii = i;
+                        // Adjusted indices (for output ghost zone). 
+                        boost::uint64_t const ii = i - bw;
                         boost::uint64_t const jj = j - bw;
                         boost::uint64_t const kk = k - bw; 
+
+                        std::cout << "MAPPING U("
+                                  << i << ", " << j << ", " << k << ") = U("
+                                  << v[0] << ", " << v[1] << ", " << v[2] << ")\n";
 
                         gz(ii, jj, kk) = (*U_)(v);
 
@@ -1540,17 +1554,22 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
               , /* [BW, GNX - BW) */  gnx - 2 * bw
                 );
 
-            for (boost::uint64_t i = gnx - bw; i < gnx; ++i)
+            for (boost::uint64_t i = gnx - 2 * bw; i < (gnx - bw); ++i)
                 for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
                     {
                         array<boost::uint64_t, 3> v =
-                            map_location(f, 2 * bw + i - gnx, j, k);
+//                            map_location(f, 2 * bw + i - gnx, j, k);
+                            map_location(f, i, j, k);
 
-                        // Adjusted indices (for output ghost gz). 
-                        boost::uint64_t const ii = i - (gnx - bw);
+                        // Adjusted indices (for output ghost zone). 
+                        boost::uint64_t const ii = i - (gnx - 2 * bw);
                         boost::uint64_t const jj = j - bw;
                         boost::uint64_t const kk = k - bw; 
+
+                        std::cout << "MAPPING U("
+                                  << i << ", " << j << ", " << k << ") = U("
+                                  << v[0] << ", " << v[1] << ", " << v[2] << ")\n";
 
                         gz(ii, jj, kk) = (*U_)(v);
 
@@ -1576,16 +1595,21 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
                 );
 
             for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
-                for (boost::uint64_t j = 0; j < bw; ++j)
+                for (boost::uint64_t j = bw; j < (2 * bw); ++j)
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
                     {
                         array<boost::uint64_t, 3> v =
-                            map_location(f, i, gnx - 2 * bw + j, k);
+//                            map_location(f, i, gnx - 2 * bw + j, k);
+                            map_location(f, i, j, k);
 
-                        // Adjusted indices (for output ghost gz). 
+                        // Adjusted indices (for output ghost zone). 
                         boost::uint64_t const ii = i - bw;
-                        boost::uint64_t const jj = j;
+                        boost::uint64_t const jj = j - bw;
                         boost::uint64_t const kk = k - bw; 
+
+                        std::cout << "MAPPING U("
+                                  << i << ", " << j << ", " << k << ") = U("
+                                  << v[0] << ", " << v[1] << ", " << v[2] << ")\n";
 
                         gz(ii, jj, kk) = (*U_)(v);
 
@@ -1609,16 +1633,21 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
                 );
 
             for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
-                for (boost::uint64_t j = gnx - bw; j < gnx; ++j)
+                for (boost::uint64_t j = gnx - 2 * bw; j < (gnx - bw); ++j)
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
                     {
                         array<boost::uint64_t, 3> v =
-                            map_location(f, i, 2 * bw + j - gnx, k);
+//                            map_location(f, i, 2 * bw + j - gnx, k);
+                            map_location(f, i, j, k);
 
-                        // Adjusted indices (for output ghost gz). 
+                        // Adjusted indices (for output ghost zone). 
                         boost::uint64_t const ii = i - bw;
-                        boost::uint64_t const jj = j - (gnx - bw);
+                        boost::uint64_t const jj = j - (gnx - 2 * bw);
                         boost::uint64_t const kk = k - bw; 
+
+                        std::cout << "MAPPING U("
+                                  << i << ", " << j << ", " << k << ") = U("
+                                  << v[0] << ", " << v[1] << ", " << v[2] << ")\n";
 
                         gz(ii, jj, kk) = (*U_)(v);
 
@@ -1645,15 +1674,20 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
 
             for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
                 for (boost::uint64_t j = bw; j < (gnx - bw); ++j) 
-                    for (boost::uint64_t k = 0; k < bw; ++k)
+                    for (boost::uint64_t k = bw; k < (2 * bw); ++k)
                     {
                         array<boost::uint64_t, 3> v =
-                            map_location(f, i, j, gnx - 2 * bw + k);
+//                            map_location(f, i, j, gnx - 2 * bw + k);
+                            map_location(f, i, j, k);
 
-                        // Adjusted indices (for output ghost gz). 
+                        // Adjusted indices (for output ghost zone). 
                         boost::uint64_t const ii = i - bw;
                         boost::uint64_t const jj = j - bw; 
-                        boost::uint64_t const kk = k;
+                        boost::uint64_t const kk = k - bw;
+
+                        std::cout << "MAPPING U("
+                                  << i << ", " << j << ", " << k << ") = U("
+                                  << v[0] << ", " << v[1] << ", " << v[2] << ")\n";
 
                         gz(ii, jj, kk) = (*U_)(v);
 
@@ -1683,15 +1717,20 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
 
             for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
                 for (boost::uint64_t j = bw; j < (gnx - bw); ++j) 
-                    for (boost::uint64_t k = gnx - bw; k < gnx; ++k)
+                    for (boost::uint64_t k = gnx - 2 * bw; k < (gnx - bw); ++k)
                     {
                         array<boost::uint64_t, 3> v =  
-                            map_location(f, i, j, 2 * bw + k - gnx);
+//                            map_location(f, i, j, 2 * bw + k - gnx);
+                            map_location(f, i, j, k);
 
-                        // Adjusted indices (for output ghost gz). 
+                        // Adjusted indices (for output ghost zone). 
                         boost::uint64_t const ii = i - bw;
                         boost::uint64_t const jj = j - bw; 
-                        boost::uint64_t const kk = k - (gnx - bw);
+                        boost::uint64_t const kk = k - (gnx - 2 * bw);
+
+                        std::cout << "MAPPING U("
+                                  << i << ", " << j << ", " << k << ") = U("
+                                  << v[0] << ", " << v[1] << ", " << v[2] << ")\n";
 
                         gz(ii, jj, kk) = (*U_)(v);
 
@@ -3056,10 +3095,10 @@ void octree_server::slice_z_kernel(slice_function const& f, double eps)
             k = kk;
 
     // Loop over all the points in this plane.
-    for (boost::uint64_t i = bw; i < gnx - bw; ++i)
-        for (boost::uint64_t j = bw; j < gnx - bw; ++j)
-//    for (boost::uint64_t i = 0; i < gnx; ++i)
-//        for (boost::uint64_t j = 0; j < gnx; ++j)
+//    for (boost::uint64_t i = bw; i < gnx - bw; ++i)
+//        for (boost::uint64_t j = bw; j < gnx - bw; ++j)
+    for (boost::uint64_t i = 0; i < gnx; ++i)
+        for (boost::uint64_t j = 0; j < gnx; ++j)
         {
             array<double, 3> c = center_coords(i, j, k);
             f(*this, (*U_)(i, j, k), c);
