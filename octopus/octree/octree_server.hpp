@@ -795,7 +795,6 @@ struct OCTOPUS_EXPORT octree_server
     // Ghost zone communication
     // NOTE: This was contained in enforce_boundaries in the original code.
 
-  private:
     // REVIEW: I think step 2.) can come before step 1.).
     /// 0.) Push ghost zone data to our siblings and determine which ghost zones
     ///     we will receive.
@@ -805,6 +804,7 @@ struct OCTOPUS_EXPORT octree_server
         boost::uint64_t phase
         );
 
+  private:
     void add_ghost_zone(
         face f
       , BOOST_RV_REF(vector3d<state>) zone
@@ -878,13 +878,13 @@ struct OCTOPUS_EXPORT octree_server
                                 send_interpolated_ghost_zone,
                                 send_interpolated_ghost_zone_action);
 
-    vector3d<state> send_mapped_ghost_zone(
+    void map_ghost_zone(
         face f ///< Our direction, relative to the caller.
         );
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
-                                send_mapped_ghost_zone,
-                                send_mapped_ghost_zone_action);
+                                map_ghost_zone,
+                                map_ghost_zone_action);
 
     ///////////////////////////////////////////////////////////////////////////
     // Child -> parent injection of state.
@@ -1312,7 +1312,7 @@ OCTOPUS_REGISTER_ACTION(get_location);
 OCTOPUS_REGISTER_ACTION(receive_ghost_zone);
 OCTOPUS_REGISTER_ACTION(send_ghost_zone);
 OCTOPUS_REGISTER_ACTION(send_interpolated_ghost_zone);
-OCTOPUS_REGISTER_ACTION(send_mapped_ghost_zone);
+OCTOPUS_REGISTER_ACTION(map_ghost_zone);
 
 OCTOPUS_REGISTER_ACTION(child_to_parent_state_injection);
 OCTOPUS_REGISTER_ACTION(receive_child_state);

@@ -157,8 +157,7 @@ struct stepper
         {
             root.refine();
             root.apply(octopus::science().initialize);
-
-            std::cout << "REFINEMENT PASS " << (i+1)
+            std::cout << "REFINEMENT PASS " << (i + 1)
                       << " OF " << refine_passes << std::endl;
         }
 
@@ -190,13 +189,19 @@ struct stepper
 
         hpx::util::high_resolution_timer global_clock;
    
-        while ((root.get_time() / period_) <= octopus::config().temporal_domain)
+        bool last_step = false;
+
+        while (!last_step)
         {
             hpx::util::high_resolution_timer local_clock;
 
             boost::uint64_t const this_step = root.get_step();
             double const this_dt = root.get_dt();
             double const this_time = root.get_time();
+
+            if (  ((this_time + this_dt) / period_)
+               >= octopus::config().temporal_domain)
+                last_step = true;
 
             root.step();
    
@@ -222,7 +227,18 @@ struct stepper
             OCTOPUS_ASSERT(0.0 < prediction.next_dt);
             OCTOPUS_ASSERT(0.0 < prediction.future_dt);
 
-            root.post_dt(std::min(prediction.next_dt, root.get_dt() * 1.25));
+            double next_dt = std::min(prediction.next_dt, root.get_dt() * 1.25);
+
+            if (!last_step && (  ((root.get_time() + next_dt) / period_)
+                              >= octopus::config().temporal_domain))
+            {
+                double t = octopus::config().temporal_domain * period_ - root.get_time();
+                OCTOPUS_ASSERT(t <= next_dt);
+                next_dt = t;
+//                std::cout << (boost::format("TIME: %.17e\n") % root.get_time());
+            }
+
+            root.post_dt(next_dt);
 
             ///////////////////////////////////////////////////////////////////
             // I/O of stats

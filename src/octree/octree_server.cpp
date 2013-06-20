@@ -712,7 +712,7 @@ void octree_server::communicate_ghost_zones(
         face const fi = face(i);
 
         if (physical_boundary == siblings_[i].kind())
-            add_ghost_zone(fi, boost::move(send_mapped_ghost_zone(fi)));
+            map_ghost_zone(fi);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1493,14 +1493,14 @@ array<boost::uint64_t, 3> map_location(
     return v;
 } // }}}
 
-vector3d<state> octree_server::send_mapped_ghost_zone(
+void octree_server::map_ghost_zone(
     face f ///< Our direction, relative to the caller.
     )
 { // {{{ 
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
 
-    switch (f)
+    switch (invert(f))
     {
         ///////////////////////////////////////////////////////////////////////
         // X-axis.
@@ -1509,13 +1509,6 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
         ///         for k in [BW, GNX - BW)
         case XL:
         {
-            vector3d<state> gz
-                (
-                /* [0, BW) */         bw
-              , /* [BW, GNX - BW) */  gnx - 2 * bw
-              , /* [BW, GNX - BW) */  gnx - 2 * bw
-                );
-
             for (boost::uint64_t i = bw; i < (2 * bw); ++i)
                 for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
@@ -1526,20 +1519,18 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
 
                         // Adjusted indices (for output ghost zone). 
                         boost::uint64_t const ii = i - bw;
-                        boost::uint64_t const jj = j - bw;
-                        boost::uint64_t const kk = k - bw; 
+                        boost::uint64_t const jj = j;
+                        boost::uint64_t const kk = k; 
 
-                        std::cout << "MAPPING U("
-                                  << i << ", " << j << ", " << k << ") = U("
-                                  << v[0] << ", " << v[1] << ", " << v[2] << ")\n";
+                        std::cout << (boost::format("MAPPING U(%i, %i, %i) = U(%i, %i, %i) rho(%.17e)\n")
+                                     % i % j % k % v[0] % v[1] % v[2] % (*U_)(v[0], v[1], v[2])[0]);
 
-                        gz(ii, jj, kk) = (*U_)(v);
+                        (*U_)(ii, jj, kk) = (*U_)(v[0], v[1], v[2]);
 
                         array<double, 3> c(x_face_coords(v[0] + 1, v[1], v[2]));
-                        science().enforce_outflow(*this, gz(ii, jj, kk), c, f);
+                        science().enforce_outflow(*this, (*U_)(ii, jj, kk), c, f);
                     }
-
-            return gz;
+            return;
         } 
 
         /// for i in [GNX - BW, GNX)
@@ -1547,13 +1538,6 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
         ///         for k in [BW, GNX - BW)
         case XU:
         {
-            vector3d<state> gz
-                (
-                /* [GNX - BW, GNX) */ bw
-              , /* [BW, GNX - BW) */  gnx - 2 * bw
-              , /* [BW, GNX - BW) */  gnx - 2 * bw
-                );
-
             for (boost::uint64_t i = gnx - 2 * bw; i < (gnx - bw); ++i)
                 for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
@@ -1563,21 +1547,19 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
                             map_location(f, i, j, k);
 
                         // Adjusted indices (for output ghost zone). 
-                        boost::uint64_t const ii = i - (gnx - 2 * bw);
-                        boost::uint64_t const jj = j - bw;
-                        boost::uint64_t const kk = k - bw; 
+                        boost::uint64_t const ii = i + bw;
+                        boost::uint64_t const jj = j;
+                        boost::uint64_t const kk = k; 
 
-                        std::cout << "MAPPING U("
-                                  << i << ", " << j << ", " << k << ") = U("
-                                  << v[0] << ", " << v[1] << ", " << v[2] << ")\n";
+                        std::cout << (boost::format("MAPPING U(%i, %i, %i) = U(%i, %i, %i) rho(%.17e)\n")
+                                     % i % j % k % v[0] % v[1] % v[2] % (*U_)(v[0], v[1], v[2])[0]);
 
-                        gz(ii, jj, kk) = (*U_)(v);
+                        (*U_)(ii, jj, kk) = (*U_)(v[0], v[1], v[2]);
 
                         array<double, 3> c(x_face_coords(v[0], v[1], v[2]));
-                        science().enforce_outflow(*this, gz(ii, jj, kk), c, f);
+                        science().enforce_outflow(*this, (*U_)(ii, jj, kk), c, f);
                     }
-
-            return gz;
+            return;
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -1587,13 +1569,6 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
         ///         for k in [BW, GNX - BW)
         case YL:
         {
-            vector3d<state> gz
-                (
-                /* [BW, GNX - BW) */  gnx - 2 * bw
-              , /* [0, BW) */         bw
-              , /* [BW, GNX - BW) */  gnx - 2 * bw
-                );
-
             for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
                 for (boost::uint64_t j = bw; j < (2 * bw); ++j)
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
@@ -1603,21 +1578,19 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
                             map_location(f, i, j, k);
 
                         // Adjusted indices (for output ghost zone). 
-                        boost::uint64_t const ii = i - bw;
+                        boost::uint64_t const ii = i;
                         boost::uint64_t const jj = j - bw;
-                        boost::uint64_t const kk = k - bw; 
+                        boost::uint64_t const kk = k; 
 
-                        std::cout << "MAPPING U("
-                                  << i << ", " << j << ", " << k << ") = U("
-                                  << v[0] << ", " << v[1] << ", " << v[2] << ")\n";
+                        std::cout << (boost::format("MAPPING U(%i, %i, %i) = U(%i, %i, %i) rho(%.17e)\n")
+                                     % i % j % k % v[0] % v[1] % v[2] % (*U_)(v[0], v[1], v[2])[0]);
 
-                        gz(ii, jj, kk) = (*U_)(v);
+                        (*U_)(ii, jj, kk) = (*U_)(v[0], v[1], v[2]);
 
                         array<double, 3> c(y_face_coords(v[0], v[1] + 1, v[2]));
-                        science().enforce_outflow(*this, gz(ii, jj, kk), c, f);
+                        science().enforce_outflow(*this, (*U_)(ii, jj, kk), c, f);
                     }
-
-            return gz;
+            return;
         } 
 
         /// for i in [BW, GNX - BW)
@@ -1625,13 +1598,6 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
         ///         for k in [BW, GNX - BW)
         case YU:
         {
-            vector3d<state> gz
-                (
-                /* [BW, GNX - BW) */  gnx - 2 * bw
-              , /* [GNX - BW, GNX) */ bw
-              , /* [BW, GNX - BW) */  gnx - 2 * bw
-                );
-
             for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
                 for (boost::uint64_t j = gnx - 2 * bw; j < (gnx - bw); ++j)
                     for (boost::uint64_t k = bw; k < (gnx - bw); ++k) 
@@ -1641,21 +1607,19 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
                             map_location(f, i, j, k);
 
                         // Adjusted indices (for output ghost zone). 
-                        boost::uint64_t const ii = i - bw;
-                        boost::uint64_t const jj = j - (gnx - 2 * bw);
-                        boost::uint64_t const kk = k - bw; 
+                        boost::uint64_t const ii = i;
+                        boost::uint64_t const jj = j + bw;
+                        boost::uint64_t const kk = k; 
 
-                        std::cout << "MAPPING U("
-                                  << i << ", " << j << ", " << k << ") = U("
-                                  << v[0] << ", " << v[1] << ", " << v[2] << ")\n";
+                        std::cout << (boost::format("MAPPING U(%i, %i, %i) = U(%i, %i, %i) rho(%.17e)\n")
+                                     % i % j % k % v[0] % v[1] % v[2] % (*U_)(v[0], v[1], v[2])[0]);
 
-                        gz(ii, jj, kk) = (*U_)(v);
+                        (*U_)(ii, jj, kk) = (*U_)(v[0], v[1], v[2]);
 
                         array<double, 3> c(y_face_coords(v[0], v[1], v[2]));
-                        science().enforce_outflow(*this, gz(ii, jj, kk), c, f);
+                        science().enforce_outflow(*this, (*U_)(ii, jj, kk), c, f);
                     }
-
-            return gz;
+            return;
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -1665,13 +1629,6 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
         ///         for k in [0, BW)
         case ZL:
         {
-            vector3d<state> gz
-                (
-                /* [BW, GNX - BW) */  gnx - 2 * bw
-              , /* [BW, GNX - BW) */  gnx - 2 * bw
-              , /* [0, BW) */         bw
-                );
-
             for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
                 for (boost::uint64_t j = bw; j < (gnx - bw); ++j) 
                     for (boost::uint64_t k = bw; k < (2 * bw); ++k)
@@ -1681,26 +1638,24 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
                             map_location(f, i, j, k);
 
                         // Adjusted indices (for output ghost zone). 
-                        boost::uint64_t const ii = i - bw;
-                        boost::uint64_t const jj = j - bw; 
+                        boost::uint64_t const ii = i;
+                        boost::uint64_t const jj = j; 
                         boost::uint64_t const kk = k - bw;
 
-                        std::cout << "MAPPING U("
-                                  << i << ", " << j << ", " << k << ") = U("
-                                  << v[0] << ", " << v[1] << ", " << v[2] << ")\n";
+                        std::cout << (boost::format("MAPPING U(%i, %i, %i) = U(%i, %i, %i) rho(%.17e)\n")
+                                     % i % j % k % v[0] % v[1] % v[2] % (*U_)(v[0], v[1], v[2])[0]);
 
-                        gz(ii, jj, kk) = (*U_)(v);
+                        (*U_)(ii, jj, kk) = (*U_)(v[0], v[1], v[2]);
 
                         array<double, 3> c(z_face_coords(v[0], v[1], v[2] + 1));
 
                         if (config().reflect_on_z)
-                            science().reflect_z(gz(ii, jj, kk));
+                            science().reflect_z((*U_)(ii, jj, kk));
                         else
                             science().enforce_outflow
-                                (*this, gz(ii, jj, kk), c, f);
+                                (*this, (*U_)(ii, jj, kk), c, f);
                     }
-
-            return gz;
+            return;
         } 
 
         /// for i in [BW, GNX - BW)
@@ -1708,13 +1663,6 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
         ///         for k in [GNX - BW, GNX)
         case ZU:
         {
-            vector3d<state> gz
-                (
-                /* [BW, GNX - BW) */  gnx - 2 * bw
-              , /* [BW, GNX - BW) */  gnx - 2 * bw
-              , /* [GNX - BW, GNX) */ bw
-                );
-
             for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
                 for (boost::uint64_t j = bw; j < (gnx - bw); ++j) 
                     for (boost::uint64_t k = gnx - 2 * bw; k < (gnx - bw); ++k)
@@ -1724,21 +1672,19 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
                             map_location(f, i, j, k);
 
                         // Adjusted indices (for output ghost zone). 
-                        boost::uint64_t const ii = i - bw;
-                        boost::uint64_t const jj = j - bw; 
-                        boost::uint64_t const kk = k - (gnx - 2 * bw);
+                        boost::uint64_t const ii = i;
+                        boost::uint64_t const jj = j; 
+                        boost::uint64_t const kk = k + bw;
 
-                        std::cout << "MAPPING U("
-                                  << i << ", " << j << ", " << k << ") = U("
-                                  << v[0] << ", " << v[1] << ", " << v[2] << ")\n";
+                        std::cout << (boost::format("MAPPING U(%i, %i, %i) = U(%i, %i, %i) rho(%.17e)\n")
+                                     % i % j % k % v[0] % v[1] % v[2] % (*U_)(v[0], v[1], v[2])[0]);
 
-                        gz(ii, jj, kk) = (*U_)(v);
+                        (*U_)(ii, jj, kk) = (*U_)(v[0], v[1], v[2]);
 
                         array<double, 3> c(z_face_coords(v[0], v[1], v[2]));
-                        science().enforce_outflow(*this, gz(ii, jj, kk), c, f);
+                        science().enforce_outflow(*this, (*U_)(ii, jj, kk), c, f);
                     }
-
-            return gz;
+            return;
         }
 
         default:
@@ -1746,10 +1692,6 @@ vector3d<state> octree_server::send_mapped_ghost_zone(
             OCTOPUS_ASSERT_MSG(false, "face shouldn't be out-of-bounds");
         }
     };
-
-    // Unreachable.
-    OCTOPUS_ASSERT(false);
-    return vector3d<state>(); 
 } // }}}
 
 ///////////////////////////////////////////////////////////////////////////////

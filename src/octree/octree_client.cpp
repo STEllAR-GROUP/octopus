@@ -301,8 +301,7 @@ octree_client::send_interpolated_ghost_zone_async(
         (gid_, f, offset_);
 }
 
-hpx::future<vector3d<state> >
-octree_client::send_mapped_ghost_zone_async(
+hpx::future<void> octree_client::map_ghost_zone_async(
     face f ///< Direction, relative to us 
     ) const
 {
@@ -312,7 +311,7 @@ octree_client::send_mapped_ghost_zone_async(
                            "stored face (%2%)"
                          , f % invert(face_)); 
 */
-    return hpx::async<octree_server::send_mapped_ghost_zone_action>
+    return hpx::async<octree_server::map_ghost_zone_action>
         (gid_, face_);
 }
 
@@ -326,8 +325,6 @@ vector3d<state> octree_client::send_ghost_zone(
             return send_ghost_zone_async(f).get(); 
         case amr_boundary:
             return send_interpolated_ghost_zone(f);
-        case physical_boundary:
-            return send_mapped_ghost_zone(f); 
         default:
             break;
     }
@@ -347,8 +344,6 @@ octree_client::send_ghost_zone_async(
             return hpx::async<octree_server::send_ghost_zone_action>(gid_, f);
         case amr_boundary:
             return send_interpolated_ghost_zone_async(f);
-        case physical_boundary:
-            return send_mapped_ghost_zone_async(f); 
         default:
             break;
     }

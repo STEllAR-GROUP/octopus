@@ -609,15 +609,15 @@ struct OCTOPUS_EXPORT octree_client
         ) const;
 
     // Physical boundary. 
-    vector3d<state> send_mapped_ghost_zone(
+    void map_ghost_zone(
         face f ///< Direction, relative to us 
         ) const
     {
-        return send_mapped_ghost_zone_async(f).get();
+        return map_ghost_zone_async(f).get();
     }
 
     // Physical boundary. 
-    hpx::future<vector3d<state> > send_mapped_ghost_zone_async(
+    hpx::future<void> map_ghost_zone_async(
         face f ///< Direction, relative to us 
         ) const;
     // }}}

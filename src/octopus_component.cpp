@@ -53,7 +53,7 @@ OCTOPUS_REGISTER_ACTION(get_location);
 OCTOPUS_REGISTER_ACTION(receive_ghost_zone);
 OCTOPUS_REGISTER_ACTION(send_ghost_zone);
 OCTOPUS_REGISTER_ACTION(send_interpolated_ghost_zone);
-OCTOPUS_REGISTER_ACTION(send_mapped_ghost_zone);
+OCTOPUS_REGISTER_ACTION(map_ghost_zone);
 
 OCTOPUS_REGISTER_ACTION(child_to_parent_state_injection);
 OCTOPUS_REGISTER_ACTION(receive_child_state);
