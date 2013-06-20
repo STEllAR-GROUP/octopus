@@ -474,17 +474,19 @@ struct enforce_outflow : octopus::trivial_serialization
       , octopus::face f
         ) const
     {
+/*
         std::cout << "ENFORCE OUTFLOW: (" << loc[0]
                                   << ", " << loc[1]
                                   << ", " << loc[2]
                                   << ") " << f;
+*/
         switch (f)
         {
             case octopus::XU:
             {
                 if (velocity<octopus::x_axis>(u, loc) > 0.0)
                 {
-                    std::cout << " OUTFLOW";
+//                    std::cout << " OUTFLOW";
 //                    total_energy(u) -= 0.5*momentum_x(u)*momentum_x(u)/rho(u);
                     momentum_x(u) = 0.0;
 
@@ -499,7 +501,7 @@ struct enforce_outflow : octopus::trivial_serialization
             {
                 if (velocity<octopus::x_axis>(u, loc) < 0.0)
                 {
-                    std::cout << " OUTFLOW";
+//                    std::cout << " OUTFLOW";
 //                    total_energy(u) -= 0.5*momentum_x(u)*momentum_x(u)/rho(u);
                     momentum_x(u) = 0.0;
 
@@ -515,7 +517,7 @@ struct enforce_outflow : octopus::trivial_serialization
             {
                 if (velocity<octopus::y_axis>(u, loc) > 0.0)
                 {
-                    std::cout << " OUTFLOW";
+//                    std::cout << " OUTFLOW";
 //                    total_energy(u) -= 0.5*momentum_y(u)*momentum_y(u)/rho(u);
                     momentum_y(u) = 0.0;
 
@@ -530,7 +532,7 @@ struct enforce_outflow : octopus::trivial_serialization
             {
                 if (velocity<octopus::y_axis>(u, loc) < 0.0)
                 {
-                    std::cout << " OUTFLOW";
+//                    std::cout << " OUTFLOW";
 //                    total_energy(u) -= 0.5*momentum_y(u)*momentum_y(u)/rho(u);
                     momentum_y(u) = 0.0;
 
@@ -546,7 +548,7 @@ struct enforce_outflow : octopus::trivial_serialization
             {
                 if (momentum_z(u) > 0.0)
                 {
-                    std::cout << " OUTFLOW";
+//                    std::cout << " OUTFLOW";
 //                    total_energy(u) -= 0.5*momentum_z(u)*momentum_z(u)/rho(u);
                     momentum_z(u) = 0.0;
                 }
@@ -556,7 +558,7 @@ struct enforce_outflow : octopus::trivial_serialization
             {
                 if (momentum_z(u) < 0.0)
                 {
-                    std::cout << " OUTFLOW";
+//                    std::cout << " OUTFLOW";
 //                    total_energy(u) -= 0.5*momentum_z(u)*momentum_z(u)/rho(u);
                     momentum_z(u) = 0.0;
                 }
@@ -566,7 +568,7 @@ struct enforce_outflow : octopus::trivial_serialization
             default: OCTOPUS_ASSERT(false); break;
         }
 
-        std::cout << "\n";
+//        std::cout << "\n";
     } 
 };
 

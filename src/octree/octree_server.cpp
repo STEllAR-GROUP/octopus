@@ -1522,8 +1522,8 @@ void octree_server::map_ghost_zone(
                         boost::uint64_t const jj = j;
                         boost::uint64_t const kk = k; 
 
-                        std::cout << (boost::format("MAPPING U(%i, %i, %i) = U(%i, %i, %i) rho(%.17e)\n")
-                                     % i % j % k % v[0] % v[1] % v[2] % (*U_)(v[0], v[1], v[2])[0]);
+//                        std::cout << (boost::format("MAPPING U(%i, %i, %i) = U(%i, %i, %i) rho(%.17e)\n")
+//                                     % i % j % k % v[0] % v[1] % v[2] % (*U_)(v[0], v[1], v[2])[0]);
 
                         (*U_)(ii, jj, kk) = (*U_)(v[0], v[1], v[2]);
 
@@ -1551,8 +1551,8 @@ void octree_server::map_ghost_zone(
                         boost::uint64_t const jj = j;
                         boost::uint64_t const kk = k; 
 
-                        std::cout << (boost::format("MAPPING U(%i, %i, %i) = U(%i, %i, %i) rho(%.17e)\n")
-                                     % i % j % k % v[0] % v[1] % v[2] % (*U_)(v[0], v[1], v[2])[0]);
+//                        std::cout << (boost::format("MAPPING U(%i, %i, %i) = U(%i, %i, %i) rho(%.17e)\n")
+//                                     % i % j % k % v[0] % v[1] % v[2] % (*U_)(v[0], v[1], v[2])[0]);
 
                         (*U_)(ii, jj, kk) = (*U_)(v[0], v[1], v[2]);
 
@@ -1582,8 +1582,8 @@ void octree_server::map_ghost_zone(
                         boost::uint64_t const jj = j - bw;
                         boost::uint64_t const kk = k; 
 
-                        std::cout << (boost::format("MAPPING U(%i, %i, %i) = U(%i, %i, %i) rho(%.17e)\n")
-                                     % i % j % k % v[0] % v[1] % v[2] % (*U_)(v[0], v[1], v[2])[0]);
+//                        std::cout << (boost::format("MAPPING U(%i, %i, %i) = U(%i, %i, %i) rho(%.17e)\n")
+//                                     % i % j % k % v[0] % v[1] % v[2] % (*U_)(v[0], v[1], v[2])[0]);
 
                         (*U_)(ii, jj, kk) = (*U_)(v[0], v[1], v[2]);
 
@@ -1611,8 +1611,8 @@ void octree_server::map_ghost_zone(
                         boost::uint64_t const jj = j + bw;
                         boost::uint64_t const kk = k; 
 
-                        std::cout << (boost::format("MAPPING U(%i, %i, %i) = U(%i, %i, %i) rho(%.17e)\n")
-                                     % i % j % k % v[0] % v[1] % v[2] % (*U_)(v[0], v[1], v[2])[0]);
+//                        std::cout << (boost::format("MAPPING U(%i, %i, %i) = U(%i, %i, %i) rho(%.17e)\n")
+//                                     % i % j % k % v[0] % v[1] % v[2] % (*U_)(v[0], v[1], v[2])[0]);
 
                         (*U_)(ii, jj, kk) = (*U_)(v[0], v[1], v[2]);
 
@@ -1642,8 +1642,8 @@ void octree_server::map_ghost_zone(
                         boost::uint64_t const jj = j; 
                         boost::uint64_t const kk = k - bw;
 
-                        std::cout << (boost::format("MAPPING U(%i, %i, %i) = U(%i, %i, %i) rho(%.17e)\n")
-                                     % i % j % k % v[0] % v[1] % v[2] % (*U_)(v[0], v[1], v[2])[0]);
+//                        std::cout << (boost::format("MAPPING U(%i, %i, %i) = U(%i, %i, %i) rho(%.17e)\n")
+//                                     % i % j % k % v[0] % v[1] % v[2] % (*U_)(v[0], v[1], v[2])[0]);
 
                         (*U_)(ii, jj, kk) = (*U_)(v[0], v[1], v[2]);
 
@@ -1676,8 +1676,8 @@ void octree_server::map_ghost_zone(
                         boost::uint64_t const jj = j; 
                         boost::uint64_t const kk = k + bw;
 
-                        std::cout << (boost::format("MAPPING U(%i, %i, %i) = U(%i, %i, %i) rho(%.17e)\n")
-                                     % i % j % k % v[0] % v[1] % v[2] % (*U_)(v[0], v[1], v[2])[0]);
+//                        std::cout << (boost::format("MAPPING U(%i, %i, %i) = U(%i, %i, %i) rho(%.17e)\n")
+//                                     % i % j % k % v[0] % v[1] % v[2] % (*U_)(v[0], v[1], v[2])[0]);
 
                         (*U_)(ii, jj, kk) = (*U_)(v[0], v[1], v[2]);
 
