@@ -1462,7 +1462,7 @@ array<boost::uint64_t, 3> map_location(
     v[1] = j;
     v[2] = k;
 
-    switch (f)
+    switch (invert(f))
     {
         case XU:
             v[0] = bw;
@@ -1500,7 +1500,7 @@ void octree_server::map_ghost_zone(
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
 
-    switch (invert(f))
+    switch (f)
     {
         ///////////////////////////////////////////////////////////////////////
         // X-axis.

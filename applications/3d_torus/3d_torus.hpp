@@ -331,6 +331,17 @@ struct initialize : octopus::trivial_serialization
 { // {{{
     void operator()(octopus::octree_server& U) const
     {
+        boost::uint64_t const gnx = octopus::config().grid_node_length;
+
+        for (boost::uint64_t i = 0; i < gnx; ++i)
+            for (boost::uint64_t j = 0; j < gnx; ++j)
+                for (boost::uint64_t k = 0; k < gnx; ++k)
+                    if (U.x_center(i) > 0.0 && U.y_center(j) > 0.0)
+                        rho(U(i, j, k)) = 1.0;
+                    else
+                        rho(U(i, j, k)) = 1.0e-10;
+                        
+/*
         using std::pow;
         using std::sqrt;
         using std::atan2;
@@ -462,6 +473,7 @@ struct initialize : octopus::trivial_serialization
                 }
             }
         }
+*/
     }
 }; // }}}
 
@@ -480,7 +492,7 @@ struct enforce_outflow : octopus::trivial_serialization
                                   << ", " << loc[2]
                                   << ") " << f;
 */
-        switch (f)
+        switch (invert(f))
         {
             case octopus::XU:
             {

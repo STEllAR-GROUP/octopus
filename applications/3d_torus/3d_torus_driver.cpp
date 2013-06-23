@@ -144,7 +144,7 @@ struct stepper
         boost::uint64_t refine_passes = 0;
 
         if (octopus::config().levels_of_refinement != 0)
-        {
+        {   
             if (octopus::config().levels_of_refinement > 1)
                 refine_passes = octopus::config().levels_of_refinement;
             else
