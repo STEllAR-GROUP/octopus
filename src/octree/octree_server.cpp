@@ -1527,8 +1527,10 @@ void octree_server::map_ghost_zone(
 
                         (*U_)(ii, jj, kk) = (*U_)(v[0], v[1], v[2]);
 
-                        array<double, 3> c(x_face_coords(v[0] + 1, v[1], v[2]));
-                        science().enforce_outflow(*this, (*U_)(ii, jj, kk), c, f);
+//                        array<double, 3> c(x_face_coords(v[0] + 1, v[1], v[2]));
+                        array<double, 3> c(x_face_coords(v[0], v[1], v[2]));
+                        science().enforce_outflow
+                            (*this, (*U_)(ii, jj, kk), c, f);
                     }
             return;
         } 
@@ -1556,8 +1558,10 @@ void octree_server::map_ghost_zone(
 
                         (*U_)(ii, jj, kk) = (*U_)(v[0], v[1], v[2]);
 
-                        array<double, 3> c(x_face_coords(v[0], v[1], v[2]));
-                        science().enforce_outflow(*this, (*U_)(ii, jj, kk), c, f);
+//                        array<double, 3> c(x_face_coords(v[0], v[1], v[2]));
+                        array<double, 3> c(x_face_coords(v[0] + 1, v[1], v[2]));
+                        science().enforce_outflow
+                            (*this, (*U_)(ii, jj, kk), c, f);
                     }
             return;
         }
@@ -1587,8 +1591,10 @@ void octree_server::map_ghost_zone(
 
                         (*U_)(ii, jj, kk) = (*U_)(v[0], v[1], v[2]);
 
-                        array<double, 3> c(y_face_coords(v[0], v[1] + 1, v[2]));
-                        science().enforce_outflow(*this, (*U_)(ii, jj, kk), c, f);
+//                        array<double, 3> c(y_face_coords(v[0], v[1] + 1, v[2]));
+                        array<double, 3> c(y_face_coords(v[0], v[1], v[2]));
+                        science().enforce_outflow
+                            (*this, (*U_)(ii, jj, kk), c, f);
                     }
             return;
         } 
@@ -1616,8 +1622,10 @@ void octree_server::map_ghost_zone(
 
                         (*U_)(ii, jj, kk) = (*U_)(v[0], v[1], v[2]);
 
-                        array<double, 3> c(y_face_coords(v[0], v[1], v[2]));
-                        science().enforce_outflow(*this, (*U_)(ii, jj, kk), c, f);
+//                        array<double, 3> c(y_face_coords(v[0], v[1], v[2]));
+                        array<double, 3> c(y_face_coords(v[0], v[1] + 1, v[2]));
+                        science().enforce_outflow
+                            (*this, (*U_)(ii, jj, kk), c, f);
                     }
             return;
         }
@@ -1647,7 +1655,8 @@ void octree_server::map_ghost_zone(
 
                         (*U_)(ii, jj, kk) = (*U_)(v[0], v[1], v[2]);
 
-                        array<double, 3> c(z_face_coords(v[0], v[1], v[2] + 1));
+//                        array<double, 3> c(z_face_coords(v[0], v[1], v[2] + 1));
+                        array<double, 3> c(z_face_coords(v[0], v[1], v[2]));
 
                         if (config().reflect_on_z)
                             science().reflect_z((*U_)(ii, jj, kk));
@@ -1681,8 +1690,10 @@ void octree_server::map_ghost_zone(
 
                         (*U_)(ii, jj, kk) = (*U_)(v[0], v[1], v[2]);
 
-                        array<double, 3> c(z_face_coords(v[0], v[1], v[2]));
-                        science().enforce_outflow(*this, (*U_)(ii, jj, kk), c, f);
+//                        array<double, 3> c(z_face_coords(v[0], v[1], v[2]));
+                        array<double, 3> c(z_face_coords(v[0], v[1], v[2] + 1));
+                        science().enforce_outflow
+                            (*this, (*U_)(ii, jj, kk), c, f);
                     }
             return;
         }
@@ -2858,11 +2869,9 @@ void octree_server::remark_kernel()
                     yz_edge_f = ZL;
                 }
     
-/*
                 markings.push_back(
                     siblings_[r.exterior_x_face].require_corner_child_async(
                         corner_kid, corner_f0, corner_f1));
-*/
     
                 markings.push_back(
                     siblings_[r.exterior_x_face].require_sibling_child_async

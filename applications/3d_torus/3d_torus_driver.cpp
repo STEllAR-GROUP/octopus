@@ -158,9 +158,9 @@ struct stepper
             root.refine();
             root.apply(octopus::science().initialize);
             std::cout << "REFINEMENT PASS " << (i + 1)
-                      << " OF " << refine_passes << std::endl;
+                      << " OF " << refine_passes << ", "
+                      << count_nodes(root) << " NODES" << "\n"; 
         }
-
 
         root.child_to_parent_state_injection(0);
 

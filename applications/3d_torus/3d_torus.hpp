@@ -331,6 +331,7 @@ struct initialize : octopus::trivial_serialization
 { // {{{
     void operator()(octopus::octree_server& U) const
     {
+/*
         boost::uint64_t const gnx = octopus::config().grid_node_length;
 
         for (boost::uint64_t i = 0; i < gnx; ++i)
@@ -340,8 +341,8 @@ struct initialize : octopus::trivial_serialization
                         rho(U(i, j, k)) = 1.0;
                     else
                         rho(U(i, j, k)) = 1.0e-10;
+*/
                         
-/*
         using std::pow;
         using std::sqrt;
         using std::atan2;
@@ -473,7 +474,6 @@ struct initialize : octopus::trivial_serialization
                 }
             }
         }
-*/
     }
 }; // }}}
 
@@ -499,13 +499,15 @@ struct enforce_outflow : octopus::trivial_serialization
                 if (velocity<octopus::x_axis>(u, loc) > 0.0)
                 {
 //                    std::cout << " OUTFLOW";
-//                    total_energy(u) -= 0.5*momentum_x(u)*momentum_x(u)/rho(u);
+                    total_energy(u) -= 0.5*momentum_x(u)*momentum_x(u)/rho(u);
                     momentum_x(u) = 0.0;
 
                     //double const vy = velocity<octopus::y_axis>(u, loc);
                     double const R = radius(loc);
-//                    angular_momentum(u) = loc[0]*velocity<octopus::y_axis>(u, loc)*rho(u);
-//                    u[radial_momentum_idx] = loc[1]*velocity<octopus::y_axis>(u, loc)*rho(u)/R;
+                    angular_momentum(u) =
+                        loc[0]*velocity<octopus::y_axis>(u, loc)*rho(u);
+                    u[radial_momentum_idx] =
+                        loc[1]*velocity<octopus::y_axis>(u, loc)*rho(u)/R;
                 }
                 break;
             }
@@ -514,13 +516,15 @@ struct enforce_outflow : octopus::trivial_serialization
                 if (velocity<octopus::x_axis>(u, loc) < 0.0)
                 {
 //                    std::cout << " OUTFLOW";
-//                    total_energy(u) -= 0.5*momentum_x(u)*momentum_x(u)/rho(u);
+                    total_energy(u) -= 0.5*momentum_x(u)*momentum_x(u)/rho(u);
                     momentum_x(u) = 0.0;
 
                     //double const vy = velocity<octopus::y_axis>(u, loc);
                     double const R = radius(loc);
-//                    angular_momentum(u) = loc[0]*velocity<octopus::y_axis>(u, loc)*rho(u);
-//                    u[radial_momentum_idx] = loc[1]*velocity<octopus::y_axis>(u, loc)*rho(u)/R;
+                    angular_momentum(u) =
+                        loc[0]*velocity<octopus::y_axis>(u, loc)*rho(u);
+                    u[radial_momentum_idx] =
+                        loc[1]*velocity<octopus::y_axis>(u, loc)*rho(u)/R;
                 }
                 break;
             }
@@ -530,13 +534,15 @@ struct enforce_outflow : octopus::trivial_serialization
                 if (velocity<octopus::y_axis>(u, loc) > 0.0)
                 {
 //                    std::cout << " OUTFLOW";
-//                    total_energy(u) -= 0.5*momentum_y(u)*momentum_y(u)/rho(u);
+                    total_energy(u) -= 0.5*momentum_y(u)*momentum_y(u)/rho(u);
                     momentum_y(u) = 0.0;
 
                     //double const vx = velocity<octopus::x_axis>(u, loc);
                     double const R = radius(loc);
-//                    angular_momentum(u) = -loc[1]*velocity<octopus::x_axis>(u, loc)*rho(u);
-//                    u[radial_momentum_idx] = loc[0]*velocity<octopus::x_axis>(u, loc)*rho(u)/R;
+                    angular_momentum(u) =
+                        -loc[1]*velocity<octopus::x_axis>(u, loc)*rho(u);
+                    u[radial_momentum_idx] =
+                        loc[0]*velocity<octopus::x_axis>(u, loc)*rho(u)/R;
                 }
                 break;
             }
@@ -545,13 +551,15 @@ struct enforce_outflow : octopus::trivial_serialization
                 if (velocity<octopus::y_axis>(u, loc) < 0.0)
                 {
 //                    std::cout << " OUTFLOW";
-//                    total_energy(u) -= 0.5*momentum_y(u)*momentum_y(u)/rho(u);
+                    total_energy(u) -= 0.5*momentum_y(u)*momentum_y(u)/rho(u);
                     momentum_y(u) = 0.0;
 
                     //double const vx = velocity<octopus::x_axis>(u, loc);
                     double const R = radius(loc);
-//                    angular_momentum(u) = -loc[1]*velocity<octopus::x_axis>(u, loc)*rho(u);
-//                    u[radial_momentum_idx] = loc[0]*velocity<octopus::x_axis>(u, loc)*rho(u)/R;
+                    angular_momentum(u) =
+                        -loc[1]*velocity<octopus::x_axis>(u, loc)*rho(u);
+                    u[radial_momentum_idx] =
+                        loc[0]*velocity<octopus::x_axis>(u, loc)*rho(u)/R;
                 }
                 break;
             }
@@ -561,7 +569,7 @@ struct enforce_outflow : octopus::trivial_serialization
                 if (momentum_z(u) > 0.0)
                 {
 //                    std::cout << " OUTFLOW";
-//                    total_energy(u) -= 0.5*momentum_z(u)*momentum_z(u)/rho(u);
+                    total_energy(u) -= 0.5*momentum_z(u)*momentum_z(u)/rho(u);
                     momentum_z(u) = 0.0;
                 }
                 break;
@@ -571,7 +579,7 @@ struct enforce_outflow : octopus::trivial_serialization
                 if (momentum_z(u) < 0.0)
                 {
 //                    std::cout << " OUTFLOW";
-//                    total_energy(u) -= 0.5*momentum_z(u)*momentum_z(u)/rho(u);
+                    total_energy(u) -= 0.5*momentum_z(u)*momentum_z(u)/rho(u);
                     momentum_z(u) = 0.0;
                 }
                 break;
@@ -1204,6 +1212,27 @@ struct output_equatorial_plane
         ar & axis_;
     };
 };
+
+struct add_functor : octopus::trivial_serialization
+{
+    boost::uint64_t operator()(boost::uint64_t a, boost::uint64_t b) const
+    {
+        return a + b;
+    } 
+};
+
+struct one_functor : octopus::trivial_serialization
+{
+    boost::uint64_t operator()(octopus::octree_server&) const
+    {
+        return 1;
+    } 
+};
+
+boost::uint64_t count_nodes(octopus::octree_server& U)
+{
+    return U.reduce<boost::uint64_t>(one_functor(), add_functor(), 0);
+}
 
 #endif // OCTOPUS_9BA6055C_E7A9_4A16_8A24_B8B410AA1A14
 
