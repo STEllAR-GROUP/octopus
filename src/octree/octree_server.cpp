@@ -1144,7 +1144,7 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const k_out = k - bw; 
 
                         ///////////////////////////////////////////////////////
-                        bool const i0 = (amr_offset[0] + i_out) % 2 ? true : false;
+                        bool const i0 = (amr_offset[0] + i) % 2 ? true : false;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
@@ -1195,7 +1195,7 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const k_out = k - bw; 
 
                         ///////////////////////////////////////////////////////
-                        bool const i0 = (amr_offset[0] + i_out) % 2 ? true : false;
+                        bool const i0 = (amr_offset[0] + i) % 2 ? true : false;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
@@ -1248,7 +1248,7 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const k_out = k - bw; 
 
                         //////////////////////////////////////////////////////
-                        bool const j0 = (amr_offset[1] + j_out) % 2 ? true : false;
+                        bool const j0 = (amr_offset[1] + j) % 2 ? true : false;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
@@ -1299,7 +1299,7 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const k_out = k - bw; 
 
                         ///////////////////////////////////////////////////////
-                        bool const j0 = (amr_offset[1] + j_out) % 2 ? true : false;
+                        bool const j0 = (amr_offset[1] + j) % 2 ? true : false;
 
                         ///////////////////////////////////////////////////////
                         boost::uint64_t const i_in = (amr_offset[0] + i) / 2;
@@ -1351,7 +1351,7 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const k_out = k - bw;
 
                         ///////////////////////////////////////////////////////
-                        bool const k0 = (amr_offset[2] + k_out) % 2 ? true : false;
+                        bool const k0 = (amr_offset[2] + k) % 2 ? true : false;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 
@@ -1402,7 +1402,7 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
                         boost::uint64_t const k_out = k - (gnx - 2 * bw);
 
                         ///////////////////////////////////////////////////////
-                        bool const k0 = (amr_offset[2] + k_out) % 2 ? true : false;
+                        bool const k0 = (amr_offset[2] + k) % 2 ? true : false;
 
                         ///////////////////////////////////////////////////////
                         // Adjusted indices (input). 

@@ -168,6 +168,7 @@ struct stepper
 //            root.output(root.get_time() / period_, "U_L%06u_initial.silo");
 //        #endif
 
+//        root.communicate_ghost_zones(0);
         root.output(0.0);
  
         std::ofstream dt_file("dt.csv");

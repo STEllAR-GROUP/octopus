@@ -342,7 +342,7 @@ struct initialize : octopus::trivial_serialization
                     else
                         rho(U(i, j, k)) = 1.0e-10;
 */
-                        
+
         using std::pow;
         using std::sqrt;
         using std::atan2;
