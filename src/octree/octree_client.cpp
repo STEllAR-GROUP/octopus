@@ -181,17 +181,20 @@ hpx::future<void> octree_client::require_corner_child_async(
 hpx::future<void> octree_client::remove_nephew_async(
     octree_client const& nephew
   , face f
+  , child_index idx
     ) const
 {
-    return hpx::async<octree_server::remove_nephew_action>(gid_, nephew, f);
+    return hpx::async<octree_server::remove_nephew_action>
+        (gid_, nephew, f, idx);
 }
 
 void octree_client::remove_nephew_push(
     octree_client const& nephew
   , face f
+  , child_index idx
     ) const
 {
-    hpx::apply<octree_server::remove_nephew_action>(gid_, nephew, f);
+    hpx::apply<octree_server::remove_nephew_action>(gid_, nephew, f, idx);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -415,39 +418,34 @@ void octree_client::receive_child_state_push(
 ///////////////////////////////////////////////////////////////////////////////
 hpx::future<void> octree_client::child_to_parent_flux_injection_async(
     boost::uint64_t phase 
-  , axis a
     ) const
 {
     ensure_real();
     return hpx::async<octree_server::child_to_parent_flux_injection_action>
-        (gid_, phase, a);
+        (gid_, phase);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 hpx::future<void> octree_client::receive_child_flux_async(
     boost::uint64_t step ///< For debugging purposes.
   , boost::uint64_t phase 
-  , axis a
-  , child_index idx 
+  , boost::uint8_t idx 
   , BOOST_RV_REF(vector3d<state>) zone
     ) const
 {
-    ensure_real();
     return hpx::async<octree_server::receive_child_flux_action>
-        (gid_, step, phase, a, idx, boost::move(zone));
+        (gid_, step, phase, idx, boost::move(zone));
 }
 
 void octree_client::receive_child_flux_push(
     boost::uint64_t step ///< For debugging purposes.
   , boost::uint64_t phase 
-  , axis a
-  , child_index idx 
+  , boost::uint8_t idx 
   , BOOST_RV_REF(vector3d<state>) zone
     ) const
 {
-    ensure_real();
     hpx::apply<octree_server::receive_child_flux_action>
-        (gid_, step, phase, a, idx, boost::move(zone));
+        (gid_, step, phase, idx, boost::move(zone));
 }
 
 ///////////////////////////////////////////////////////////////////////////////

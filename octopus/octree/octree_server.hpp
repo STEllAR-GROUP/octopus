@@ -94,24 +94,24 @@ struct OCTOPUS_EXPORT oid_type
 
 std::ostream& operator<<(std::ostream& os, oid_type const& id);
 
-struct OCTOPUS_EXPORT interpolation_data
+struct OCTOPUS_EXPORT state_interpolation_data
 {
     octree_client subject;
     face direction;
     array<boost::int64_t, 3> offset;
 
-    interpolation_data() : subject(), direction()
+    state_interpolation_data() : subject(), direction()
     {
         offset[0] = 0;
         offset[1] = 1;
         offset[2] = 2;
     }
 
-    interpolation_data(interpolation_data const& other)
+    state_interpolation_data(state_interpolation_data const& other)
       : subject(other.subject), direction(other.direction), offset(other.offset)
     {}
 
-    interpolation_data(
+    state_interpolation_data(
         octree_client const& s
       , face d
       , array<boost::int64_t, 3> o
@@ -119,7 +119,7 @@ struct OCTOPUS_EXPORT interpolation_data
       : subject(s), direction(d), offset(o)
     {}
 
-    interpolation_data(
+    state_interpolation_data(
         octree_client const& s
       , face d
         )
@@ -130,7 +130,7 @@ struct OCTOPUS_EXPORT interpolation_data
         offset[2] = 0;
     }
 
-    bool operator<(interpolation_data const& rhs) const
+    bool operator<(state_interpolation_data const& rhs) const
     {
         using hpx::naming::detail::strip_credit_from_gid;
         hpx::naming::gid_type lhs_gid = subject.gid_.get_gid();
@@ -141,7 +141,7 @@ struct OCTOPUS_EXPORT interpolation_data
                             , rhs.direction);
     }
 
-    bool operator==(interpolation_data const& rhs) const
+    bool operator==(state_interpolation_data const& rhs) const
     {
         using hpx::naming::detail::strip_credit_from_gid;
         hpx::naming::gid_type lhs_gid = subject.gid_.get_gid();
@@ -150,6 +150,41 @@ struct OCTOPUS_EXPORT interpolation_data
                             , direction)
             == std::make_pair(strip_credit_from_gid(rhs_gid)
                             , rhs.direction);
+    }
+};
+
+struct OCTOPUS_EXPORT flux_interpolation_data
+{
+    octree_client subject;
+    face direction;
+    child_index idx;
+
+    flux_interpolation_data()
+      : subject(), direction(), idx()
+    {}
+
+    flux_interpolation_data(flux_interpolation_data const& other)
+      : subject(other.subject), direction(other.direction), idx(other.idx) 
+    {}
+
+    flux_interpolation_data(face d, child_index i)
+      : subject(), direction(d), idx(i)
+    {}
+
+    flux_interpolation_data(octree_client const& s, face d, child_index i)
+      : subject(s), direction(d), idx(i) 
+    {}
+
+    bool operator<(flux_interpolation_data const& rhs) const
+    {
+        return std::make_pair(idx, direction)
+             < std::make_pair(rhs.idx, rhs.direction); 
+    }
+
+    bool operator==(flux_interpolation_data const& rhs) const
+    {
+        return std::make_pair(idx, direction)
+            == std::make_pair(rhs.idx, rhs.direction); 
     }
 };
 
@@ -190,6 +225,10 @@ struct OCTOPUS_EXPORT octree_server
     > children_state_dependencies;
 
     typedef array<
+        hpx::lcos::local::channel<vector3d<state> >, 36
+    > children_flux_dependencies;
+
+    typedef array<
         hpx::lcos::local::channel<void>, 6
     > sibling_sync_dependencies;
 
@@ -198,12 +237,12 @@ struct OCTOPUS_EXPORT octree_server
     /// Bryce's math for the # of communications per step (for TVD RK):
     ///
     ///     * 1 ghost zone communication at the end of each step.
-    ///     * 1 ghost zone communication, 3 child -> parent injections and 1
-    ///       child -> parent injection during each sub step.
+    ///     * 1 ghost zone communication, 1 child -> parent state injection and 1
+    ///       child -> parent flux injection during each sub step.
     ///
-    /// RK1, 2 GZ comms + 3 c->p flux + 1 c->p state = 6 comms
-    /// RK2, 3 GZ comms + 6 c->p flux + 2 c->p state = 11 comms 
-    /// RK3, 4 GZ comms + 9 c->p flux + 3 c->p state = 16 comms 
+    /// RK1, 2 GZ comms + 1 c->p flux + 1 c->p state = 4 comms
+    /// RK2, 3 GZ comms + 2 c->p flux + 2 c->p state = 7 comms 
+    /// RK3, 4 GZ comms + 3 c->p flux + 3 c->p state = 10 comms 
 
     // Queue for incoming ghost zones.
     // NOTE: Elements of this queue should be cleared but not removed until the
@@ -225,7 +264,7 @@ struct OCTOPUS_EXPORT octree_server
     // vector remain the same throughout the entire step. 
     // NOTE: Some of these may be empty; if they are, these indicates that
     // we don't have that child.
-    std::vector<children_state_dependencies> children_flux_deps_;
+    std::vector<children_flux_dependencies> children_flux_deps_;
 
     std::vector<sibling_sync_dependencies> refinement_deps_;
 
@@ -234,8 +273,9 @@ struct OCTOPUS_EXPORT octree_server
     octree_client parent_; 
     array<octree_client, 8> children_;
     array<octree_client, 6> siblings_; // FIXME: Misleading, should be
-                                              // neighbors.
-    std::set<interpolation_data> nephews_;
+                                       // neighbors.
+    std::set<state_interpolation_data> nephews_;
+    std::set<flux_interpolation_data> exterior_nephews_;
     boost::uint64_t level_;
     array<boost::uint64_t, 3> location_; 
 
@@ -313,6 +353,16 @@ struct OCTOPUS_EXPORT octree_server
         OCTOPUS_ASSERT_MSG(0 != level_, "root octree_server has no parent");
         child_index idx(location_[0] % 2, location_[1] % 2, location_[2] % 2);
         return idx; 
+    }
+
+    boost::uint8_t get_flux_index(
+        octopus::axis a
+      , boost::uint8_t l
+      , boost::uint8_t cj
+      , boost::uint8_t ck
+        )
+    {
+        return a + l * 3 + cj * 3 * 3 + ck * 3 * 3 * 2; 
     }
 
     // Preconditions: mtx_ must be locked, siblings_set_ must be less than 6.
@@ -665,10 +715,14 @@ struct OCTOPUS_EXPORT octree_server
     void remove_nephew(
         octree_client const& nephew
       , face f
+      , child_index idx
         )
     {
         mutex_type::scoped_lock l(mtx_);
-        bool erased = nephews_.erase(interpolation_data(nephew.gid_, f)) != 0;
+        state_interpolation_data sid(nephew.gid_, f);
+//        flux_interpolation_data fid(f, invert(f, idx));
+        bool erased = nephews_.erase(sid) != 0;
+//        exterior_nephews_.erase(fid);
         OCTOPUS_ASSERT(erased); 
     }
 
@@ -918,7 +972,7 @@ struct OCTOPUS_EXPORT octree_server
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
       , child_index idx 
-      , vector3d<state> const& s
+      , BOOST_RV_REF(vector3d<state>) s
         )
     { // {{{
         //mutex_type::scoped_lock l(mtx_);
@@ -951,7 +1005,6 @@ struct OCTOPUS_EXPORT octree_server
     // Child -> parent injection of flux.
     void child_to_parent_flux_injection(
         boost::uint64_t phase
-      , axis a
         );
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
@@ -964,15 +1017,15 @@ struct OCTOPUS_EXPORT octree_server
     /// 1.) Send a child -> parent flux injection up to our parent. 
     void child_to_parent_flux_injection_kernel(
         boost::uint64_t phase
-      , axis a
         );
 
     // FIXME: Rvalue reference kung-fo must be applied here.
     /// Callback used to wait for a particular child flux. 
     void add_child_flux(
-        axis a ///< Bound parameter.
-      , child_index idx ///< Bound parameter.
-      , hpx::future<vector3d<state> > state_f
+        boost::uint64_t i0 ///< Bound parameter.
+      , boost::uint8_t cj ///< Bound parameter.
+      , boost::uint8_t ck ///< Bound parameter.
+      , hpx::future<vector3d<state> > flux_f
         );
 
   public:
@@ -981,9 +1034,8 @@ struct OCTOPUS_EXPORT octree_server
     void receive_child_flux(
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
-      , axis a
-      , child_index idx 
-      , vector3d<state> const& s
+      , boost::uint8_t idx 
+      , BOOST_RV_REF(vector3d<state>) s
         )
     { // {{{
         OCTOPUS_ASSERT_MSG(step_ == step,
@@ -991,16 +1043,15 @@ struct OCTOPUS_EXPORT octree_server
 
         OCTOPUS_ASSERT_FMT_MSG(
             phase < children_flux_deps_.size(),
-            "phase + axis (%1%) is greater than the children flux queue "
-            "length (%2%)",
-            (phase + a) % children_flux_deps_.size());
+            "phase (%1) is greater than the children flux queue length (%2%)",
+            phase % children_flux_deps_.size());
 
-        OCTOPUS_ASSERT(boost::uint64_t(idx) < 8);
+        OCTOPUS_ASSERT(idx < 36);
 
         // NOTE (wash): boost::move should be safe here, zone is a temporary,
         // even if we're local to the caller. Plus, ATM set_value requires the
         // value to be moved to it.
-        children_flux_deps_[phase + a](idx).post(s);
+        children_flux_deps_[phase](idx).post(s);
     } // }}}
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
@@ -1008,7 +1059,7 @@ struct OCTOPUS_EXPORT octree_server
                                 receive_child_flux_action);
 
   private:
-    vector3d<state> send_child_flux(axis a);
+    vector3d<state> send_child_flux(face f);
 
   public:
     ///////////////////////////////////////////////////////////////////////////

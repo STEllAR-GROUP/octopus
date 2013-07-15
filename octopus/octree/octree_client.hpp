@@ -28,7 +28,7 @@ struct OCTOPUS_EXPORT oid_type;
 
 struct OCTOPUS_EXPORT octree_server;
 
-struct OCTOPUS_EXPORT interpolation_data;
+struct OCTOPUS_EXPORT state_interpolation_data;
 
 /// The set of types in our type-punning system. We call these types "kinds",
 /// to distinguish them from C++ types.
@@ -90,6 +90,8 @@ typedef hpx::util::function<
         )
 > slice_function; 
 
+typedef array<state, 3> flux_array;
+ 
 // FIXME: Avoid using 'mutable'. 
 // NOTE: This class is NOT thread safe when it is a physical or AMR boundary.
 struct OCTOPUS_EXPORT octree_client
@@ -110,7 +112,7 @@ struct OCTOPUS_EXPORT octree_client
     BOOST_COPYABLE_AND_MOVABLE(octree_client);
 
     friend struct octree_server;
-    friend struct interpolation_data;
+    friend struct state_interpolation_data;
 
     friend class boost::serialization::access;
 
@@ -469,19 +471,22 @@ struct OCTOPUS_EXPORT octree_client
     void remove_nephew(
         octree_client const& nephew
       , face f
+      , child_index idx
         ) const
     {
-        remove_nephew_async(nephew, f).get(); 
+        remove_nephew_async(nephew, f, idx).get(); 
     }
 
     hpx::future<void> remove_nephew_async(
         octree_client const& nephew
       , face f
+      , child_index idx
         ) const;
 
     void remove_nephew_push(
         octree_client const& nephew
       , face f
+      , child_index idx
         ) const;
     // }}}
 
@@ -706,15 +711,13 @@ struct OCTOPUS_EXPORT octree_client
     // {{{ child_to_parent_flux_injection
     void child_to_parent_flux_injection(
         boost::uint64_t phase 
-      , axis a
         ) const
     {
-        child_to_parent_flux_injection_async(phase, a).get();
+        child_to_parent_flux_injection_async(phase).get();
     }
 
     hpx::future<void> child_to_parent_flux_injection_async(
         boost::uint64_t phase 
-      , axis a
         ) const;
     // }}}
 
@@ -723,27 +726,24 @@ struct OCTOPUS_EXPORT octree_client
     void receive_child_flux(
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
-      , axis a
-      , child_index idx 
+      , boost::uint8_t idx 
       , BOOST_RV_REF(vector3d<state>) zone
         ) const
     {
-        receive_child_flux_async(step, phase, a, idx, boost::move(zone)).get();
+        receive_child_flux_async(step, phase, idx, boost::move(zone)).get();
     }
 
     hpx::future<void> receive_child_flux_async(
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
-      , axis a
-      , child_index idx 
+      , boost::uint8_t idx 
       , BOOST_RV_REF(vector3d<state>) zone
         ) const;
 
     void receive_child_flux_push(
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
-      , axis a
-      , child_index idx 
+      , boost::uint8_t idx 
       , BOOST_RV_REF(vector3d<state>) zone
         ) const;
     // }}}
