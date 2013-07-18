@@ -331,6 +331,7 @@ struct initialize : octopus::trivial_serialization
 { // {{{
     void operator()(octopus::octree_server& U) const
     {
+/*
         boost::uint64_t const gnx = octopus::config().grid_node_length;
 
         for (boost::uint64_t i = 0; i < gnx; ++i)
@@ -350,7 +351,7 @@ struct initialize : octopus::trivial_serialization
                     angular_momentum(U(i, j, k)) = 0.0;
                     U(i, j, k)[radial_momentum_idx] = 0.0;
                 }
-/*
+*/
         using std::pow;
         using std::sqrt;
         using std::atan2;
@@ -482,7 +483,6 @@ struct initialize : octopus::trivial_serialization
                 }
             }
         }
-*/
     }
 }; // }}}
 
