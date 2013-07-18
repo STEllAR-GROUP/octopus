@@ -608,6 +608,8 @@ struct enforce_lower_limits : octopus::trivial_serialization
       , octopus::array<double, 3> const& v 
         ) const
     {
+//        OCTOPUS_ASSERT(rho(u) >= 0.0);
+
         rho(u) = (std::max)(rho(u), density_floor()); 
 
         double const internal_energy = total_energy(u) - kinetic_energy(u, v);

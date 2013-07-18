@@ -1022,7 +1022,8 @@ struct OCTOPUS_EXPORT octree_server
     // FIXME: Rvalue reference kung-fo must be applied here.
     /// Callback used to wait for a particular child flux. 
     void add_child_flux(
-        boost::uint64_t i0 ///< Bound parameter.
+        axis a ///< Bound parameter.
+      , boost::uint64_t i0 ///< Bound parameter.
       , boost::uint8_t cj ///< Bound parameter.
       , boost::uint8_t ck ///< Bound parameter.
       , hpx::future<vector3d<state> > flux_f

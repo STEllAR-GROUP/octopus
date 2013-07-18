@@ -58,13 +58,13 @@ debug_serializer::~debug_serializer()
     std::cout << *this;
 }
 
-#define OCTOPUS_DUMP(x)                     \
-    {                                       \
-        octopus::debug_serializer tmp_stm;  \
-        tmp_stm << get_oid() << ": " << x;  \
-    }
+//#define OCTOPUS_DUMP(x)                     \
+//    {                                       \
+//        octopus::debug_serializer tmp_stm;  \
+//        tmp_stm << get_oid() << ": " << x;  \
+//    }
 
-//#define OCTOPUS_DUMP(x)
+#define OCTOPUS_DUMP(x)
 
 ///////////////////////////////////////////////////////////////////////////////
 std::ostream& operator<<(std::ostream& os, oid_type const& id)
@@ -1905,7 +1905,7 @@ void octree_server::child_to_parent_flux_injection(
 void octree_server::child_to_parent_flux_injection_kernel(
     boost::uint64_t phase
     )
-{ 
+{ // {{{ 
     std::vector<hpx::future<void> > dependencies;
     
     bool not_max = false;
@@ -1934,6 +1934,7 @@ void octree_server::child_to_parent_flux_injection_kernel(
 
         OCTOPUS_ASSERT(level_ != config().levels_of_refinement);
 
+        // {{{ X flux
         for (boost::uint64_t l = 0; l < 3; ++l)
         {
             for (boost::uint64_t ck = 0; ck < 2; ++ck)
@@ -1955,30 +1956,12 @@ void octree_server::child_to_parent_flux_injection_kernel(
                         iterator it = exterior_nephews_.find(
                             flux_interpolation_data(XL, kid));
 
-                        std::stringstream ss;
-
-                        ss << "exterior nephews size "
-                           << exterior_nephews_.size()
-                           << "\n";
-
-                        BOOST_FOREACH(flux_interpolation_data const& f, exterior_nephews_)
-                        {
-                            ss << f.subject.get_oid() << ": " << f.direction << " " << f.idx << "\n";  
-                        }
-
-//                        OCTOPUS_DUMP(ss.str());
-
                         if (it != exterior_nephews_.end())
                         {
                             left_child = it->subject; 
-//                            OCTOPUS_DUMP("matched exterior nephews\n");
                         }
 
                         i0 = bw;
-
-//                        if (  right_child != hpx::invalid_id
-//                           && left_child == hpx::invalid_id)
-//                            right_child = hpx::invalid_id;
                     }
 
                     else if (l == 1)
@@ -1994,10 +1977,10 @@ void octree_server::child_to_parent_flux_injection_kernel(
 
                     else if (l == 2)
                     {
+                        kid.set_x(1);
+
                         typedef std::set<flux_interpolation_data>::iterator
                             iterator;
-
-                        kid.set_x(1);
 
                         iterator it = exterior_nephews_.find(
                             flux_interpolation_data(XU, kid));
@@ -2005,18 +1988,11 @@ void octree_server::child_to_parent_flux_injection_kernel(
                         if (it != exterior_nephews_.end())
                         {
                             right_child = it->subject; 
-//                            OCTOPUS_DUMP("matched exterior nephews\n");
                         }
-
-//                        kid.set_x(1);
 
                         left_child = children_[kid];
 
                         i0 = gnx - bw;
-
-//                        if (  left_child != hpx::invalid_id
-//                           && right_child == hpx::invalid_id)
-//                            left_child = hpx::invalid_id;
                     }
 
                     octree_client child;
@@ -2038,7 +2014,7 @@ void octree_server::child_to_parent_flux_injection_kernel(
                         OCTOPUS_DUMP(
                             ( boost::format(
                                 "child_to_parent_flux_injection: "
-                                "waiting for (%1%, %2%, %3%) from %4%, "
+                                "waiting for x flux (%1%, %2%, %3%) from %4%, "
                                 "i0 == %5%\n")
                             % l % cj % ck % child.get_oid() % i0));
 
@@ -2046,18 +2022,199 @@ void octree_server::child_to_parent_flux_injection_kernel(
                         dependencies.push_back(
                             children_flux_deps_[phase](idx).then(
                                 boost::bind(&octree_server::add_child_flux,
-                                    this, i0, cj, ck, _1))); 
+                                    this, x_axis, i0, cj, ck, _1))); 
                     }
                 }
             }
-        }
+        } // }}}
 
-//        for (boost::uint64_t i = 0; i < 8; ++i)
-//            if (children_[i] != hpx::invalid_id)
-//                dependencies.push_back(
-//                    children_flux_deps_[phase](i).then(
-//                        boost::bind(&octree_server::add_child_flux,
-//                            this, child_index(i), _1))); 
+        // {{{ Y flux
+        for (boost::uint64_t l = 0; l < 3; ++l)
+        {
+            for (boost::uint64_t ck = 0; ck < 2; ++ck)
+            {
+                for (boost::uint64_t cj = 0; cj < 2; ++cj)
+                {
+                    octree_client left_child;
+                    octree_client right_child;
+                    child_index kid(cj, 0, ck);
+                    boost::uint64_t i0 = 0;
+
+                    if (l == 0)
+                    {
+                        right_child = children_[kid];
+
+                        typedef std::set<flux_interpolation_data>::iterator
+                            iterator;
+
+                        iterator it = exterior_nephews_.find(
+                            flux_interpolation_data(YL, kid));
+
+                        if (it != exterior_nephews_.end())
+                        {
+                            left_child = it->subject; 
+                        }
+
+                        i0 = bw;
+                    }
+
+                    else if (l == 1)
+                    {
+                        left_child = children_[kid];
+
+                        kid.set_y(1);
+
+                        right_child = children_[kid];
+
+                        i0 = gnx / 2;
+                    }
+
+                    else if (l == 2)
+                    {
+                        kid.set_y(1);
+
+                        typedef std::set<flux_interpolation_data>::iterator
+                            iterator;
+
+                        iterator it = exterior_nephews_.find(
+                            flux_interpolation_data(YU, kid));
+
+                        if (it != exterior_nephews_.end())
+                        {
+                            right_child = it->subject; 
+                        }
+
+                        left_child = children_[kid];
+
+                        i0 = gnx - bw;
+                    }
+
+                    octree_client child;
+
+                    if      ( right_child == hpx::invalid_id
+                           && left_child != hpx::invalid_id)
+                    {
+                        child = left_child;
+                    }
+
+                    else if ( left_child == hpx::invalid_id
+                           && right_child != hpx::invalid_id)
+                    {
+                        child = right_child;
+                    }
+
+                    if (child != hpx::invalid_id)
+                    {
+                        OCTOPUS_DUMP(
+                            ( boost::format(
+                                "child_to_parent_flux_injection: "
+                                "waiting for y flux (%1%, %2%, %3%) from %4%, "
+                                "i0 == %5%\n")
+                            % cj % l % ck % child.get_oid() % i0));
+
+                        boost::uint64_t idx = get_flux_index(y_axis, l, cj, ck);
+                        dependencies.push_back(
+                            children_flux_deps_[phase](idx).then(
+                                boost::bind(&octree_server::add_child_flux,
+                                    this, y_axis, i0, cj, ck, _1))); 
+                    }
+                }
+            }
+        } // }}}
+
+        // {{{ Z flux
+        for (boost::uint64_t l = 0; l < 3; ++l)
+        {
+            for (boost::uint64_t ck = 0; ck < 2; ++ck)
+            {
+                for (boost::uint64_t cj = 0; cj < 2; ++cj)
+                {
+                    octree_client left_child;
+                    octree_client right_child;
+                    child_index kid(cj, ck, 0);
+                    boost::uint64_t i0 = 0;
+
+                    if (l == 0)
+                    {
+                        right_child = children_[kid];
+
+                        typedef std::set<flux_interpolation_data>::iterator
+                            iterator;
+
+                        iterator it = exterior_nephews_.find(
+                            flux_interpolation_data(ZL, kid));
+
+                        if (it != exterior_nephews_.end())
+                        {
+                            left_child = it->subject; 
+                        }
+
+                        i0 = bw;
+                    }
+
+                    else if (l == 1)
+                    {
+                        left_child = children_[kid];
+
+                        kid.set_z(1);
+
+                        right_child = children_[kid];
+
+                        i0 = gnx / 2;
+                    }
+
+                    else if (l == 2)
+                    {
+                        kid.set_z(1);
+
+                        typedef std::set<flux_interpolation_data>::iterator
+                            iterator;
+
+                        iterator it = exterior_nephews_.find(
+                            flux_interpolation_data(ZU, kid));
+
+                        if (it != exterior_nephews_.end())
+                        {
+                            right_child = it->subject; 
+                        }
+
+                        left_child = children_[kid];
+
+                        i0 = gnx - bw;
+                    }
+
+                    octree_client child;
+
+                    if      ( right_child == hpx::invalid_id
+                           && left_child != hpx::invalid_id)
+                    {
+                        child = left_child;
+                    }
+
+                    else if ( left_child == hpx::invalid_id
+                           && right_child != hpx::invalid_id)
+                    {
+                        child = right_child;
+                    }
+
+                    if (child != hpx::invalid_id)
+                    {
+                        OCTOPUS_DUMP(
+                            ( boost::format(
+                                "child_to_parent_flux_injection: "
+                                "waiting for z flux (%1%, %2%, %3%) from %4%, "
+                                "i0 == %5%\n")
+                            % cj % ck % l % child.get_oid() % i0));
+
+                        boost::uint64_t idx = get_flux_index(z_axis, l, cj, ck);
+                        dependencies.push_back(
+                            children_flux_deps_[phase](idx).then(
+                                boost::bind(&octree_server::add_child_flux,
+                                    this, z_axis, i0, cj, ck, _1))); 
+                    }
+                }
+            }
+        } // }}}
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -2067,20 +2224,17 @@ void octree_server::child_to_parent_flux_injection_kernel(
 
     //////////////////////////////////////////////////////////////////////////
     // Send out flux adjustments. 
-    if (parent_ != hpx::invalid_id)
-    {
-        OCTOPUS_ASSERT(level_ != 0);
+    if (parent_ == hpx::invalid_id)
+        return;
 
-//        parent_.receive_child_flux(step_, phase,
-//            get_child_index(), send_child_flux());
+    OCTOPUS_ASSERT(level_ != 0);
 
+    { // {{{ X flux
         boost::uint8_t cj = get_child_index().y();
         boost::uint8_t ck = get_child_index().z();
 
         if (siblings_[XL].kind() == amr_boundary)
         {
-            OCTOPUS_DUMP("child_to_parent_flux_injection: has XL amr boundary\n");
-
             boost::uint8_t l;
 
             if (get_child_index().x() == 0)
@@ -2098,27 +2252,7 @@ void octree_server::child_to_parent_flux_injection_kernel(
                 % siblings_[XL].get_oid()));
             siblings_[XL].receive_child_flux(step_, phase,
                 get_flux_index(x_axis, l, cj, ck), send_child_flux(XL));
-//                get_flux_index(x_axis, l, cj, ck), send_child_flux(XU));
 
-/*
-            if (get_child_index().x() == 1)
-            {
-                OCTOPUS_DUMP(
-                    ( boost::format(
-                        "child_to_parent_flux_injection: "
-                        "parent boundary XL x == 1, "
-                        "sending (%1%, %2%, %3%) to %4%\n")
-                    % 2
-                    % boost::uint16_t(cj)
-                    % boost::uint16_t(ck)
-                    % parent_.get_oid()));
-                parent_.receive_child_flux(step_, phase,
-//                    get_flux_index(x_axis, 2, cj, ck), send_child_flux(XU));
-                    get_flux_index(x_axis, 2, cj, ck), send_child_flux(XL));
-            }
-
-            else // (get_child_index().x() == 0)
-*/
             if (get_child_index().x() == 0)
             {
                 OCTOPUS_DUMP(
@@ -2132,7 +2266,6 @@ void octree_server::child_to_parent_flux_injection_kernel(
                     % parent_.get_oid()));
                 parent_.receive_child_flux(step_, phase,
                     get_flux_index(x_axis, 0, cj, ck), send_child_flux(XU));
-//                    get_flux_index(x_axis, 0, cj, ck), send_child_flux(XL));
             }
         }
 
@@ -2178,27 +2311,7 @@ void octree_server::child_to_parent_flux_injection_kernel(
                 % siblings_[XU].get_oid()));
             siblings_[XU].receive_child_flux(step_, phase,
                 get_flux_index(x_axis, l, cj, ck), send_child_flux(XU));
-//                get_flux_index(x_axis, l, cj, ck), send_child_flux(XL));
 
-/*
-            if (get_child_index().x() == 0)
-            {
-                OCTOPUS_DUMP(
-                    ( boost::format(
-                        "child_to_parent_flux_injection: "
-                        "parent boundary XU x == 0, "
-                        "sending (%1%, %2%, %3%) to %4%\n")
-                    % 0
-                    % boost::uint16_t(cj)
-                    % boost::uint16_t(ck)
-                    % parent_.get_oid()));
-                parent_.receive_child_flux(step_, phase,
-//                    get_flux_index(x_axis, 0, cj, ck), send_child_flux(XL));
-                    get_flux_index(x_axis, 0, cj, ck), send_child_flux(XU));
-            }
-
-            else // (get_child_index().x() == 1)
-*/
             if (get_child_index().x() == 1)
             {
                 OCTOPUS_DUMP(
@@ -2212,7 +2325,6 @@ void octree_server::child_to_parent_flux_injection_kernel(
                     % parent_.get_oid()));
                 parent_.receive_child_flux(step_, phase,
                     get_flux_index(x_axis, 2, cj, ck), send_child_flux(XL));
-//                    get_flux_index(x_axis, 2, cj, ck), send_child_flux(XU));
             }
         }
 
@@ -2236,12 +2348,251 @@ void octree_server::child_to_parent_flux_injection_kernel(
             parent_.receive_child_flux(step_, phase,
                 get_flux_index(x_axis, l, cj, ck), send_child_flux(XL));
         }
-    }
-} 
+    } // }}}
+
+    { // {{{ Y flux
+        boost::uint8_t cj = get_child_index().x();
+        boost::uint8_t ck = get_child_index().z();
+
+        if (siblings_[YL].kind() == amr_boundary)
+        {
+            boost::uint8_t l;
+
+            if (get_child_index().y() == 0)
+                l = 2;
+            else
+                l = 1; 
+
+            OCTOPUS_DUMP(
+                ( boost::format(
+                    "child_to_parent_flux_injection: "
+                    "amr boundary YL, sending (%1%, %2%, %3%) to %4%\n")
+                % boost::uint16_t(cj)
+                % boost::uint16_t(l)
+                % boost::uint16_t(ck)
+                % siblings_[YL].get_oid()));
+            siblings_[YL].receive_child_flux(step_, phase,
+                get_flux_index(y_axis, l, cj, ck), send_child_flux(YL));
+
+            if (get_child_index().y() == 0)
+            {
+                OCTOPUS_DUMP(
+                    ( boost::format(
+                        "child_to_parent_flux_injection: "
+                        "parent boundary YL y == 0, "
+                        "sending (%1%, %2%, %3%) to %4%\n")
+                    % boost::uint16_t(cj)
+                    % 0
+                    % boost::uint16_t(ck)
+                    % parent_.get_oid()));
+                parent_.receive_child_flux(step_, phase,
+                    get_flux_index(y_axis, 0, cj, ck), send_child_flux(YU));
+            }
+        }
+
+        else if (siblings_[YL].kind() == physical_boundary)
+        {
+            boost::uint8_t l;
+
+            if (get_child_index().y() == 1)
+                l = 1; 
+            else
+                l = 0;
+
+            OCTOPUS_DUMP(
+                ( boost::format(
+                    "child_to_parent_flux_injection: "
+                    "physical boundary YL, sending (%1%, %2%, %3%) to %4%\n")
+                % boost::uint16_t(cj)
+                % boost::uint16_t(l)
+                % boost::uint16_t(ck)
+                % parent_.get_oid()));
+            parent_.receive_child_flux(step_, phase,
+                get_flux_index(y_axis, l, cj, ck), send_child_flux(YU));
+        }
+
+        if (siblings_[YU].kind() == amr_boundary)
+        {
+            boost::uint8_t l;
+
+            if (get_child_index().y() == 1)
+                l = 0;
+            else
+                l = 1; 
+
+            OCTOPUS_DUMP(
+                ( boost::format(
+                    "child_to_parent_flux_injection: "
+                    "amr boundary YU, sending (%1%, %2%, %3%) to %4%\n")
+                % boost::uint16_t(cj)
+                % boost::uint16_t(l)
+                % boost::uint16_t(ck)
+                % siblings_[YU].get_oid()));
+            siblings_[YU].receive_child_flux(step_, phase,
+                get_flux_index(y_axis, l, cj, ck), send_child_flux(YU));
+
+            if (get_child_index().y() == 1)
+            {
+                OCTOPUS_DUMP(
+                    ( boost::format(
+                        "child_to_parent_flux_injection: "
+                        "parent boundary YU y == 1, "
+                        "sending (%1%, %2%, %3%) to %4%\n")
+                    % boost::uint16_t(cj)
+                    % 2
+                    % boost::uint16_t(ck)
+                    % parent_.get_oid()));
+                parent_.receive_child_flux(step_, phase,
+                    get_flux_index(y_axis, 2, cj, ck), send_child_flux(YL));
+            }
+        }
+
+        else if (siblings_[YU].kind() == physical_boundary)
+        {
+            boost::uint8_t l;
+
+            if (get_child_index().y() == 0)
+                l = 1; 
+            else
+                l = 2;
+
+            OCTOPUS_DUMP(
+                ( boost::format(
+                    "child_to_parent_flux_injection: "
+                    "physical boundary YU, sending (%1%, %2%, %3%) to %4%\n")
+                % boost::uint16_t(cj)
+                % boost::uint16_t(l)
+                % boost::uint16_t(ck)
+                % parent_.get_oid()));
+            parent_.receive_child_flux(step_, phase,
+                get_flux_index(y_axis, l, cj, ck), send_child_flux(YL));
+        }
+    } // }}}
+
+    { // {{{ Z flux
+        boost::uint8_t cj = get_child_index().x();
+        boost::uint8_t ck = get_child_index().y();
+
+        if (siblings_[ZL].kind() == amr_boundary)
+        {
+            boost::uint8_t l;
+
+            if (get_child_index().z() == 0)
+                l = 2;
+            else
+                l = 1; 
+
+            OCTOPUS_DUMP(
+                ( boost::format(
+                    "child_to_parent_flux_injection: "
+                    "amr boundary ZL, sending (%1%, %2%, %3%) to %4%\n")
+                % boost::uint16_t(cj)
+                % boost::uint16_t(ck)
+                % boost::uint16_t(l)
+                % siblings_[ZL].get_oid()));
+            siblings_[ZL].receive_child_flux(step_, phase,
+                get_flux_index(z_axis, l, cj, ck), send_child_flux(ZL));
+
+            if (get_child_index().z() == 0)
+            {
+                OCTOPUS_DUMP(
+                    ( boost::format(
+                        "child_to_parent_flux_injection: "
+                        "parent boundary ZL z == 0, "
+                        "sending (%1%, %2%, %3%) to %4%\n")
+                    % boost::uint16_t(cj)
+                    % boost::uint16_t(ck)
+                    % 0
+                    % parent_.get_oid()));
+                parent_.receive_child_flux(step_, phase,
+                    get_flux_index(z_axis, 0, cj, ck), send_child_flux(ZU));
+            }
+        }
+
+        else if (siblings_[ZL].kind() == physical_boundary)
+        {
+            boost::uint8_t l;
+
+            if (get_child_index().z() == 1)
+                l = 1; 
+            else
+                l = 0;
+
+            OCTOPUS_DUMP(
+                ( boost::format(
+                    "child_to_parent_flux_injection: "
+                    "physical boundary ZL, sending (%1%, %2%, %3%) to %4%\n")
+                % boost::uint16_t(cj)
+                % boost::uint16_t(ck)
+                % boost::uint16_t(l)
+                % parent_.get_oid()));
+            parent_.receive_child_flux(step_, phase,
+                get_flux_index(z_axis, l, cj, ck), send_child_flux(ZU));
+        }
+
+        if (siblings_[ZU].kind() == amr_boundary)
+        {
+            boost::uint8_t l;
+
+            if (get_child_index().z() == 1)
+                l = 0;
+            else
+                l = 1; 
+
+            OCTOPUS_DUMP(
+                ( boost::format(
+                    "child_to_parent_flux_injection: "
+                    "amr boundary ZU, sending (%1%, %2%, %3%) to %4%\n")
+                % boost::uint16_t(cj)
+                % boost::uint16_t(ck)
+                % boost::uint16_t(l)
+                % siblings_[ZU].get_oid()));
+            siblings_[ZU].receive_child_flux(step_, phase,
+                get_flux_index(z_axis, l, cj, ck), send_child_flux(ZU));
+
+            if (get_child_index().z() == 1)
+            {
+                OCTOPUS_DUMP(
+                    ( boost::format(
+                        "child_to_parent_flux_injection: "
+                        "parent boundary ZU z == 1, "
+                        "sending (%1%, %2%, %3%) to %4%\n")
+                    % boost::uint16_t(cj)
+                    % boost::uint16_t(ck)
+                    % 2
+                    % parent_.get_oid()));
+                parent_.receive_child_flux(step_, phase,
+                    get_flux_index(z_axis, 2, cj, ck), send_child_flux(ZL));
+            }
+        }
+
+        else if (siblings_[ZU].kind() == physical_boundary)
+        {
+            boost::uint8_t l;
+
+            if (get_child_index().z() == 0)
+                l = 1; 
+            else
+                l = 2;
+
+            OCTOPUS_DUMP(
+                ( boost::format(
+                    "child_to_parent_flux_injection: "
+                    "physical boundary ZU, sending (%1%, %2%, %3%) to %4%\n")
+                % boost::uint16_t(cj)
+                % boost::uint16_t(ck)
+                % boost::uint16_t(l)
+                % parent_.get_oid()));
+            parent_.receive_child_flux(step_, phase,
+                get_flux_index(z_axis, l, cj, ck), send_child_flux(ZL));
+        }
+    } // }}}
+} // }}}
 
 // IMPLEMENT
 void octree_server::add_child_flux(
-    boost::uint64_t i0 ///< Bound parameter.
+    axis a ///< Bound parameter.
+  , boost::uint64_t i0 ///< Bound parameter.
   , boost::uint8_t cj ///< Bound parameter.
   , boost::uint8_t ck ///< Bound parameter.
   , hpx::future<vector3d<state> > flux_f
@@ -2250,23 +2601,79 @@ void octree_server::add_child_flux(
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
 
-    vector3d<state> flux(flux_f.move());
-
-    OCTOPUS_ASSERT(flux.x_length() == 1);
-    OCTOPUS_ASSERT(flux.y_length() == ((gnx - 2 * bw) / 2));
-    OCTOPUS_ASSERT(flux.z_length() == ((gnx - 2 * bw) / 2));
-
-    for (boost::uint64_t j = 0; j < ((gnx - 2 * bw) / 2); ++j)
-        for (boost::uint64_t k = 0; k < ((gnx - 2 * bw) / 2); ++k)
+    switch (a)
+    {
+        case x_axis:
         {
-            // Adjusted indices (for destination).
-            boost::uint64_t const j0
-                = j + bw + cj * ((gnx / 2) - bw);
-            boost::uint64_t const k0
-                = k + bw + ck * ((gnx / 2) - bw);
+            vector3d<state> flux(flux_f.move());
+        
+            OCTOPUS_ASSERT(flux.x_length() == 1);
+            OCTOPUS_ASSERT(flux.y_length() == ((gnx - 2 * bw) / 2));
+            OCTOPUS_ASSERT(flux.z_length() == ((gnx - 2 * bw) / 2));
+        
+            for (boost::uint64_t j = 0; j < ((gnx - 2 * bw) / 2); ++j)
+                for (boost::uint64_t k = 0; k < ((gnx - 2 * bw) / 2); ++k)
+                {
+                    // Adjusted indices (for destination).
+                    boost::uint64_t const j0
+                        = j + bw + cj * ((gnx / 2) - bw);
+                    boost::uint64_t const k0
+                        = k + bw + ck * ((gnx / 2) - bw);
+        
+                    FX_(i0, j0, k0) = flux(0, j, k); 
+                }
 
-            FX_(i0, j0, k0) = flux(0, j, k); 
+            break;
         }
+
+        case y_axis:
+        {
+            vector3d<state> flux(flux_f.move());
+        
+            OCTOPUS_ASSERT(flux.x_length() == ((gnx - 2 * bw) / 2));
+            OCTOPUS_ASSERT(flux.y_length() == 1);
+            OCTOPUS_ASSERT(flux.z_length() == ((gnx - 2 * bw) / 2));
+        
+            for (boost::uint64_t j = 0; j < ((gnx - 2 * bw) / 2); ++j)
+                for (boost::uint64_t k = 0; k < ((gnx - 2 * bw) / 2); ++k)
+                {
+                    // Adjusted indices (for destination).
+                    boost::uint64_t const j0
+                        = j + bw + cj * ((gnx / 2) - bw);
+                    boost::uint64_t const k0
+                        = k + bw + ck * ((gnx / 2) - bw);
+        
+                    FY_(j0, i0, k0) = flux(j, 0, k); 
+                }
+
+            break;
+        }
+
+        case z_axis:
+        {
+            vector3d<state> flux(flux_f.move());
+        
+            OCTOPUS_ASSERT(flux.x_length() == ((gnx - 2 * bw) / 2));
+            OCTOPUS_ASSERT(flux.y_length() == ((gnx - 2 * bw) / 2));
+            OCTOPUS_ASSERT(flux.z_length() == 1);
+        
+            for (boost::uint64_t j = 0; j < ((gnx - 2 * bw) / 2); ++j)
+                for (boost::uint64_t k = 0; k < ((gnx - 2 * bw) / 2); ++k)
+                {
+                    // Adjusted indices (for destination).
+                    boost::uint64_t const j0
+                        = j + bw + cj * ((gnx / 2) - bw);
+                    boost::uint64_t const k0
+                        = k + bw + ck * ((gnx / 2) - bw);
+        
+                    FZ_(j0, k0, i0) = flux(j, k, 0); 
+                }
+
+            break;
+        }
+
+        default: { OCTOPUS_ASSERT(false); break; }
+    };
 } 
 
 // IMPLEMENT
@@ -2274,13 +2681,6 @@ vector3d<state> octree_server::send_child_flux(face f)
 { 
     boost::uint64_t const bw = science().ghost_zone_width;
     boost::uint64_t const gnx = config().grid_node_length;
-
-    vector3d<state> flux
-        (
-        1 
-      , (gnx - 2 * bw) / 2
-      , (gnx - 2 * bw) / 2
-        ); 
 
     child_index c = get_child_index();
 
@@ -2295,6 +2695,20 @@ vector3d<state> octree_server::send_child_flux(face f)
             i = gnx - bw; 
             break;
 
+        case YL:
+            i = bw;
+            break;
+        case YU:
+            i = gnx - bw; 
+            break;
+
+        case ZL:
+            i = bw;
+            break;
+        case ZU:
+            i = gnx - bw; 
+            break;
+
         default: break; 
     };
 
@@ -2303,6 +2717,13 @@ vector3d<state> octree_server::send_child_flux(face f)
         case XL:
         case XU:
         {
+            vector3d<state> flux
+                (
+                1 
+              , (gnx - 2 * bw) / 2
+              , (gnx - 2 * bw) / 2
+                ); 
+
             for (boost::uint64_t j = bw; j < (gnx - bw); j += 2)
                 for (boost::uint64_t k = bw; k < (gnx - bw); k += 2)
                 {
@@ -2314,6 +2735,58 @@ vector3d<state> octree_server::send_child_flux(face f)
                                       + FX_(i, j + 1, k + 0)
                                       + FX_(i, j + 0, k + 1)
                                       + FX_(i, j + 1, k + 1)) * 0.25;
+                }
+
+            return flux; 
+        }
+
+        case YL:
+        case YU:
+        {
+            vector3d<state> flux
+                (
+                (gnx - 2 * bw) / 2
+              , 1 
+              , (gnx - 2 * bw) / 2
+                ); 
+
+            for (boost::uint64_t j = bw; j < (gnx - bw); j += 2)
+                for (boost::uint64_t k = bw; k < (gnx - bw); k += 2)
+                {
+                    // Adjusted indices (for output flux).
+                    boost::uint64_t const jj = ((j + bw) / 2) - bw; 
+                    boost::uint64_t const kk = ((k + bw) / 2) - bw; 
+
+                    flux(jj, 0, kk) = ( FY_(j + 0, i, k + 0)
+                                      + FY_(j + 1, i, k + 0)
+                                      + FY_(j + 0, i, k + 1)
+                                      + FY_(j + 1, i, k + 1)) * 0.25;
+                }
+
+            return flux; 
+        }
+
+        case ZL:
+        case ZU:
+        {
+            vector3d<state> flux
+                (
+                (gnx - 2 * bw) / 2
+              , (gnx - 2 * bw) / 2
+              , 1 
+                ); 
+
+            for (boost::uint64_t j = bw; j < (gnx - bw); j += 2)
+                for (boost::uint64_t k = bw; k < (gnx - bw); k += 2)
+                {
+                    // Adjusted indices (for output flux).
+                    boost::uint64_t const jj = ((j + bw) / 2) - bw; 
+                    boost::uint64_t const kk = ((k + bw) / 2) - bw; 
+
+                    flux(jj, kk, 0) = ( FZ_(j + 0, k + 0, i)
+                                      + FZ_(j + 1, k + 0, i)
+                                      + FZ_(j + 0, k + 1, i)
+                                      + FZ_(j + 1, k + 1, i)) * 0.25;
                 }
 
             return flux; 
