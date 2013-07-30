@@ -91,7 +91,7 @@ inline T octree_server::reduce_zonal(
                   , this, boost::ref(result), reducer, _1))); 
         }
 
-    boost::uint64_t bw = science().ghost_zone_width;
+    boost::uint64_t bw = science().ghost_zone_length;
     boost::uint64_t gnx = config().grid_node_length;
 
     T local_result = initial;

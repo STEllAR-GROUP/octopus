@@ -42,7 +42,7 @@ struct elementwise_refinement_criteria_base
 
     bool refine(octree_server& e, child_index idx)
     {
-        boost::uint64_t const bw = science().ghost_zone_width;
+        boost::uint64_t const bw = science().ghost_zone_length;
         boost::uint64_t const gnx = config().grid_node_length;
     
         for (boost::uint64_t i = bw; i < (gnx - bw); i += 2)
@@ -68,7 +68,7 @@ struct elementwise_refinement_criteria_base
 
     bool unrefine(octree_server& e, child_index idx)
     {
-        boost::uint64_t const bw = science().ghost_zone_width;
+        boost::uint64_t const bw = science().ghost_zone_length;
         boost::uint64_t const gnx = config().grid_node_length;
 
         for (boost::uint64_t i = bw; i < (gnx - bw); i += 2)

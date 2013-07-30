@@ -288,7 +288,7 @@ void perform_write(
   , boost::uint64_t variable_index
     )
 { // {{{
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
     boost::uint64_t level = e.get_level();

@@ -692,7 +692,7 @@ struct cfl_treewise_compute_dt : octopus::trivial_serialization
     { // {{{ 
         double dt_inv = 0.0; 
 
-        boost::uint64_t const bw = octopus::science().ghost_zone_width;
+        boost::uint64_t const bw = octopus::science().ghost_zone_length;
         boost::uint64_t const gnx = octopus::config().grid_node_length;
     
         std::vector<octopus::state> q0(gnx, octopus::state());
@@ -737,7 +737,7 @@ struct cfl_treewise_compute_dt : octopus::trivial_serialization
     { // {{{ 
         double dt_inv = 0.0; 
 
-        boost::uint64_t const bw = octopus::science().ghost_zone_width;
+        boost::uint64_t const bw = octopus::science().ghost_zone_length;
         boost::uint64_t const gnx = octopus::config().grid_node_length;
     
         std::vector<octopus::state> q0(gnx, octopus::state());
@@ -782,7 +782,7 @@ struct cfl_treewise_compute_dt : octopus::trivial_serialization
     { // {{{ 
         double dt_inv = 0.0; 
 
-        boost::uint64_t const bw = octopus::science().ghost_zone_width;
+        boost::uint64_t const bw = octopus::science().ghost_zone_length;
         boost::uint64_t const gnx = octopus::config().grid_node_length;
     
         std::vector<octopus::state> q0(gnx, octopus::state());

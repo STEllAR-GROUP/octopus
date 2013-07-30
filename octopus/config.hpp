@@ -45,6 +45,10 @@
     #define OCTOPUS_ENABLE_VERIFICATION 1
 #endif
 
+#if !defined(OCTOPUS_STATE_SIZE)
+    #define OCTOPUS_STATE_SIZE 8
+#endif
+
 #if BOOST_VERSION < 105300
     #if defined(BOOST_NO_RVALUE_REFERENCES)
         #define BOOST_COPY_ASSIGN_REF_3_TEMPL_ARGS \

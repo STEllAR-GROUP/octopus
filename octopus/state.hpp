@@ -13,7 +13,7 @@
 namespace octopus
 {
 
-typedef array<double, 8> state;
+typedef array<double, OCTOPUS_STATE_SIZE> state;
 
 }
 

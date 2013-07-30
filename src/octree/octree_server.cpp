@@ -84,7 +84,7 @@ void octree_server::parent_to_child_injection(
     vector3d<state> const& parent_U 
     )
 { // {{{
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
     
     indexer2d<2> const indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
@@ -266,7 +266,7 @@ octree_server::octree_server(
 // written to.
 double octree_server::x_face(boost::uint64_t i) const
 { // {{{
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     double const grid_dim = config().spatial_domain;
 
     return double(offset_[0] + i) * dx_ - grid_dim - bw * dx0_ - origin_[0];
@@ -276,7 +276,7 @@ double octree_server::x_face(boost::uint64_t i) const
 // written to.
 double octree_server::y_face(boost::uint64_t i) const
 { // {{{
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     double const grid_dim = config().spatial_domain;
 
     return double(offset_[1] + i) * dx_ - grid_dim - bw * dx0_ - origin_[1];
@@ -286,7 +286,7 @@ double octree_server::y_face(boost::uint64_t i) const
 // written to.
 double octree_server::z_face(boost::uint64_t i) const
 { // {{{
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     double const grid_dim = config().spatial_domain;
 
     if (config().reflect_on_z)
@@ -486,7 +486,7 @@ void octree_server::create_child(
 
     octree_init_data kid_init;
 
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
     kid_init.parent   = reference_from_this(); 
@@ -753,7 +753,7 @@ void octree_server::add_ghost_zone(
   , BOOST_RV_REF(vector3d<state>) zone
     )
 { // {{{
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
     // The index of the futures in the vector is the face.
@@ -927,7 +927,7 @@ vector3d<state> octree_server::send_ghost_zone(
     face f ///< Our direction, relative to the caller.
     )
 { // {{{
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
     switch (f)
@@ -1125,7 +1125,7 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
   , array<boost::int64_t, 3> amr_offset
     ) 
 { // {{{
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
     vector3d<state> output; 
@@ -1464,7 +1464,7 @@ array<boost::uint64_t, 3> map_location(
   , boost::uint64_t k
     )
 { // {{{
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
     bool const reflect_on_z = config().reflect_on_z;
 
@@ -1509,7 +1509,7 @@ void octree_server::map_ghost_zone(
     face f ///< Our direction, relative to the caller.
     )
 { // {{{ 
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
     switch (f)
@@ -1805,7 +1805,7 @@ void octree_server::add_child_state(
   , hpx::future<vector3d<state> > state_f
     )
 { // {{{
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
     vector3d<state> state(state_f.move());
@@ -1832,7 +1832,7 @@ void octree_server::add_child_state(
 
 vector3d<state> octree_server::send_child_state()
 { // {{{
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
     vector3d<state> state
@@ -1929,7 +1929,7 @@ void octree_server::child_to_parent_flux_injection_kernel(
 
     if (not_max)
     {
-        boost::uint64_t const bw = science().ghost_zone_width;
+        boost::uint64_t const bw = science().ghost_zone_length;
         boost::uint64_t const gnx = config().grid_node_length;
 
         OCTOPUS_ASSERT(level_ != config().levels_of_refinement);
@@ -2598,7 +2598,7 @@ void octree_server::add_child_flux(
   , hpx::future<vector3d<state> > flux_f
     )
 { 
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
     switch (a)
@@ -2679,7 +2679,7 @@ void octree_server::add_child_flux(
 // IMPLEMENT
 vector3d<state> octree_server::send_child_flux(face f)
 { 
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
     child_index c = get_child_index();
@@ -2913,7 +2913,7 @@ void octree_server::sub_step_kernel(
 
 void octree_server::add_differentials_kernel(double dt, double beta)
 { // {{{
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
     indexer2d<1> const indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
@@ -2981,7 +2981,7 @@ void octree_server::compute_flux_kernel(boost::uint64_t phase)
 
 void octree_server::compute_x_flux_kernel()
 { // {{{ 
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
     std::vector<state> q0(gnx, state());
@@ -3033,7 +3033,7 @@ void octree_server::compute_x_flux_kernel()
 
 void octree_server::compute_y_flux_kernel()
 { // {{{ 
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
     std::vector<state> q0(gnx, state());
@@ -3085,7 +3085,7 @@ void octree_server::compute_y_flux_kernel()
 
 void octree_server::compute_z_flux_kernel()
 { // {{{ 
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
     std::vector<state> q0(gnx, state());
@@ -3138,7 +3138,7 @@ void octree_server::compute_z_flux_kernel()
 
 void octree_server::sum_differentials_kernel()
 { // {{{ 
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
     double const dx_inv = 1.0 / dx_;
@@ -3461,7 +3461,7 @@ void octree_server::link_child(
 
     octree_init_data kid_init;
 
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
     kid_init.parent   = reference_from_this(); 
@@ -3872,7 +3872,7 @@ void octree_server::slice(slice_function const& f, axis a, double eps)
 
 void octree_server::slice_x_kernel(slice_function const& f, double eps)
 { // {{{
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
     // Make sure we are within epsilon of the equatorial plane.
@@ -3898,7 +3898,7 @@ void octree_server::slice_x_kernel(slice_function const& f, double eps)
 
 void octree_server::slice_y_kernel(slice_function const& f, double eps)
 { // {{{
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
     // Make sure we are within epsilon of the equatorial plane.
@@ -3924,7 +3924,7 @@ void octree_server::slice_y_kernel(slice_function const& f, double eps)
 
 void octree_server::slice_z_kernel(slice_function const& f, double eps)
 { // {{{
-    boost::uint64_t const bw = science().ghost_zone_width;
+    boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
     // Make sure we are within epsilon of the equatorial plane.

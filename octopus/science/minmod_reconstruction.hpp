@@ -23,7 +23,7 @@ struct OCTOPUS_EXPORT minmod_reconstruction
   public:
     minmod_reconstruction(double theta = 1.3) : theta_(theta) {}
 
-    enum { ghost_zone_width = 2 };
+    enum { ghost_zone_length = 2 };
 
     void operator()(
         std::vector<state> const& q0

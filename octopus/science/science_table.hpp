@@ -54,7 +54,7 @@ struct science_table
             )
     > reconstruct; 
 
-    boost::uint64_t ghost_zone_width; /// The width of ghost zones on all sides,
+    boost::uint64_t ghost_zone_length; /// The width of ghost zones on all sides,
                                       /// measured in number of grid points. 
 
     hpx::util::function<
@@ -147,7 +147,7 @@ struct science_table
     science_table()
      : physical_boundaries()
      , reconstruct()
-     , ghost_zone_width(0)
+     , ghost_zone_length(0)
      , initialize()
      , enforce_outflow()
      , enforce_limits()
@@ -169,7 +169,7 @@ struct science_table
     {
         ar & physical_boundaries;
         ar & reconstruct;
-        ar & ghost_zone_width;
+        ar & ghost_zone_length;
 
         ar & initialize;
 

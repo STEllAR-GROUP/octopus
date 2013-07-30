@@ -18,7 +18,7 @@ namespace octopus
 
 struct OCTOPUS_EXPORT ppm_reconstruction : trivial_serialization
 {
-    enum { ghost_zone_width = 3 };
+    enum { ghost_zone_length = 3 };
 
     void operator()(
         std::vector<state> const& q0

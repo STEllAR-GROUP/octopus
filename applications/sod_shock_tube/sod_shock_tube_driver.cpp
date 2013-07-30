@@ -280,7 +280,7 @@ struct cfl_treewise_compute_timestep : octopus::trivial_serialization
         double dt_limit = 100.0;
 
         boost::uint64_t const gnx = octopus::config().grid_node_length;
-        boost::uint64_t const bw = octopus::science().ghost_zone_width;
+        boost::uint64_t const bw = octopus::science().ghost_zone_length;
 
         for (boost::uint64_t i = bw; i < (gnx-bw); ++i)
         {

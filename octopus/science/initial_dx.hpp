@@ -21,7 +21,7 @@ struct initial_dx : trivial_serialization
     {
         double const grid_dim = octopus::config().spatial_domain;
         boost::uint64_t const gnx = octopus::config().grid_node_length;
-        boost::uint64_t const bw = octopus::science().ghost_zone_width; 
+        boost::uint64_t const bw = octopus::science().ghost_zone_length; 
 
         return (2.0 * grid_dim / double(gnx - 2 * bw));
     }

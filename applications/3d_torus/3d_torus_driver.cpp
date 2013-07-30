@@ -141,6 +141,8 @@ struct stepper
 
     void operator()(octopus::octree_server& root) const
     {
+        hpx::util::high_resolution_timer refine_clock;
+
         boost::uint64_t refine_passes = 0;
 
         if (octopus::config().levels_of_refinement != 0)
@@ -169,8 +171,11 @@ struct stepper
 //        #endif
 
 //        root.communicate_ghost_zones(0);
-        root.output(0.0);
+
+        double refine_walltime = refine_clock.elapsed();
  
+        root.output(0.0);
+
         std::ofstream dt_file("dt.csv");
         std::ofstream speed_file("speed.csv");
  
@@ -182,8 +187,8 @@ struct stepper
         ///////////////////////////////////////////////////////////////////////
         // Crude, temporary stepper.
     
-//        root.post_dt(root.apply_leaf(octopus::science().initial_dt));
-        root.post_dt(initial_cfl_factor*0.001);
+        root.post_dt(root.apply_leaf(octopus::science().initial_dt));
+//        root.post_dt(initial_cfl_factor*0.001);
         double next_output_time = octopus::config().output_frequency * period_;
 
         hpx::reset_active_counters();
@@ -220,10 +225,10 @@ struct stepper
             }
   
             // IMPLEMENT: Futurize w/ continutation.
-//            octopus::dt_prediction prediction
-//                = root.apply_leaf(octopus::science().predict_dt);
+            octopus::dt_prediction prediction
+                = root.apply_leaf(octopus::science().predict_dt);
  
-            octopus::dt_prediction prediction(0.001, 0.001);
+//            octopus::dt_prediction prediction(0.001, 0.001);
    
             OCTOPUS_ASSERT(0.0 < prediction.next_dt);
             OCTOPUS_ASSERT(0.0 < prediction.future_dt);
@@ -265,22 +270,28 @@ struct stepper
             std::cout << "\n";
  
             // Record timestep size.
-            dt_file << this_step << ", "
-                    << (this_time / period_) << ", "
-                    << (this_dt / period_) << ", "
-                    << (prediction.next_dt / period_) << ", "
-                    << output_and_refine << std::endl; 
+            dt_file << ( boost::format("%i %e %e %e %i\n")
+                       % this_step 
+                       % (this_time / period_) 
+                       % (this_dt / period_) 
+                       % (prediction.next_dt / period_)
+                       % output_and_refine); 
 
             // Record speed. 
-            speed_file << this_step << ", "
-                       << speed << ", "
-                       << output_and_refine << std::endl;
+            speed_file << ( boost::format("%e %e %i\n")
+                          % this_step 
+                          % speed 
+                          % output_and_refine); 
         }
 
+        double solve_walltime = global_clock.elapsed();
+
         std::cout << "\n"
-                  << "ELAPSED WALLTIME "
-                  << global_clock.elapsed()
-                  << " [seconds]" << std::endl; 
+                  << "REFINE WALLTIME " << refine_walltime << " [seconds]\n" 
+                  << "SOLVE WALLTIME  " << solve_walltime << " [seconds]\n" 
+                  << "TOTAL WALLTIME  "
+                  << (refine_walltime + solve_walltime)
+                  << " [seconds]\n"; 
     }
 
     template <typename Archive>
