@@ -58,11 +58,13 @@ debug_serializer::~debug_serializer()
     std::cout << *this;
 }
 
-//#define OCTOPUS_DUMP(x)                     \
-//    {                                       \
-//        octopus::debug_serializer tmp_stm;  \
-//        tmp_stm << get_oid() << ": " << x;  \
-//    }
+/*
+#define OCTOPUS_DUMP(x)                     \
+    {                                       \
+        octopus::debug_serializer tmp_stm;  \
+        tmp_stm << get_oid() << ": " << x;  \
+    }
+*/
 
 #define OCTOPUS_DUMP(x)
 
