@@ -17,7 +17,7 @@ engine_server* engine_ptr = 0;
 
 hpx::future<hpx::id_type> engine_server::create_octree_async(
     octree_init_data const& init
-  , boost::shared_ptr<vector3d<state> > const& parent_U
+  , boost::shared_ptr<vector4d<double> > const& parent_U
     )
 {
     OCTOPUS_ASSERT_MSG(!localities_.empty(),

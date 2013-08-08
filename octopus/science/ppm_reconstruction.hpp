@@ -11,6 +11,7 @@
 
 #include <octopus/config.hpp>
 #include <octopus/state.hpp>
+#include <octopus/vector2d.hpp>
 #include <octopus/trivial_serialization.hpp>
 
 namespace octopus
@@ -21,6 +22,11 @@ struct OCTOPUS_EXPORT ppm_reconstruction : trivial_serialization
     enum { ghost_zone_length = 3 };
 
     void operator()(
+/*
+        vector2d<double> const& q0
+      , vector2d<double>& ql
+      , vector2d<double>& qr
+*/
         std::vector<state> const& q0
       , std::vector<state>& ql
       , std::vector<state>& qr

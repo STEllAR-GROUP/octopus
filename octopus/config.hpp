@@ -42,7 +42,7 @@
 #endif
 
 #if !defined(OCTOPUS_ENABLE_VERIFICATION)
-    #define OCTOPUS_ENABLE_VERIFICATION 1
+    #define OCTOPUS_ENABLE_VERIFICATION 0
 #endif
 
 #if !defined(OCTOPUS_STATE_SIZE)

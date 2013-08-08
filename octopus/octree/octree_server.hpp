@@ -217,15 +217,15 @@ struct OCTOPUS_EXPORT octree_server
     std::bitset<8> marked_for_refinement_;
  
     typedef array<
-        hpx::lcos::local::channel<vector3d<state> >, 6
+        hpx::lcos::local::channel<vector4d<double> >, 6
     > sibling_state_dependencies;
   
     typedef array<
-        hpx::lcos::local::channel<vector3d<state> >, 8
+        hpx::lcos::local::channel<vector4d<double> >, 8
     > children_state_dependencies;
 
     typedef array<
-        hpx::lcos::local::channel<vector3d<state> >, 36
+        hpx::lcos::local::channel<vector4d<double> >, 36
     > children_flux_dependencies;
 
     typedef array<
@@ -312,15 +312,15 @@ struct OCTOPUS_EXPORT octree_server
     // eight chunks of unused space that we don't ever use.
     // 3d array of state vectors, includes ghost zones. Size of the state
     // vectors comes from the science table.
-    boost::shared_ptr<vector3d<state> > U_;
+    boost::shared_ptr<vector4d<double> > U_;
 
     // Data from previous timestep.
-    boost::shared_ptr<vector3d<state> > U0_; 
+    boost::shared_ptr<vector4d<double> > U0_; 
 
     // Scratch space for computations.
-    vector3d<state> FX_; ///< Flux (X-axis).
-    vector3d<state> FY_; ///< Flux (Y-axis).
-    vector3d<state> FZ_; ///< Flux (Z-axis).
+    vector4d<double> FX_; ///< Flux (X-axis).
+    vector4d<double> FY_; ///< Flux (Y-axis).
+    vector4d<double> FZ_; ///< Flux (Z-axis).
 
     boost::shared_ptr<state> FO_; ///< Flow off (stuff that
                                   ///  leaves the problem space).
@@ -328,7 +328,7 @@ struct OCTOPUS_EXPORT octree_server
     boost::shared_ptr<state> FO0_;
 
     // Scratch space for computations.
-    vector3d<state> D_; ///< Flux differential.
+    vector4d<double> D_; ///< Flux differential.
 
     // Scratch space for computations.
     state DFO_; ///< Flow off differential. 
@@ -418,7 +418,7 @@ struct OCTOPUS_EXPORT octree_server
     /// Concurrency Control: Locks mtx_.
     /// Synchrony Gurantee:  Synchronous. 
     void parent_to_child_injection(
-        vector3d<state> const& pU
+        vector4d<double> const& pU
         );
 
     void initialize_queues();
@@ -478,7 +478,7 @@ struct OCTOPUS_EXPORT octree_server
     octree_server(
         back_pointer_type back_ptr
       , octree_init_data const& init
-      , boost::shared_ptr<vector3d<state> > const& parent_U
+      , boost::shared_ptr<vector4d<double> > const& parent_U
         );
 
     boost::uint64_t get_level() const
@@ -861,12 +861,12 @@ struct OCTOPUS_EXPORT octree_server
   private:
     void add_ghost_zone(
         face f
-      , BOOST_RV_REF(vector3d<state>) zone
+      , BOOST_RV_REF(vector4d<double>) zone
         );
 
     void add_ghost_zone_callback(
         face f ///< Bound parameter.
-      , hpx::future<vector3d<state> > zone_f
+      , hpx::future<vector4d<double> > zone_f
         )
     {
         add_ghost_zone(f, boost::move(zone_f.move()));
@@ -879,7 +879,7 @@ struct OCTOPUS_EXPORT octree_server
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
       , face f ///< Relative to caller.
-      , vector3d<state> const& zone
+      , vector4d<double> const& zone
         )
     {
         mutex_type::scoped_lock l(mtx_);
@@ -905,14 +905,14 @@ struct OCTOPUS_EXPORT octree_server
                                 receive_ghost_zone_action);
 
   private:
-    vector3d<state> send_ghost_zone_locked(
+    vector4d<double> send_ghost_zone_locked(
         face f ///< Our direction, relative to the caller.
       /*, mutex_type::scoped_lock& l*/
         );
   public:
 
     /// Produces ghost zone data for a sibling.
-    vector3d<state> send_ghost_zone(
+    vector4d<double> send_ghost_zone(
         face f ///< Our direction, relative to the caller.
         );
 
@@ -922,7 +922,7 @@ struct OCTOPUS_EXPORT octree_server
 
     // FIXME: The octree doing the interpolation could reverse-engineer the
     // offset (probably) from the face (the child_index may also be needed).
-    vector3d<state> send_interpolated_ghost_zone(
+    vector4d<double> send_interpolated_ghost_zone(
         face f ///< Our direction, relative to the caller.
 //      , boost::uint64_t disparity ///< Difference in refinement level
       , array<boost::int64_t, 3> offset
@@ -962,7 +962,7 @@ struct OCTOPUS_EXPORT octree_server
     /// Callback used to wait for a particular child state. 
     void add_child_state(
         child_index idx ///< Bound parameter.
-      , hpx::future<vector3d<state> > state_f
+      , hpx::future<vector4d<double> > state_f
         );
 
   public:
@@ -972,7 +972,7 @@ struct OCTOPUS_EXPORT octree_server
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
       , child_index idx 
-      , BOOST_RV_REF(vector3d<state>) s
+      , BOOST_RV_REF(vector4d<double>) s
         )
     { // {{{
         //mutex_type::scoped_lock l(mtx_);
@@ -998,7 +998,7 @@ struct OCTOPUS_EXPORT octree_server
                                 receive_child_state_action);
 
   private:
-    vector3d<state> send_child_state();
+    vector4d<double> send_child_state();
 
   public:
     ///////////////////////////////////////////////////////////////////////////
@@ -1026,7 +1026,7 @@ struct OCTOPUS_EXPORT octree_server
       , boost::uint64_t i0 ///< Bound parameter.
       , boost::uint8_t cj ///< Bound parameter.
       , boost::uint8_t ck ///< Bound parameter.
-      , hpx::future<vector3d<state> > flux_f
+      , hpx::future<vector4d<double> > flux_f
         );
 
   public:
@@ -1036,7 +1036,7 @@ struct OCTOPUS_EXPORT octree_server
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
       , boost::uint8_t idx 
-      , BOOST_RV_REF(vector3d<state>) s
+      , BOOST_RV_REF(vector4d<double>) s
         )
     { // {{{
         OCTOPUS_ASSERT_MSG(step_ == step,
@@ -1060,7 +1060,7 @@ struct OCTOPUS_EXPORT octree_server
                                 receive_child_flux_action);
 
   private:
-    vector3d<state> send_child_flux(face f);
+    vector4d<double> send_child_flux(face f);
 
   public:
     ///////////////////////////////////////////////////////////////////////////

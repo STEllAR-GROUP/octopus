@@ -15,6 +15,11 @@ namespace octopus
 
 // FIXME: Put this in a header?
 void ppm_reconstruction::operator()(
+/*
+    vector2d<double> const& q0
+  , vector2d<double>& ql
+  , vector2d<double>& qr
+*/
     std::vector<state> const& q0
   , std::vector<state>& ql
   , std::vector<state>& qr
@@ -22,7 +27,8 @@ void ppm_reconstruction::operator()(
 {
     boost::uint64_t const gnx = config().grid_node_length;
 
-    std::vector<state> slope(gnx, state());
+//    vector2d<double> slope(gnx);
+    std::vector<state> slope(gnx);
 
     for (boost::uint64_t i = 1; i < gnx - 1; ++i)
     {

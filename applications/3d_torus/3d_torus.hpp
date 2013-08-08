@@ -12,6 +12,7 @@
 // http://www.vistrails.org/index.php/User:Tohline/Apps/PapaloizouPringleTori
 
 #include <octopus/state.hpp>
+#include <octopus/vector2d.hpp>
 #include <octopus/driver.hpp>
 #include <octopus/science.hpp>
 #include <octopus/engine/engine_interface.hpp>
@@ -695,9 +696,14 @@ struct cfl_treewise_compute_dt : octopus::trivial_serialization
         boost::uint64_t const bw = octopus::science().ghost_zone_length;
         boost::uint64_t const gnx = octopus::config().grid_node_length;
     
-        std::vector<octopus::state> q0(gnx, octopus::state());
-        std::vector<octopus::state> ql(gnx, octopus::state());
-        std::vector<octopus::state> qr(gnx, octopus::state());
+/*
+        octopus::vector2d<double> q0(gnx);
+        octopus::vector2d<double> ql(gnx);
+        octopus::vector2d<double> qr(gnx);
+*/
+        std::vector<octopus::state> q0(gnx);
+        std::vector<octopus::state> ql(gnx);
+        std::vector<octopus::state> qr(gnx);
     
         for (boost::uint64_t k = bw; k < (gnx - bw); ++k)
             for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
@@ -740,9 +746,14 @@ struct cfl_treewise_compute_dt : octopus::trivial_serialization
         boost::uint64_t const bw = octopus::science().ghost_zone_length;
         boost::uint64_t const gnx = octopus::config().grid_node_length;
     
-        std::vector<octopus::state> q0(gnx, octopus::state());
-        std::vector<octopus::state> ql(gnx, octopus::state());
-        std::vector<octopus::state> qr(gnx, octopus::state());
+/*
+        octopus::vector2d<double> q0(gnx);
+        octopus::vector2d<double> ql(gnx);
+        octopus::vector2d<double> qr(gnx);
+*/
+        std::vector<octopus::state> q0(gnx);
+        std::vector<octopus::state> ql(gnx);
+        std::vector<octopus::state> qr(gnx);
     
         for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
             for (boost::uint64_t k = bw; k < (gnx - bw); ++k)
@@ -785,9 +796,14 @@ struct cfl_treewise_compute_dt : octopus::trivial_serialization
         boost::uint64_t const bw = octopus::science().ghost_zone_length;
         boost::uint64_t const gnx = octopus::config().grid_node_length;
     
-        std::vector<octopus::state> q0(gnx, octopus::state());
-        std::vector<octopus::state> ql(gnx, octopus::state());
-        std::vector<octopus::state> qr(gnx, octopus::state());
+/*
+        octopus::vector2d<double> q0(gnx);
+        octopus::vector2d<double> ql(gnx);
+        octopus::vector2d<double> qr(gnx);
+*/
+        std::vector<octopus::state> q0(gnx);
+        std::vector<octopus::state> ql(gnx);
+        std::vector<octopus::state> qr(gnx);
     
         for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
             for (boost::uint64_t j = bw; j < (gnx - bw); ++j)

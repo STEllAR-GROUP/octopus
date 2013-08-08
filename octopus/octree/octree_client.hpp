@@ -599,7 +599,7 @@ struct OCTOPUS_EXPORT octree_client
     // {{{ Boundary forwarding code (implementation has moved to the server) 
   private:
     // AMR boundary.
-    vector3d<state>
+    vector4d<double>
     send_interpolated_ghost_zone(
         face f ///< Direction, relative to us 
         ) const
@@ -608,7 +608,7 @@ struct OCTOPUS_EXPORT octree_client
     }
 
     // AMR boundary.
-    hpx::future<vector3d<state> >
+    hpx::future<vector4d<double> >
     send_interpolated_ghost_zone_async(
         face f ///< Direction, relative to us 
         ) const;
@@ -630,11 +630,11 @@ struct OCTOPUS_EXPORT octree_client
   public:
     ///////////////////////////////////////////////////////////////////////////
     // {{{ send_ghost_zone
-    vector3d<state> send_ghost_zone(
+    vector4d<double> send_ghost_zone(
         face f
         ) const;
 
-    hpx::future<vector3d<state> > send_ghost_zone_async(
+    hpx::future<vector4d<double> > send_ghost_zone_async(
         face f
         ) const;
     // }}}
@@ -645,7 +645,7 @@ struct OCTOPUS_EXPORT octree_client
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
       , face f ///< Relative to caller.
-      , BOOST_RV_REF(vector3d<state>) zone
+      , BOOST_RV_REF(vector4d<double>) zone
         ) const
     {
         receive_ghost_zone_async(step, phase, f, boost::move(zone)).get();
@@ -655,14 +655,14 @@ struct OCTOPUS_EXPORT octree_client
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
       , face f ///< Relative to caller.
-      , BOOST_RV_REF(vector3d<state>) zone
+      , BOOST_RV_REF(vector4d<double>) zone
         ) const;
 
     void receive_ghost_zone_push(
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
       , face f ///< Relative to caller.
-      , BOOST_RV_REF(vector3d<state>) zone
+      , BOOST_RV_REF(vector4d<double>) zone
         ) const;
     // }}}
 
@@ -686,7 +686,7 @@ struct OCTOPUS_EXPORT octree_client
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
       , child_index idx 
-      , BOOST_RV_REF(vector3d<state>) zone
+      , BOOST_RV_REF(vector4d<double>) zone
         ) const
     {
         receive_child_state_async(step, phase, idx, boost::move(zone)).get();
@@ -696,14 +696,14 @@ struct OCTOPUS_EXPORT octree_client
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
       , child_index idx 
-      , BOOST_RV_REF(vector3d<state>) zone
+      , BOOST_RV_REF(vector4d<double>) zone
         ) const;
 
     void receive_child_state_push(
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
       , child_index idx 
-      , BOOST_RV_REF(vector3d<state>) zone
+      , BOOST_RV_REF(vector4d<double>) zone
         ) const;
     // }}}
 
@@ -727,7 +727,7 @@ struct OCTOPUS_EXPORT octree_client
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
       , boost::uint8_t idx 
-      , BOOST_RV_REF(vector3d<state>) zone
+      , BOOST_RV_REF(vector4d<double>) zone
         ) const
     {
         receive_child_flux_async(step, phase, idx, boost::move(zone)).get();
@@ -737,14 +737,14 @@ struct OCTOPUS_EXPORT octree_client
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
       , boost::uint8_t idx 
-      , BOOST_RV_REF(vector3d<state>) zone
+      , BOOST_RV_REF(vector4d<double>) zone
         ) const;
 
     void receive_child_flux_push(
         boost::uint64_t step ///< For debugging purposes.
       , boost::uint64_t phase 
       , boost::uint8_t idx 
-      , BOOST_RV_REF(vector3d<state>) zone
+      , BOOST_RV_REF(vector4d<double>) zone
         ) const;
     // }}}
 

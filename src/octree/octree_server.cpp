@@ -18,6 +18,7 @@
 #include <octopus/indexer2d.hpp>
 #include <octopus/octree/octree_server.hpp>
 #include <octopus/engine/engine_interface.hpp>
+#include <octopus/science/ppm_reconstruction.hpp>
 
 #include <boost/array.hpp>
 #include <boost/range/adaptor/map.hpp>
@@ -83,7 +84,7 @@ std::ostream& operator<<(std::ostream& os, oid_type const& id)
 
 // IMPLEMENT: Pass only the state that is needed.
 void octree_server::parent_to_child_injection(
-    vector3d<state> const& parent_U 
+    vector4d<double> const& parent_U 
     )
 { // {{{
     boost::uint64_t const bw = science().ghost_zone_length;
@@ -186,16 +187,14 @@ octree_server::octree_server(
   , offset_(init.offset)
   , origin_(init.origin)
   , step_(0)
-  , U_(new vector3d<state>(
-        config().grid_node_length
-      , state()))
+  , U_(new vector4d<double>(config().grid_node_length))
   , U0_()
-  , FX_(config().grid_node_length, state())
-  , FY_(config().grid_node_length, state())
-  , FZ_(config().grid_node_length, state())
+  , FX_(config().grid_node_length)
+  , FY_(config().grid_node_length)
+  , FZ_(config().grid_node_length)
   , FO_(new state())
   , FO0_()
-  , D_(config().grid_node_length, state())
+  , D_(config().grid_node_length)
   , DFO_()
 {
     OCTOPUS_ASSERT(back_ptr);
@@ -214,7 +213,7 @@ octree_server::octree_server(
 octree_server::octree_server(
     back_pointer_type back_ptr
   , octree_init_data const& init
-  , boost::shared_ptr<vector3d<state> > const& parent_U
+  , boost::shared_ptr<vector4d<double> > const& parent_U
     )
 // {{{
   : base_type(back_ptr)
@@ -239,16 +238,14 @@ octree_server::octree_server(
   , offset_(init.offset)
   , origin_(init.origin)
   , step_(init.step)
-  , U_(new vector3d<state>(
-        config().grid_node_length
-      , state()))
+  , U_(new vector4d<double>(config().grid_node_length))
   , U0_()
-  , FX_(config().grid_node_length, state())
-  , FY_(config().grid_node_length, state())
-  , FZ_(config().grid_node_length, state())
+  , FX_(config().grid_node_length)
+  , FY_(config().grid_node_length)
+  , FZ_(config().grid_node_length)
   , FO_(new state())
   , FO0_()
-  , D_(config().grid_node_length, state())
+  , D_(config().grid_node_length)
   , DFO_()
 {
     OCTOPUS_ASSERT(back_ptr);
@@ -522,7 +519,7 @@ void octree_server::set_sibling(
         octree_client old = siblings_[f];
         siblings_[f] = sib; 
 
-        hpx::util::unlock_the_lock<mutex_type::scoped_lock> ul(l);
+        hpx::util::scoped_unlock<mutex_type::scoped_lock> ul(l);
 //       old.remove_nephew(reference_from_this(), invert(f), invert(f, get_child_index()));
         old.remove_nephew(reference_from_this(), invert(f), get_child_index());
     }
@@ -752,7 +749,7 @@ void octree_server::communicate_ghost_zones(
 
 void octree_server::add_ghost_zone(
     face f ///< Bound parameter.
-  , BOOST_RV_REF(vector3d<state>) zone
+  , BOOST_RV_REF(vector4d<double>) zone
     )
 { // {{{
     boost::uint64_t const bw = science().ghost_zone_length;
@@ -925,7 +922,7 @@ void octree_server::add_ghost_zone(
 } // }}} 
 
 // Who ya gonna call? Ghostbusters!
-vector3d<state> octree_server::send_ghost_zone(
+vector4d<double> octree_server::send_ghost_zone(
     face f ///< Our direction, relative to the caller.
     )
 { // {{{
@@ -943,7 +940,7 @@ vector3d<state> octree_server::send_ghost_zone(
         ///              
         case XL:
         {
-            vector3d<state> zone
+            vector4d<double> zone
                 (
                 /* [0, BW) */         bw
               , /* [BW, GNX - BW) */  gnx - 2 * bw
@@ -971,7 +968,7 @@ vector3d<state> octree_server::send_ghost_zone(
         ///             U(i, j, k) = sibling[XU].U(-GNX - 2 * BW + i, j, k) 
         case XU:
         {
-            vector3d<state> zone
+            vector4d<double> zone
                 (
                 /* [GNX - BW, GNX) */ bw
               , /* [BW, GNX - BW) */  gnx - 2 * bw
@@ -1002,7 +999,7 @@ vector3d<state> octree_server::send_ghost_zone(
         ///
         case YL:
         {
-            vector3d<state> zone
+            vector4d<double> zone
                 (
                 /* [BW, GNX - BW) */  gnx - 2 * bw
               , /* [0, BW) */         bw
@@ -1030,7 +1027,7 @@ vector3d<state> octree_server::send_ghost_zone(
         ///             U(i, j, k) = sibling[YU].U(i, -GNX - 2 * BW + j, k) 
         case YU:
         {
-            vector3d<state> zone
+            vector4d<double> zone
                 (
                 /* [BW, GNX - BW) */  gnx - 2 * bw
               , /* [GNX - BW, GNX) */ bw
@@ -1060,7 +1057,7 @@ vector3d<state> octree_server::send_ghost_zone(
         ///             U(i, j, k) = sibling[ZL].U(i, j, GNX - 2 * BW + k) 
         case ZL:
         {
-            vector3d<state> zone
+            vector4d<double> zone
                 (
                 /* [BW, GNX - BW) */  gnx - 2 * bw
               , /* [BW, GNX - BW) */  gnx - 2 * bw
@@ -1088,7 +1085,7 @@ vector3d<state> octree_server::send_ghost_zone(
         ///             U(i, j, k) = sibling[ZU].U(i, j, -GNX - 2 * BW + k) 
         case ZU:
         {
-            vector3d<state> zone
+            vector4d<double> zone
                 (
                 /* [BW, GNX - BW) */  gnx - 2 * bw
               , /* [BW, GNX - BW) */  gnx - 2 * bw
@@ -1118,11 +1115,11 @@ vector3d<state> octree_server::send_ghost_zone(
 
     // Unreachable.
     OCTOPUS_ASSERT(false);
-    return vector3d<state>(); 
+    return vector4d<double>(); 
 } // }}} 
 
 ///////////////////////////////////////////////////////////////////////////////
-vector3d<state> octree_server::send_interpolated_ghost_zone(
+vector4d<double> octree_server::send_interpolated_ghost_zone(
     face f ///< Our direction, relative to the caller.
   , array<boost::int64_t, 3> amr_offset
     ) 
@@ -1130,7 +1127,7 @@ vector3d<state> octree_server::send_interpolated_ghost_zone(
     boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
-    vector3d<state> output; 
+    vector4d<double> output; 
 
     boost::uint64_t count = 0;
 
@@ -1804,13 +1801,13 @@ void octree_server::child_to_parent_state_injection_kernel(
 
 void octree_server::add_child_state(
     child_index idx ///< Bound parameter.
-  , hpx::future<vector3d<state> > state_f
+  , hpx::future<vector4d<double> > state_f
     )
 { // {{{
     boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
-    vector3d<state> state(state_f.move());
+    vector4d<double> state(state_f.move());
 
     OCTOPUS_ASSERT(state.x_length() == ((gnx - 2 * bw) / 2));
     OCTOPUS_ASSERT(state.y_length() == ((gnx - 2 * bw) / 2));
@@ -1832,12 +1829,12 @@ void octree_server::add_child_state(
             }
 } // }}}
 
-vector3d<state> octree_server::send_child_state()
+vector4d<double> octree_server::send_child_state()
 { // {{{
     boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
-    vector3d<state> state
+    vector4d<double> state
         (
         (gnx - 2 * bw) / 2
       , (gnx - 2 * bw) / 2
@@ -2597,7 +2594,7 @@ void octree_server::add_child_flux(
   , boost::uint64_t i0 ///< Bound parameter.
   , boost::uint8_t cj ///< Bound parameter.
   , boost::uint8_t ck ///< Bound parameter.
-  , hpx::future<vector3d<state> > flux_f
+  , hpx::future<vector4d<double> > flux_f
     )
 { 
     boost::uint64_t const bw = science().ghost_zone_length;
@@ -2607,7 +2604,7 @@ void octree_server::add_child_flux(
     {
         case x_axis:
         {
-            vector3d<state> flux(flux_f.move());
+            vector4d<double> flux(flux_f.move());
         
             OCTOPUS_ASSERT(flux.x_length() == 1);
             OCTOPUS_ASSERT(flux.y_length() == ((gnx - 2 * bw) / 2));
@@ -2630,7 +2627,7 @@ void octree_server::add_child_flux(
 
         case y_axis:
         {
-            vector3d<state> flux(flux_f.move());
+            vector4d<double> flux(flux_f.move());
         
             OCTOPUS_ASSERT(flux.x_length() == ((gnx - 2 * bw) / 2));
             OCTOPUS_ASSERT(flux.y_length() == 1);
@@ -2653,7 +2650,7 @@ void octree_server::add_child_flux(
 
         case z_axis:
         {
-            vector3d<state> flux(flux_f.move());
+            vector4d<double> flux(flux_f.move());
         
             OCTOPUS_ASSERT(flux.x_length() == ((gnx - 2 * bw) / 2));
             OCTOPUS_ASSERT(flux.y_length() == ((gnx - 2 * bw) / 2));
@@ -2679,7 +2676,7 @@ void octree_server::add_child_flux(
 } 
 
 // IMPLEMENT
-vector3d<state> octree_server::send_child_flux(face f)
+vector4d<double> octree_server::send_child_flux(face f)
 { 
     boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
@@ -2719,7 +2716,7 @@ vector3d<state> octree_server::send_child_flux(face f)
         case XL:
         case XU:
         {
-            vector3d<state> flux
+            vector4d<double> flux
                 (
                 1 
               , (gnx - 2 * bw) / 2
@@ -2745,7 +2742,7 @@ vector3d<state> octree_server::send_child_flux(face f)
         case YL:
         case YU:
         {
-            vector3d<state> flux
+            vector4d<double> flux
                 (
                 (gnx - 2 * bw) / 2
               , 1 
@@ -2771,7 +2768,7 @@ vector3d<state> octree_server::send_child_flux(face f)
         case ZL:
         case ZU:
         {
-            vector3d<state> flux
+            vector4d<double> flux
                 (
                 (gnx - 2 * bw) / 2
               , (gnx - 2 * bw) / 2
@@ -2798,7 +2795,7 @@ vector3d<state> octree_server::send_child_flux(face f)
     }
 
     OCTOPUS_ASSERT(false);
-    return vector3d<state>();
+    return vector4d<double>();
 } 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2848,7 +2845,7 @@ void octree_server::step_recurse(double dt)
 
 void octree_server::step_kernel(double dt)
 { // {{{
-    U0_.reset(new vector3d<state>(*U_));
+    U0_.reset(new vector4d<double>(*U_));
     FO0_.reset(new state(*FO_));
 
     prepare_compute_queues();
@@ -2900,7 +2897,7 @@ void octree_server::sub_step_kernel(
 { // {{{
     communicate_ghost_zones(phase);
 
-    prepare_differentials_kernel();
+    //prepare_differentials_kernel();
 
     // Operations parallelizes by axis.
     compute_flux_kernel(phase + 1);
@@ -2935,10 +2932,18 @@ void octree_server::add_differentials_kernel(double dt, double beta)
                            + (*U0_)(i, j, k) * (1.0 - beta); 
 
             science().enforce_limits((*U_)(i, j, k), c);
+
+            for (boost::uint64_t l = 0; l < DFO_.size(); ++l)
+            {
+                D_(i, j, k)[l] = 0.0;
+            }
         }
     }
 
     (*FO_) = ((*FO_) + DFO_ * dt) * beta + (*FO0_) * (1.0 - beta);
+
+    for (boost::uint64_t i = 0; i < DFO_.size(); ++i)
+        DFO_[i] = 0.0;
 } // }}}
 
 // REVIEW: Make this run only when debugging is enabled.
@@ -2986,9 +2991,14 @@ void octree_server::compute_x_flux_kernel()
     boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
-    std::vector<state> q0(gnx, state());
-    std::vector<state> ql(gnx, state());
-    std::vector<state> qr(gnx, state());
+/*
+    vector2d<double> q0(gnx);
+    vector2d<double> ql(gnx);
+    vector2d<double> qr(gnx);
+*/
+    std::vector<state> q0(gnx);
+    std::vector<state> ql(gnx);
+    std::vector<state> qr(gnx);
 
     indexer2d<1> const indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
     for (boost::uint64_t index = 0; index <= indexer.maximum; ++index)
@@ -3006,7 +3016,7 @@ void octree_server::compute_x_flux_kernel()
         }
     
         science().reconstruct(q0, ql, qr);
-    
+
         for (boost::uint64_t i = bw; i < gnx - bw + 1; ++i)
         {
             array<double, 3> coords = x_face_coords(i, j, k);
@@ -3038,9 +3048,14 @@ void octree_server::compute_y_flux_kernel()
     boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
-    std::vector<state> q0(gnx, state());
-    std::vector<state> ql(gnx, state());
-    std::vector<state> qr(gnx, state());
+/*
+    vector2d<double> q0(gnx);
+    vector2d<double> ql(gnx);
+    vector2d<double> qr(gnx);
+*/
+    std::vector<state> q0(gnx);
+    std::vector<state> ql(gnx);
+    std::vector<state> qr(gnx);
 
     indexer2d<1> const indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
     for (boost::uint64_t index = 0; index <= indexer.maximum; ++index)
@@ -3090,9 +3105,14 @@ void octree_server::compute_z_flux_kernel()
     boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
-    std::vector<state> q0(gnx, state());
-    std::vector<state> ql(gnx, state());
-    std::vector<state> qr(gnx, state());
+/*
+    vector2d<double> q0(gnx);
+    vector2d<double> ql(gnx);
+    vector2d<double> qr(gnx);
+*/
+    std::vector<state> q0(gnx);
+    std::vector<state> ql(gnx);
+    std::vector<state> qr(gnx);
 
     indexer2d<1> const indexer(bw, gnx - bw - 1, bw, gnx - bw - 1);
     for (boost::uint64_t index = 0; index <= indexer.maximum; ++index)
@@ -3291,7 +3311,7 @@ void octree_server::mark_kernel()
     }
 
     {
-        hpx::util::unlock_the_lock<mutex_type::scoped_lock> ul(l);
+        hpx::util::scoped_unlock<mutex_type::scoped_lock> ul(l);
         hpx::wait(markings); 
     }
 } // }}}
@@ -3344,7 +3364,7 @@ void octree_server::propagate_locked(
     }
 
     {
-        hpx::util::unlock_the_lock<mutex_type::scoped_lock> ul(l);
+        hpx::util::scoped_unlock<mutex_type::scoped_lock> ul(l);
         hpx::wait(markings); 
     }
 } // }}}
@@ -3786,7 +3806,7 @@ void octree_server::remark_kernel()
     }
 
     {
-        hpx::util::unlock_the_lock<mutex_type::scoped_lock> ul(l);
+        hpx::util::scoped_unlock<mutex_type::scoped_lock> ul(l);
         hpx::wait(markings); 
     }
 } // }}}

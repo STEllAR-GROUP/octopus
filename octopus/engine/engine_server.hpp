@@ -77,7 +77,7 @@ struct OCTOPUS_EXPORT engine_server
 
     hpx::future<hpx::id_type> create_octree_async(
         octree_init_data const& init
-      , boost::shared_ptr<vector3d<state> > const& parent_U
+      , boost::shared_ptr<vector4d<double> > const& parent_U
         );
 
     std::vector<hpx::future<void> > call_everywhere(

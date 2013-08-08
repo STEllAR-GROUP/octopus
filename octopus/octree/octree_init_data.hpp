@@ -8,7 +8,7 @@
 #if !defined(OCTOPUS_E73B96D9_CF42_4331_A4D5_2BE254FD289C)
 #define OCTOPUS_E73B96D9_CF42_4331_A4D5_2BE254FD289C
 
-#include <octopus/vector3d.hpp>
+#include <octopus/vector4d.hpp>
 #include <octopus/array.hpp>
 
 #include <boost/cstdint.hpp>

@@ -9,7 +9,8 @@ add_definitions(-DOCTOPUS_EXPORTS)
 if(SILO_FOUND)
   add_hpx_component(octopus
     SOURCES
-            octopus_component.cpp
+            octopus_component_1.cpp
+            octopus_component_2.cpp
             driver.cpp
             child_index.cpp
             engine/engine_interface.cpp
@@ -28,7 +29,8 @@ if(SILO_FOUND)
 else()
   add_hpx_component(octopus
     SOURCES
-            octopus_component.cpp
+            octopus_component_1.cpp
+            octopus_component_2.cpp
             driver.cpp
             child_index.cpp
             engine/engine_interface.cpp

@@ -11,6 +11,7 @@
 #include <octopus/octree/octree_server.hpp>
 #include <octopus/science/refinement_criteria.hpp>
 #include <octopus/science/dt_prediction.hpp>
+#include <octopus/vector2d.hpp>
 #include <octopus/io/writer.hpp>
 #include <octopus/face.hpp>
 
@@ -44,10 +45,13 @@ struct science_table
     > physical_boundaries; 
 
     /// The reconstruction scheme.
-    // FIXME: How did an std::vector<std::vector<> > sneak into this code? Use
-    // vector3d instead.
     hpx::util::function<
         void(
+/*
+            vector2d<double> const&
+          , vector2d<double>&
+          , vector2d<double>&
+*/
             std::vector<state> const&
           , std::vector<state>&
           , std::vector<state>&
