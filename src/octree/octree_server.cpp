@@ -18,7 +18,6 @@
 #include <octopus/indexer2d.hpp>
 #include <octopus/octree/octree_server.hpp>
 #include <octopus/engine/engine_interface.hpp>
-#include <octopus/science/ppm_reconstruction.hpp>
 
 #include <boost/array.hpp>
 #include <boost/range/adaptor/map.hpp>
