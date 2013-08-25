@@ -24,6 +24,9 @@ hpx::future<hpx::id_type> engine_server::create_octree_async(
                        "no localities supporting Octopus available");
 
     using hpx::components::stubs::runtime_support;
+    if (init.level > 3)
+        return runtime_support::create_component_async<octopus::octree_server>
+            (hpx::find_here(), init, parent_U);
     return runtime_support::create_component_async<octopus::octree_server>
         (localities_[round_robin_++ % localities_.size()], init, parent_U);
 }

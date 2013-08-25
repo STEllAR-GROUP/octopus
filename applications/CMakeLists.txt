@@ -5,8 +5,8 @@
 
 set(subdirs
     3d_torus
-    sod_shock_tube
-    rayleigh_taylor
+#    sod_shock_tube
+#    rayleigh_taylor
    )
 
 foreach(subdir ${subdirs})
