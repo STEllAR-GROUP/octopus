@@ -174,7 +174,7 @@ struct stepper
 
         double refine_walltime = refine_clock.elapsed();
  
-//        root.output(0.0);
+        root.output(0.0);
 
         std::ofstream dt_file("dt.csv");
         std::ofstream speed_file("speed.csv");
