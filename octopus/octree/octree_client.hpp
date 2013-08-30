@@ -116,10 +116,49 @@ struct OCTOPUS_EXPORT octree_client
 
     friend class boost::serialization::access;
 
+    BOOST_SERIALIZATION_SPLIT_MEMBER();
+
     template <typename Archive>
-    void serialize(Archive& ar, const unsigned int version)
+    void save(Archive& ar, const unsigned int version) const
     {
-        ar & gid_;
+        hpx::naming::gid_type g
+            = hpx::naming::detail::get_stripped_gid(gid_.get_gid()); 
+        ar & g;
+
+        ar & kind_;
+        switch (kind_)
+        {
+            case real_boundary:
+                break; 
+
+            case physical_boundary:
+            {
+                ar & face_;
+                break;
+            }
+
+            case amr_boundary:
+            {
+                ar & face_;
+                ar & index_;
+                ar & offset_;
+                break;
+            }
+
+            default:
+                OCTOPUS_ASSERT(false);
+                break;
+        };
+    }
+
+    template <typename Archive>
+    void load(Archive& ar, const unsigned int version)
+    {
+        hpx::naming::gid_type g;
+        ar & g;
+
+        gid_ = hpx::id_type(g, hpx::id_type::unmanaged);
+
         ar & kind_;
         switch (kind_)
         {

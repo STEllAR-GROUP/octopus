@@ -10,6 +10,8 @@
 #include <octopus/engine/engine_server.hpp>
 #include <octopus/octree/octree_server.hpp>
 
+#include <octopus/science.hpp>
+
 namespace octopus
 {
 
@@ -24,11 +26,18 @@ hpx::future<hpx::id_type> engine_server::create_octree_async(
                        "no localities supporting Octopus available");
 
     using hpx::components::stubs::runtime_support;
-    if (init.level > 3)
-        return runtime_support::create_component_async<octopus::octree_server>
-            (hpx::find_here(), init, parent_U);
+
+    hpx::id_type locality = science().distribute(init, localities_);
+
+//    if (init.level > 1)
+//        return runtime_support::create_component_async<octopus::octree_server>
+//            (hpx::find_here(), init, parent_U);
+
     return runtime_support::create_component_async<octopus::octree_server>
-        (localities_[round_robin_++ % localities_.size()], init, parent_U);
+        (locality, init, parent_U);
+
+//    return runtime_support::create_component_async<octopus::octree_server>
+//        (localities_[round_robin_++ % localities_.size()], init, parent_U);
 }
 
 }

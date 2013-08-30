@@ -147,7 +147,7 @@ double radial_momentum(
         case cartesian_momentum_conservation:
         {
             double const R = radius(v);
-            return momentum_x(u)*v[0]/R - momentum_y(u)*v[1]/R;
+            return momentum_x(u)*v[0]/R + momentum_y(u)*v[1]/R;
         }
         default: break;
     }
@@ -1204,8 +1204,9 @@ struct output_equatorial_plane
 
             for (boost::uint64_t i = 0; i < u.size(); ++i)
             {
-                (*ofs_) << ( boost::format(" %016x")
-                           % octopus::hex_real(u[i]));
+//                (*ofs_) << ( boost::format(" %016x")
+//                           % octopus::hex_real(u[i]));
+                (*ofs_) << " " << u[i];
             }
 
             (*ofs_) << "\n";
@@ -1260,6 +1261,74 @@ boost::uint64_t count_nodes(octopus::octree_server& U)
 {
     return U.reduce<boost::uint64_t>(one_functor(), add_functor(), 0);
 }
+
+struct slice_distribution : octopus::trivial_serialization
+{
+    hpx::id_type operator()(
+        octopus::octree_init_data const& init
+      , std::vector<hpx::id_type> const& localities
+        ) const
+    {
+        double const pi = boost::math::constants::pi<double>();
+
+        boost::uint64_t const bw = octopus::science().ghost_zone_length;
+        double const grid_dim = octopus::config().spatial_domain;
+        boost::uint64_t const gnx = octopus::config().grid_node_length;
+
+        boost::uint64_t n = localities.size();
+
+        boost::uint64_t i = gnx / 2;
+        boost::uint64_t j = gnx / 2; 
+//        boost::uint64_t i = 0;
+//        boost::uint64_t j = 0; 
+
+        double const dx0 = octopus::science().initial_dx();
+
+        double const x = double(init.offset[0] + i) * init.dx - grid_dim
+                            - bw * dx0 - init.origin[0];
+        double const y = double(init.offset[1] + j) * init.dx - grid_dim
+                            - bw * dx0 - init.origin[1]; 
+
+//        double const x = x_face + 0.5 * init.dx;
+//        double const y = y_face + 0.5 * init.dx;
+//        double const x = x_face;
+//        double const y = y_face;
+
+        double theta = std::atan2(y, x);
+
+        if (theta < 0)
+            theta += 2*pi;
+
+//        std::cout << ( boost::format("x=%1%, y=%2%, theta=%3%, loc[0]=%4%, loc[1]=%5%\n")
+//                     % x % y % theta % init.location[0] % init.location[1]);
+
+        boost::uint64_t l = 0;
+
+        while (true)
+        {
+            OCTOPUS_ASSERT(l < n);
+
+            double lower_bound = double(l)/double(n) * 2*pi;
+
+//            std::cout << ( boost::format("l=%1%, lower_bound=%2%\n")
+//                         % l % lower_bound);
+
+            if (theta >= lower_bound)
+            {
+                double upper_bound = double(l+1)/double(n) * 2*pi;
+
+                if (theta < upper_bound)
+                    break;
+            }
+
+            ++l;
+        }
+
+        OCTOPUS_ASSERT(l < n);
+
+        return localities[l];
+    }
+};
 
 #endif // OCTOPUS_9BA6055C_E7A9_4A16_8A24_B8B410AA1A14
 

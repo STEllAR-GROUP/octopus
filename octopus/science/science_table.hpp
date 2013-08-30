@@ -144,6 +144,14 @@ struct science_table
             )
     > flux; 
 
+    hpx::util::function<
+        hpx::id_type(
+            octree_init_data const& init
+          , std::vector<hpx::id_type> const& localities
+            )
+    > distribute; 
+
+    // FIXME: Rename to refine.
     refinement_criteria refine_policy;
 
     writer output;
@@ -164,6 +172,7 @@ struct science_table
      , primitive_to_conserved()
      , source()
      , flux()
+     , distribute()
      , refine_policy()
      , output()
     {}
@@ -194,6 +203,7 @@ struct science_table
         ar & source;
         ar & flux;
 
+        ar & distribute;
         ar & refine_policy;
 
         ar & output;

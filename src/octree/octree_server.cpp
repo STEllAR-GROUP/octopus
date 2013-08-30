@@ -3961,10 +3961,10 @@ void octree_server::slice_z_kernel(slice_function const& f, double eps)
             k = kk;
 
     // Loop over all the points in this plane.
-//    for (boost::uint64_t i = bw; i < gnx - bw; ++i)
-//        for (boost::uint64_t j = bw; j < gnx - bw; ++j)
-    for (boost::uint64_t i = 0; i < gnx; ++i)
-        for (boost::uint64_t j = 0; j < gnx; ++j)
+    for (boost::uint64_t i = bw; i < gnx - bw; ++i)
+        for (boost::uint64_t j = bw; j < gnx - bw; ++j)
+//    for (boost::uint64_t i = 0; i < gnx; ++i)
+//        for (boost::uint64_t j = 0; j < gnx; ++j)
         {
             array<double, 3> c = center_coords(i, j, k);
             f(*this, (*U_)(i, j, k), c);
