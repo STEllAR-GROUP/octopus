@@ -120,14 +120,14 @@ void octopus_define_problem(
 
     sci.output = mw;
 */
+/*
     #if defined(OCTOPUS_HAVE_SILO)
         sci.output = octopus::single_variable_silo_writer(0, "rho");
     #endif
-/*
+*/
     sci.output = octopus::fstream_writer(
         output_equatorial_plane(octopus::z_axis)
       , "slice_z_L%06u_S%06u.dat");
-*/
 }
 
 struct stepper 
