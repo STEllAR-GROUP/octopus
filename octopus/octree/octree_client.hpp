@@ -955,8 +955,24 @@ struct OCTOPUS_EXPORT octree_client
         ) const;
     // }}}
 
-    // NOTE: (to self) Keep the order the same as octree_server please.
-    // (update to self) Bad self.
+    ///////////////////////////////////////////////////////////////////////////
+    // {{{ save/load 
+    void save()
+    {
+        save_async().get();
+    }
+
+    hpx::future<void> save_async() const;
+
+    void load()
+    {
+        load_async().get();
+    }
+
+    hpx::future<void> load_async() const;
+    // }}}
+
+    // NOTE: (to self) Keep the order the same as octree_server.
 };
 
 }

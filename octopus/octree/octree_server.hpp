@@ -1317,6 +1317,19 @@ struct OCTOPUS_EXPORT octree_server
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
                                 slice_leaf,
                                 slice_leaf_action);
+
+    ///////////////////////////////////////////////////////////////////////////
+    void save();
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                save,
+                                save_action);
+
+    void load();
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+                                load,
+                                load_action);
 };
 
 inline oid_type::oid_type(octree_server const& e)

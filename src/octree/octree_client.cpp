@@ -681,5 +681,17 @@ hpx::future<void> octree_client::slice_leaf_async(
     return hpx::async<octree_server::slice_leaf_action>(gid_, f, a, eps); 
 }
 
+hpx::future<void> octree_client::save_async() const
+{
+    ensure_real();
+    return hpx::async<octree_server::save_action>(gid_); 
+}
+
+hpx::future<void> octree_client::load_async() const
+{
+    ensure_real();
+    return hpx::async<octree_server::load_action>(gid_); 
+}
+
 }
 

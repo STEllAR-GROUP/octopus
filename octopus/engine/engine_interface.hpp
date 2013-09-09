@@ -36,6 +36,17 @@ inline science_table& /* Lets do some */ science() /* ! */
     return engine_ptr->science(); 
 }
 
+/// \brief Retrieve the local checkpoint file. 
+///
+/// Remote Operations:   No.
+/// Concurrency Control: None (not thread-safe). 
+/// Synchrony Gurantee:  Synchronous.
+inline std::fstream& checkpoint() 
+{
+    OCTOPUS_ASSERT_MSG(engine_ptr != 0, "engine_ptr is NULL");
+    return engine_ptr->checkpoint(); 
+}
+
 /// \brief Retrieve a list of all localities that are running Octopus. 
 ///
 /// Remote Operations:   No.

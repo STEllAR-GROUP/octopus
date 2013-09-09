@@ -40,8 +40,17 @@ struct OCTOPUS_EXPORT engine_server
     boost::atomic<boost::uint64_t> round_robin_;
     std::vector<hpx::id_type> localities_;
 
+    std::fstream checkpoint_file_;
+
+    void open_checkpoint(std::string const& file_name, bool load);
+
   public:
-    engine_server() : config_(), science_(), round_robin_(0), localities_()
+    engine_server()
+      : config_()
+      , science_()
+      , round_robin_(0)
+      , localities_()
+      , checkpoint_file_()
     {
         OCTOPUS_ASSERT_MSG(false, "engine_server can't be default constructed");
     }
@@ -50,15 +59,7 @@ struct OCTOPUS_EXPORT engine_server
         config_data const& config
       , science_table const& science 
       , std::vector<hpx::id_type> const& localities
-        )
-      : config_(config)
-      , science_(science) 
-      , round_robin_(0)
-      , localities_(localities)
-    {
-        OCTOPUS_ASSERT_MSG(engine_ptr == 0, "engine_ptr has already been set");
-        engine_ptr = this;
-    }
+        );
 
     config_data& config() 
     {
@@ -68,6 +69,11 @@ struct OCTOPUS_EXPORT engine_server
     science_table& science() 
     {
         return science_;
+    }
+
+    std::fstream& checkpoint()
+    {
+        return checkpoint_file_;
     }
 
     std::vector<hpx::id_type> const& localities() const

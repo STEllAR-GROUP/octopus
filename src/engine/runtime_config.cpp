@@ -77,7 +77,10 @@ std::ostream& operator<<(
         << OCTOPUS_FORMAT_OPTION(temporal_domain) << "\n"
         << OCTOPUS_FORMAT_OPTION(temporal_prediction_gap) << "\n"
 
-        << OCTOPUS_FORMAT_OPTION(output_frequency)
+        << OCTOPUS_FORMAT_OPTION(output_frequency) << "\n"
+
+        << OCTOPUS_FORMAT_OPTION(checkpoint_file) << "\n"
+        << OCTOPUS_FORMAT_OPTION(load_checkpoint)
     ;
 
     #undef OCTOPUS_FORMAT_OPTION
@@ -107,6 +110,9 @@ config_data config_from_ini()
         ("temporal_prediction_gap", cfg.temporal_prediction_gap, 10) 
         
         ("output_frequency", cfg.output_frequency, 0.005)
+
+        ("checkpoint_file", cfg.checkpoint_file, "checkpoint_L%06u.bin")
+        ("load_checkpoint", cfg.load_checkpoint, false)
     ;
 
     return cfg;

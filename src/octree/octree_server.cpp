@@ -3971,5 +3971,42 @@ void octree_server::slice_z_kernel(slice_function const& f, double eps)
         } 
 } // }}}
 
+void octree_server::save()
+{ // {{{
+    boost::uint64_t const gnx = octopus::config().grid_node_length;
+
+    for (std::size_t i = 0; i < 8; ++i)
+        if (hpx::invalid_id != children_[i])
+            children_[i].save();
+
+    for (boost::uint64_t i = 0; i < gnx; ++i)
+        for (boost::uint64_t j = 0; j < gnx; ++j)
+            for (boost::uint64_t k = 0; k < gnx; ++k)
+                for (boost::uint64_t l = 0; l < OCTOPUS_STATE_SIZE; ++l)
+                {
+                    double u = (*U_)(i, j, k)(l);
+                    checkpoint().write((const char*) &u, sizeof(double));
+                }
+} // }}}
+
+void octree_server::load()
+{ // {{{
+    boost::uint64_t const gnx = octopus::config().grid_node_length;
+
+    for (std::size_t i = 0; i < 8; ++i)
+        if (hpx::invalid_id != children_[i])
+            children_[i].load();
+
+    for (boost::uint64_t i = 0; i < gnx; ++i)
+        for (boost::uint64_t j = 0; j < gnx; ++j)
+            for (boost::uint64_t k = 0; k < gnx; ++k)
+                for (boost::uint64_t l = 0; l < OCTOPUS_STATE_SIZE; ++l)
+                {
+                    double u = 0.0;
+                    checkpoint().read((char*) &u, sizeof(double));
+                    (*U_)(i, j, k)(l) = u;
+                }
+} // }}}
+
 }
 

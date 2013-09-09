@@ -1330,5 +1330,13 @@ struct slice_distribution : octopus::trivial_serialization
     }
 };
 
+struct reset_checkpoint : octopus::trivial_serialization
+{
+    void operator()() const
+    {
+        octopus::checkpoint().seekp(0);
+    }
+};
+
 #endif // OCTOPUS_9BA6055C_E7A9_4A16_8A24_B8B410AA1A14
 

@@ -174,8 +174,25 @@ struct stepper
 //        root.communicate_ghost_zones(0);
 
         double refine_walltime = refine_clock.elapsed();
- 
-        root.output(0.0);
+
+        if (octopus::config().load_checkpoint)
+        {
+            boost::uint64_t step = 0;
+            double time = 0.0;
+            double dt = 0.0;
+
+            octopus::checkpoint().read((char*) &step, sizeof(step));
+            octopus::checkpoint().read((char*) &time, sizeof(time));
+            octopus::checkpoint().read((char*) &dt, sizeof(dt));
+
+            root.set_time(time, step);
+            root.post_dt(dt);
+
+            root.load();
+        }
+
+        else
+            root.output(0.0);
 
         std::ofstream dt_file("dt.csv");
         std::ofstream speed_file("speed.csv");
@@ -187,8 +204,23 @@ struct stepper
  
         ///////////////////////////////////////////////////////////////////////
         // Crude, temporary stepper.
-    
-        root.post_dt(root.apply_leaf(octopus::science().initial_dt));
+   
+        if (octopus::config().load_checkpoint) 
+        {
+            // IMPLEMENT: Futurize w/ continutation.
+            octopus::dt_prediction prediction
+                = root.apply_leaf(octopus::science().predict_dt);
+   
+            OCTOPUS_ASSERT(0.0 < prediction.next_dt);
+            OCTOPUS_ASSERT(0.0 < prediction.future_dt);
+
+            double next_dt = std::min(prediction.next_dt, root.get_dt() * 1.25);
+
+            root.post_dt(next_dt);
+        }
+        else
+            root.post_dt(root.apply_leaf(octopus::science().initial_dt));
+
 //        root.post_dt(initial_cfl_factor*0.001);
         double next_output_time = octopus::config().output_frequency * period_;
 
@@ -221,6 +253,19 @@ struct stepper
                 root.output(root.get_time() / period_);
                 next_output_time +=
                     (octopus::config().output_frequency * period_); 
+
+                reset_checkpoint rc;
+                hpx::wait(octopus::call_everywhere(rc));
+
+                boost::uint64_t step = root.get_step();
+                double time = root.get_time();
+                double dt = root.get_dt(); 
+
+                octopus::checkpoint().write((const char*) &step, sizeof(step));
+                octopus::checkpoint().write((const char*) &time, sizeof(time));
+                octopus::checkpoint().write((const char*) &dt, sizeof(dt));
+
+                root.save();
 
                 //root.refine();
             }

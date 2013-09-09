@@ -58,6 +58,9 @@ struct config_data
 
     double output_frequency;
 
+    std::string checkpoint_file;
+    bool load_checkpoint;
+
     template <typename Archive>
     void serialize(Archive& ar, const unsigned int version)
     {
@@ -73,6 +76,9 @@ struct config_data
         ar & temporal_prediction_gap;
 
         ar & output_frequency;
+
+        ar & checkpoint_file;
+        ar & load_checkpoint;
     }
 };
 
