@@ -74,10 +74,9 @@ struct backup_checkpoint_locally
 
         fs::path from(file_name);
 
-        fs::path to(file_name);
-        to /= suffix_;
+        fs::path to(file_name + suffix_);
 
-        fs::copy_file(from, to);
+        fs::copy_file(from, to, fs::copy_option::overwrite_if_exists);
     }
 
     template <typename Archive>

@@ -267,6 +267,8 @@ struct stepper
 
                 root.save();
 
+                octopus::backup_checkpoint(".bat");
+
                 //root.refine();
             }
   
