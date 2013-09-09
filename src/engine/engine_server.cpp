@@ -6,11 +6,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <hpx/runtime/components/stubs/runtime_support.hpp>
+#include <hpx/include/plain_actions.hpp>
 
 #include <octopus/engine/engine_server.hpp>
 #include <octopus/octree/octree_server.hpp>
 #include <octopus/trivial_serialization.hpp>
-
 #include <octopus/science.hpp>
 
 namespace octopus

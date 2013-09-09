@@ -5,9 +5,10 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <hpx/include/plain_actions.hpp>
+#include <hpx/include/lcos.hpp>
 
 #include <octopus/engine/engine_interface.hpp>
+#include <octopus/filesystem.hpp>
 
 namespace octopus
 {
@@ -39,6 +40,61 @@ std::vector<hpx::future<void> > call_everywhere(
 
     return calls;
 }
+
+struct backup_checkpoint_locally
+{
+  private:
+    std::string suffix_;
+
+  public:
+    backup_checkpoint_locally() : suffix_() {}
+
+    backup_checkpoint_locally(std::string const& suffix)
+      : suffix_(suffix)
+    {}
+
+    void operator()() const
+    {
+        checkpoint().flush();
+
+        std::string file_name;
+
+        try
+        {
+            file_name = boost::str( boost::format(config().checkpoint_file)
+                                  % hpx::get_locality_id());
+        }
+        // FIXME: Catch the specific boost.format exception.
+        catch (...)
+        {
+            file_name = config().checkpoint_file;
+        }
+
+        namespace fs = boost::filesystem;
+
+        fs::path from(file_name);
+
+        fs::path to(file_name);
+        to /= suffix_;
+
+        fs::copy_file(from, to);
+    }
+
+    template <typename Archive>
+    void serialize(Archive& ar, const unsigned int)
+    {
+        ar & suffix_;
+    };
+};
+
+void backup_checkpoint(
+    std::string const& suffix
+    )
+{
+    backup_checkpoint_locally bcl(suffix);
+    hpx::wait(call_everywhere(bcl));
+}
+
 
 }
 

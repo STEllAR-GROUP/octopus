@@ -93,6 +93,8 @@ OCTOPUS_EXPORT std::vector<hpx::future<void> > call_everywhere(
     hpx::util::function<void()> const& f
     );
 
+OCTOPUS_EXPORT void backup_checkpoint(std::string const& suffix);
+
 }
 
 #endif // OCTOPUS_E40BC60F_0909_4486_8387_6435DB403689
