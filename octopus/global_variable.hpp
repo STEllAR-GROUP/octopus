@@ -8,9 +8,10 @@
 #if !defined(OCTOPUS_EEC57C22_4221_4E32_8288_DC2A4F9D957B)
 #define OCTOPUS_EEC57C22_4221_4E32_8288_DC2A4F9D957B
 
+#include <octopus/config.hpp>
+
 #include <octopus/traits.hpp>
 
-#include <hpx/util/static.hpp>
 #include <hpx/include/actions.hpp>
 #include <hpx/lcos/future_wait.hpp>
 
@@ -18,10 +19,21 @@ namespace octopus
 {
 
 template <typename T, typename Tag>
+struct OCTOPUS_EXPORT static_ : boost::noncopyable
+{
+    typedef T value_type;
+
+    static value_type data;
+};
+
+template <typename T, typename Tag>
+typename static_<T, Tag>::value_type static_<T, Tag>::data;
+
+template <typename T, typename Tag>
 void update_here(typename parameter_type<T>::type t)
 {
-    hpx::util::static_<T, Tag> storage;
-    storage.get() = t;
+    static_<T, Tag> storage;
+    storage.data = t;
 }
     
 template <typename T, typename Tag>
@@ -58,8 +70,8 @@ struct global_variable
 
     global_variable(typename parameter_type<T>::type t)
     {
-        hpx::util::static_<T, Tag> storage;
-        storage.get() = t; 
+        static_<T, Tag> storage;
+        storage.data = t; 
     }
 
     global_variable& operator=(typename parameter_type<T>::type t)
@@ -70,14 +82,14 @@ struct global_variable
 
     operator T const&() const
     {
-        hpx::util::static_<T, Tag> storage; 
-        return storage.get();
+        static_<T, Tag> storage; 
+        return storage.data;
     }
 
     T const& get() const
     {
-        hpx::util::static_<T, Tag> storage; 
-        return storage.get();
+        static_<T, Tag> storage; 
+        return storage.data;
     }
 };
 

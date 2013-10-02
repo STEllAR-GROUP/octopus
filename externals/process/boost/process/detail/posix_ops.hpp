@@ -54,14 +54,18 @@ namespace detail {
  *         array of dynamically allocated strings holding the arguments 
  *         to the executable. The caller is responsible of freeing them. 
  */ 
-template <class Arguments> 
-inline std::pair<std::size_t, char**> collection_to_posix_argv(const Arguments &args) 
+template <class Executable, class Arguments> 
+inline std::pair<std::size_t, char**> collection_to_posix_argv(const Executable& exe, const Arguments &args) 
 { 
-    std::size_t nargs = args.size(); 
+    std::size_t nargs = args.size() + 1; 
     BOOST_ASSERT(nargs > 0); 
 
     char **argv = new char*[nargs + 1]; 
-    typename Arguments::size_type i = 0; 
+
+    argv[0] = new char[exe.size() + 1]; 
+    std::strncpy(argv[0], exe.c_str(), exe.size() + 1); 
+
+    typename Arguments::size_type i = 1; 
     for (typename Arguments::const_iterator it = args.begin(); it != args.end(); ++it) 
     { 
         argv[i] = new char[it->size() + 1]; 
@@ -416,7 +420,7 @@ inline pid_t posix_start(const Executable &exe, const Arguments &args, const env
             std::exit(EXIT_FAILURE); 
         } 
 
-        std::pair<std::size_t, char**> argcv = collection_to_posix_argv(args); 
+        std::pair<std::size_t, char**> argcv = collection_to_posix_argv(exe, args); 
         char **envp = environment_to_envp(env); 
 
         ::execve(exe.c_str(), argcv.second, envp); 

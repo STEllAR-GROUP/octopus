@@ -15,7 +15,7 @@
 #include <hpx/lcos/future_wait.hpp>
 #include <hpx/util/plugin.hpp>
 
-//#include <octopus/driver.hpp>
+#include <octopus/driver.hpp>
 #include <octopus/engine/engine_server.hpp>
 #include <octopus/engine/engine_interface.hpp>
 
@@ -96,6 +96,7 @@ int hpx_main(variables_map& vm)
         std::pair<define_function, define_deleter> define_p;
         std::pair<main_function, main_deleter> main_p; 
 
+/*
         try
         {
             main_p = this_exe.get<main_function, main_deleter>
@@ -115,8 +116,9 @@ int hpx_main(variables_map& vm)
         {
             // Ignore the failure.
         }
+*/
 
-        OCTOPUS_ASSERT_MSG(main_p.first, "octopus_main must be defined");
+//        OCTOPUS_ASSERT_MSG(main_p.first, "octopus_main must be defined");
 
         ///////////////////////////////////////////////////////////////////////
         // Initialize the science table.
@@ -129,10 +131,10 @@ int hpx_main(variables_map& vm)
             runtime_support::create_component<octopus::engine_server>
                 (here, cfg, octopus::default_science_table(), localities));
 
-//        octopus_define_problem(vm, octopus::science());
+        octopus_define_problem(vm, octopus::science());
 
-        if (define_p.first)
-            (*define_p.first)(vm, octopus::science());
+//        if (define_p.first)
+//            (*define_p.first)(vm, octopus::science());
 
         ///////////////////////////////////////////////////////////////////////
         // Create an engine on every locality.
@@ -163,9 +165,9 @@ int hpx_main(variables_map& vm)
         std::cout << "Executing application...\n"
                      "\n";
 
-//        result = octopus_main(vm);
+        result = octopus_main(vm);
 
-        result = (*main_p.first)(vm);
+//        result = (*main_p.first)(vm);
     }
 
     hpx::finalize();

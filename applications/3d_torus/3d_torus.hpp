@@ -97,45 +97,48 @@ OCTOPUS_GLOBAL_VARIABLE((boost::uint64_t), kick_mode);
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Mass density
-double&       rho(octopus::state& u)       { return u[0]; }
-double const& rho(octopus::state const& u) { return u[0]; }
+inline double&       rho(octopus::state& u)       { return u[0]; }
+inline double const& rho(octopus::state const& u) { return u[0]; }
 
 /// Momentum density (X-axis)
-double&       momentum_x(octopus::state& u)       { return u[1]; }
-double const& momentum_x(octopus::state const& u) { return u[1]; }
+inline double&       momentum_x(octopus::state& u)       { return u[1]; }
+inline double const& momentum_x(octopus::state const& u) { return u[1]; }
 
 /// Momentum density (Y-axis)
-double&       momentum_y(octopus::state& u)       { return u[2]; }
-double const& momentum_y(octopus::state const& u) { return u[2]; }
+inline double&       momentum_y(octopus::state& u)       { return u[2]; }
+inline double const& momentum_y(octopus::state const& u) { return u[2]; }
 
 /// Momentum density (Z-axis)
-double&       momentum_z(octopus::state& u)       { return u[3]; }
-double const& momentum_z(octopus::state const& u) { return u[3]; }
+inline double&       momentum_z(octopus::state& u)       { return u[3]; }
+inline double const& momentum_z(octopus::state const& u) { return u[3]; }
 
 /// Total energy of the gas 
-double&       total_energy(octopus::state& u)       { return u[4]; }
-double const& total_energy(octopus::state const& u) { return u[4]; }
+inline double&       total_energy(octopus::state& u)       { return u[4]; }
+inline double const& total_energy(octopus::state const& u) { return u[4]; }
 
 /// Entropy tracer
-double&       tau(octopus::state& u)       { return u[5]; }
-double const& tau(octopus::state const& u) { return u[5]; }
+inline double&       tau(octopus::state& u)       { return u[5]; }
+inline double const& tau(octopus::state const& u) { return u[5]; }
 
 enum { radial_momentum_idx = 6 };
 
-double&       angular_momentum(octopus::state& u)       { return u[7]; }
-double const& angular_momentum(octopus::state const& u) { return u[7]; }
+inline double&       angular_momentum(octopus::state& u)       { return u[7]; }
+inline double const& angular_momentum(octopus::state const& u) { return u[7]; }
 
-double radius(octopus::array<double, 3> const& v)
+inline double&       rho_tracker(octopus::state& u)       { return u[8]; }
+inline double const& rho_tracker(octopus::state const& u) { return u[8]; }
+
+inline double radius(octopus::array<double, 3> const& v)
 {
     return std::sqrt(v[0]*v[0] + v[1]*v[1]);
 }
 
-double radius(double x, double y)
+inline double radius(double x, double y)
 {
     return std::sqrt(x*x + y*y);
 }
 
-double radial_momentum(
+inline double radial_momentum(
     octopus::state const& u
   , octopus::array<double, 3> const& v
     )
@@ -156,7 +159,7 @@ double radial_momentum(
     return 0.0;
 }
 
-double tangential_momentum(
+inline double tangential_momentum(
     octopus::state const& u
   , octopus::array<double, 3> const& v
     )
@@ -179,7 +182,7 @@ double tangential_momentum(
 }
 
 template <octopus::axis Axis>
-double gravity(octopus::array<double, 3> const& v)
+inline double gravity(octopus::array<double, 3> const& v)
 {
     double const x = v[0];
     double const y = v[1];
@@ -203,7 +206,7 @@ double gravity(octopus::array<double, 3> const& v)
     return 0.0; 
 }
 
-double radial_gravity(octopus::array<double, 3> const& v)
+inline double radial_gravity(octopus::array<double, 3> const& v)
 {
     double const x = v[0];
     double const y = v[1];
@@ -217,7 +220,7 @@ double radial_gravity(octopus::array<double, 3> const& v)
 }
 
 template <octopus::axis Axis>
-double velocity(
+inline double velocity(
     octopus::state const& u
   , octopus::array<double, 3> const& v
     )
@@ -244,7 +247,7 @@ double velocity(
     return 0.0; 
 }
 
-double kinetic_energy(
+inline double kinetic_energy(
     octopus::state const& u
   , octopus::array<double, 3> const& v
     )
@@ -255,12 +258,12 @@ double kinetic_energy(
 }
 
 /// Gas pressure - polytropic equation of state.
-double pressure(octopus::state const& u)
+inline double pressure(octopus::state const& u)
 {
     return kappa * std::pow(rho(u), gamma_);
 }
 
-double speed_of_sound(octopus::state const& u)
+inline double speed_of_sound(octopus::state const& u)
 {
     OCTOPUS_ASSERT(rho(u) > 0.0);
     OCTOPUS_ASSERT(pressure(u) >= 0.0);
@@ -268,14 +271,14 @@ double speed_of_sound(octopus::state const& u)
 }
 
 // Omega at the radius with the highest pressure.
-double omega_R_0()
+inline double omega_R_0()
 {
     double const j_H = std::sqrt(2.0*X_in/(1.0+X_in));
     double const j_here = j_H*std::sqrt(G*M_C*R_outer);
     return (G*M_C)*(G*M_C)/(j_here*j_here*j_here);
 }
 
-void initialize_omega()
+inline void initialize_omega()
 {
     if (rotating_grid)
         omega = omega_R_0();
@@ -283,13 +286,13 @@ void initialize_omega()
         omega = 0.0; 
 }
 
-double orbital_period()
+inline double orbital_period()
 {
     double const pi = boost::math::constants::pi<double>();
     return 2.0*pi/omega_R_0(); 
 }
 
-double z_max(double R)
+inline double z_max(double R)
 {
     using std::pow;
     using std::sqrt;
@@ -305,7 +308,7 @@ double z_max(double R)
     return R_outer*sqrt(tmp);
 }
 
-double rho_max() 
+inline double rho_max() 
 {
     using std::pow;
     using std::sqrt;
@@ -321,9 +324,22 @@ double rho_max()
     return pow(H_max/((n+1)*kappa), n);
 }
 
-double density_floor()
+inline double density_floor()
 {
     return 1e-10 * rho_max();
+}
+
+bool select_x_coordinate(
+    octopus::octree_server& U
+  , boost::uint64_t x
+  , double eps
+    )
+{
+    if (!(  (U.x_center(x) - 0.5 * U.get_dx() < eps)
+         && (U.x_center(x) + 0.5 * U.get_dx() >= eps)))
+        return false;
+    else
+        return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -479,6 +495,11 @@ struct initialize : octopus::trivial_serialization
                     momentum_z(U(i, j, k))          = 0.0; 
                     U(i, j, k)[radial_momentum_idx] = 0.0;
 
+                    if (select_x_coordinate(U, i, 1e-7) && y_here > 0)
+                        rho_tracker(U(i, j, k)) = rho(U(i, j, k)); 
+                    else
+                        rho_tracker(U(i, j, k)) = density_floor();
+                        
 //                    rho(U(i, j, k)) = (std::max)(rho(U(i, j, k))
 //                                               , density_floor()); 
                 }

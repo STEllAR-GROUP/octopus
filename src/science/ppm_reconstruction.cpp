@@ -32,9 +32,12 @@ void ppm_reconstruction::operator()(
 
     for (boost::uint64_t i = 1; i < gnx - 1; ++i)
     {
-        state up = q0[i + 1] - q0[i];
-        state um = q0[i] - q0[i - 1];
-        slope[i] = minmod_theta(up, um, 2.0);
+        for (boost::uint64_t l = 0; l < slope[i].size(); ++l)
+        {
+            double up = q0[i + 1][l] - q0[i][l];
+            double um = q0[i][l] - q0[i - 1][l];
+            slope[i][l] = minmod_theta(up, um, 2.0);
+        }
     }
 
     for (boost::uint64_t i = 1; i < gnx - 2; ++i)

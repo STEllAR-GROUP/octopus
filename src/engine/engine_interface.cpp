@@ -5,11 +5,14 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#define BOOST_NO_CXX11_SCOPED_ENUMS
+#if !defined(BOOST_NO_CXX11_SCOPED_ENUMS)
+    #define BOOST_NO_CXX11_SCOPED_ENUMS
+#endif
 
 #include <hpx/include/lcos.hpp>
 
 #include <octopus/engine/engine_interface.hpp>
+
 #include <octopus/filesystem.hpp>
 
 namespace octopus

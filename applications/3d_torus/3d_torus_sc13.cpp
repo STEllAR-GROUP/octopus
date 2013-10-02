@@ -10,6 +10,8 @@
 
 #include <fenv.h>
 
+#include <boost/process.hpp>
+
 #include <hpx/util/high_resolution_timer.hpp>
 
 void octopus_define_problem(
@@ -130,6 +132,70 @@ void octopus_define_problem(
       , "slice_z_L%06u_S%06u.dat");
 }
 
+void generate_jpeg(
+    boost::uint64_t step
+  , double time
+  , double period
+    )
+{
+    char const* script =
+        "set terminal jpeg size 1200,1200;"
+        "set view 0,0;"
+        "set object 1 rectangle from screen 0,0 to "
+            "screen 1,1 fillcolor rgb 'black' behind;"
+        "unset xtics;"
+        "unset ytics;"
+        "unset ztics;"
+        "unset border;"
+        "unset key;"
+        "unset colorbox;"
+//        "set cbrange [3e-14:0.00025];"
+        "set cbrange [3e-12:0.00025];"
+        "set logscale cb;"
+        "set title '%1$.4f orbits' font 'arial, 30';"
+        "set title tc rgb 'white';"
+        "set lmargin 3.0;"
+        "set rmargin 3.0;"
+        "set tmargin 3.5;"
+        "set output '/home/wash/sandbox/sc13_demo_buffer/slice_z_L%2$06u_S%3$06u.jpeg';"
+        "set multiplot;"
+        "plot "
+            "'./slice_z_L%2$06u_S%3$06u.dat' using 1:2:($4==%4%-1?$13:1/0) "
+                "with points palette pt 5 ps 3;"
+//        "plot "
+//            "'./slice_z_L%2$06u_S%3$06u.dat' using 1:2:($4==%4%?$13:1/0) "
+//                "with points palette pt 5 ps 3;"
+    
+        ;
+
+    std::vector<std::string> args;
+    args.push_back("-e");
+    args.push_back(boost::str(boost::format(script)
+                  % (time / period)
+                  % hpx::get_locality_id()
+                  % step
+//                  ));
+                  % octopus::config().levels_of_refinement));
+
+    boost::process::context ctx;
+//    ctx.stdout_behavior = boost::process::silence_stream(); 
+    ctx.stdout_behavior = boost::process::capture_stream();
+    ctx.stderr_behavior = boost::process::capture_stream();
+
+    std::string const exe = "/usr/bin/gnuplot";
+
+    boost::process::child c = boost::process::launch(exe, args, ctx);
+
+    boost::process::status s = c.wait();
+
+    boost::process::pistream &is = c.get_stderr(); 
+    std::string line; 
+    while (std::getline(is, line)) 
+      std::cout << line << std::endl; 
+
+    OCTOPUS_ASSERT(!(s.exited() ? s.exit_status() : 0));
+}
+
 struct stepper 
 {
   private:
@@ -194,15 +260,16 @@ struct stepper
         else
         {
             root.output(0.0);
+            generate_jpeg(0, 0, period_);
         }
 
         std::ofstream dt_file("dt.csv");
         std::ofstream speed_file("speed.csv");
  
-        dt_file    << "# step, time [orbits], dt [orbits], dt cfl [orbits], "
-                      "output?\n";
-        speed_file << "# step, orbital speed [orbits/hours], "
-                      "step speed [steps/second], output?\n";
+        //dt_file    << "step, time [orbits], dt [orbits], output & refine?\n";
+        //speed_file << "step, speed [orbits/hours], output & refine?\n";
+        dt_file    << "# step, time [orbits], dt [orbits], dt cfl [orbits], output?\n";
+        speed_file << "# step, speed [orbits/hours], output?\n";
  
         ///////////////////////////////////////////////////////////////////////
         // Crude, temporary stepper.
@@ -253,6 +320,9 @@ struct stepper
                 output_and_refine = true;
 
                 root.output(root.get_time() / period_);
+
+                generate_jpeg(root.get_step(), root.get_time(), period_);
+
                 next_output_time +=
                     (octopus::config().output_frequency * period_); 
 
@@ -298,28 +368,24 @@ struct stepper
 
             ///////////////////////////////////////////////////////////////////
             // I/O of stats
-            char const* fmt = "STEP %06u : ORBITS %.7g%|33t| += %.7g%|49t| : "
-                              "SPEED %.7g%|71t| [orbits/hour], "
-                              "%.7g %|99t| [steps/second]";
+            char const* fmt = "STEP %06u : ORBITS %.7g %|34t| += %.7g "
+                              "%|52t|: SPEED %.7g %|76t| [orbits/hour] ";
 
-            double const orbital_speed =
+            double const speed =
                 ((this_dt / period_) / (local_clock.elapsed() / 3600));
-
-            double const step_speed = (1 / local_clock.elapsed());
 
             std::cout <<
                 ( boost::format(fmt)
                 % this_step
                 % (this_time / period_)
                 % (this_dt / period_)
-                % orbital_speed 
-                % step_speed
+                % speed 
                 );
 
             //if (output_and_refine)
             //    std::cout << ": OUTPUT & REFINE";
             if (output_and_refine)
-                std::cout << " : OUTPUT";
+                std::cout << ": OUTPUT";
 
             std::cout << "\n";
  
@@ -332,10 +398,9 @@ struct stepper
                        % output_and_refine); 
 
             // Record speed. 
-            speed_file << ( boost::format("%e %e %e %i\n")
+            speed_file << ( boost::format("%e %e %i\n")
                           % this_step 
-                          % orbital_speed
-                          % step_speed 
+                          % speed 
                           % output_and_refine); 
         }
 
