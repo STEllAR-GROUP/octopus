@@ -688,7 +688,7 @@ struct OCTOPUS_EXPORT octree_server
     // FIXME: Use remotable futures.
     void require_sibling_child(
         child_index kid
-     ,  face f
+      , face f
         )
     {
         if (siblings_[f].kind() == amr_boundary)
@@ -702,8 +702,8 @@ struct OCTOPUS_EXPORT octree_server
     // FIXME: Use remotable futures.
     void require_corner_child(
         child_index kid
-     ,  face f0
-     ,  face f1
+      , face f0
+      , face f1
         )
     {
         siblings_[f0].require_sibling_child(kid, f1); 
