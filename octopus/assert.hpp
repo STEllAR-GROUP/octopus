@@ -33,7 +33,7 @@
                 BOOST_CURRENT_FUNCTION, __FILE__, __LINE__))
 #else
     #define OCTOPUS_ASSERT(expr)
-    #define OCTOPUS_ASSERT_MSG(expr)
+    #define OCTOPUS_ASSERT_MSG(expr, msg)
     #define OCTOPUS_ASSERT_FMT_MSG(expr, fmt, args)
 #endif
 
