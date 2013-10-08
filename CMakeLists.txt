@@ -59,14 +59,14 @@ if(VISIT_DRIVER_FOUND AND VISIT_LIBSIM_FOUND)
 endif()
 
 ################################################################################
-hpx_option(OCTOPUS_VERIFY BOOL
-           "Enable verification of Octopus (default: ON)" ON ADVANCED)
+#hpx_option(OCTOPUS_VERIFY BOOL
+#           "Enable verification of Octopus (default: ON)" ON ADVANCED)
 
-if(OCTOPUS_VERIFY)
-  add_definitions(-DOCTOPUS_ENABLE_VERIFICATION=1)
-else()
-  add_definitions(-DOCTOPUS_ENABLE_VERIFICATION=0)
-endif()
+#if(OCTOPUS_VERIFY)
+#  add_definitions(-DOCTOPUS_ENABLE_VERIFICATION=1)
+#else()
+#  add_definitions(-DOCTOPUS_ENABLE_VERIFICATION=0)
+#endif()
   
 ################################################################################
 hpx_include(CompilerFlags)
