@@ -61,7 +61,7 @@ void engine_server::open_checkpoint(
     std::fstream::openmode m;
 
     if (load)
-        m = std::fstream::binary | std::fstream::in | std::fstream::in;
+        m = std::fstream::binary | std::fstream::in | std::fstream::out;
     else
         m = std::fstream::binary | std::fstream::out | std::fstream::trunc;
 
