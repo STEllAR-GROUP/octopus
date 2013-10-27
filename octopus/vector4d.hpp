@@ -93,9 +93,10 @@ struct vector4d
       : x_length_(other.x_length_)
       , y_length_(other.y_length_)
       , z_length_(other.z_length_) 
-      , data_(boost::move(other.data_))
+//      , data_(boost::move(other.data_))
+      , data_(other.data_)
     {
-        other.clear();
+//        other.clear();
     }
 
     vector4d& operator=(BOOST_COPY_ASSIGN_REF(vector4d) other)
@@ -112,9 +113,9 @@ struct vector4d
         x_length_ = other.x_length_;
         y_length_ = other.y_length_;
         z_length_ = other.z_length_;
-        data_ = boost::move(other.data_);
+        data_ = other.data_;//boost::move(other.data_);
 
-        other.clear();
+//        other.clear();
 
         return *this;
     }

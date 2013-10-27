@@ -701,8 +701,8 @@ void octree_server::communicate_ghost_zones(
             // Send out ghost zone data for our neighbors.
             // FIXME: send_ghost_zone is somewhat compute intensive,
             // parallelize?
-            siblings_[i].receive_ghost_zone_push(step_, phase, invert(fi),
-                send_ghost_zone(invert(fi)));
+            dependencies.push_back(siblings_[i].receive_ghost_zone_async
+                (step_, phase, invert(fi), send_ghost_zone(invert(fi))));
         }
 
         else if (amr_boundary == siblings_[i].kind())

@@ -882,7 +882,7 @@ struct OCTOPUS_EXPORT octree_server
       , vector4d<double> const& zone
         )
     {
-        mutex_type::scoped_lock l(mtx_);
+//        mutex_type::scoped_lock l(mtx_);
 
         OCTOPUS_ASSERT_MSG(step_ == step,
             "cross-timestep communication occurred, octree is ill-formed");
