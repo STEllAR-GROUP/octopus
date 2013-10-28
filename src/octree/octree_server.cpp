@@ -1738,6 +1738,27 @@ void octree_server::child_to_parent_state_injection(
     child_to_parent_state_injection_kernel(phase); 
 } // }}}
 
+
+void octree_server::child_to_parent_multipole(
+    boost::uint64_t phase
+    )
+{ // {{{
+    std::vector<hpx::future<void> > recursion_is_parallelism;
+
+    recursion_is_parallelism.reserve(8);
+
+    for (boost::uint64_t i = 0; i < 8; ++i)
+        if (hpx::invalid_id != children_[i])
+            recursion_is_parallelism.push_back
+                (children_[i].child_to_parent_multipole_async(phase));
+
+    // Block while our children compute ...
+    hpx::wait(recursion_is_parallelism);
+
+    // ... and invoke the kernel on ourselves.
+    child_to_parent_state_multipole_kernel(phase);
+} // }}}
+
 /// 0.) Wait for all children to signal us.
 /// 1.) Signal our parent.
 void octree_server::child_to_parent_state_injection_kernel(
@@ -1798,6 +1819,64 @@ void octree_server::child_to_parent_state_injection_kernel(
     }
 } // }}}
 
+void octree_server::child_to_parent_multipole_kernel(
+    boost::uint64_t phase
+    )
+{ // {{{
+    std::vector<hpx::future<void> > dependencies;
+
+    bool has_children = false;
+
+    if (level_ == config().levels_of_refinement)
+        has_children = false;
+
+    else
+    {
+        // children_state_queue is only allocated if the max refinement level
+        // isn't the current level.
+        OCTOPUS_ASSERT_FMT_MSG(
+            phase < children_state_deps_.size(),
+            "phase (%1%) is greater than the children state queue length (%2%)",
+            phase % children_state_deps_.size());
+
+        dependencies.reserve(8);
+
+        for (boost::uint64_t i = 0; i < 8; ++i)
+            if (children_[i] != hpx::invalid_id)
+            {
+                has_children = true;
+                break;
+            }
+    }
+
+    if (has_children)
+    {
+        OCTOPUS_ASSERT(level_ != config().levels_of_refinement);
+
+        for (boost::uint64_t i = 0; i < 8; ++i)
+            if (children_[i] != hpx::invalid_id)
+                dependencies.push_back(
+                    children_state_deps_[phase](i).then(
+                        boost::bind(&octree_server::add_child_multipole,
+                            this, child_index(i), _1)));
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Wait for all children to signal us.
+    for (boost::uint64_t i = 0; i < dependencies.size(); ++i)
+        dependencies[i].move();
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Send a signal to our parent (if we have a parent).
+    if (parent_ != hpx::invalid_id)
+    {
+        OCTOPUS_ASSERT(level_ != 0);
+
+        parent_.receive_child_multipole(step_, phase,
+            get_child_index(), send_child_multipole());
+    }
+} // }}}
+
 void octree_server::add_child_state(
     child_index idx ///< Bound parameter.
   , hpx::future<vector4d<double> > state_f
@@ -1825,6 +1904,32 @@ void octree_server::add_child_state(
                     = k + bw + idx.z() * ((gnx / 2) - bw);
 
                 (*U_)(id, jd, kd) = state(i, j, k); 
+            }
+} // }}}
+
+void octree_server::add_child_multipole(
+    child_index idx ///< Bound parameter.
+  , hpx::future<vector4d<double> > state_f
+    )
+{ // {{{
+    boost::uint64_t const bw = science().ghost_zone_length;
+    boost::uint64_t const gnx = config().grid_node_length;
+
+    vector4d<double> state(state_f.move());
+
+    OCTOPUS_ASSERT(state.x_length() == ((gnx - 2 * bw) / 2));
+    OCTOPUS_ASSERT(state.y_length() == ((gnx - 2 * bw) / 2));
+    OCTOPUS_ASSERT(state.z_length() == ((gnx - 2 * bw) / 2));
+
+    for (boost::uint64_t i = 0; i < ((gnx - 2 * bw) / 2); ++i)
+        for (boost::uint64_t j = 0; j < ((gnx - 2 * bw) / 2); ++j)
+            for (boost::uint64_t k = 0; k < ((gnx - 2 * bw) / 2); ++k)
+            {
+                // Adjusted indices (for destination).
+  /***
+   * NEED GUTS
+   */
+
             }
 } // }}}
 
@@ -1873,6 +1978,35 @@ vector4d<double> octree_server::send_child_state()
             }
 
     return state; 
+} // }}}
+
+vector4d<double> octree_server::send_multipole()
+{ // {{{
+    boost::uint64_t const bw = science().ghost_zone_length;
+    boost::uint64_t const gnx = config().grid_node_length;
+
+    vector4d<double> state
+        (
+        (gnx - 2 * bw) / 2
+      , (gnx - 2 * bw) / 2
+      , (gnx - 2 * bw) / 2
+        );
+
+    child_index c = get_child_index();
+
+    for (boost::uint64_t i = bw; i < (gnx - bw); i += 2)
+        for (boost::uint64_t j = bw; j < (gnx - bw); j += 2)
+            for (boost::uint64_t k = bw; k < (gnx - bw); k += 2)
+            {
+
+            	/*****************
+            	 *
+            	 * ADD GUTS for MULTIPOLE SUMMER
+            	 */
+
+            }
+
+    return state;
 } // }}}
 
 ///////////////////////////////////////////////////////////////////////////////

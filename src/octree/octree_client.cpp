@@ -390,6 +390,17 @@ hpx::future<void> octree_client::child_to_parent_state_injection_async(
         (gid_, phase);
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+hpx::future<void> octree_client::child_to_parent_multipole_async(
+    boost::uint64_t phase
+    ) const
+{
+    ensure_real();
+    return hpx::async<octree_server::child_to_parent_multipole_action>
+        (gid_, phase);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 hpx::future<void> octree_client::receive_child_state_async(
     boost::uint64_t step ///< For debugging purposes.

@@ -1,11 +1,9 @@
 #ifndef EXPANSION_H_
 #define EXPANSION_H_
 
-#include "../vector.h"
-#include "../real.h"
-#include <algorithm>
+#include <octopus/vector.h>
 
-static const Real delta[3][3] = { { 1.0, 0.0, 0.0 }, { 0.0, 1.0, 0.0 }, { 0.0, 0.0, 1.0 } };
+static const double delta[3][3] = { { 1.0, 0.0, 0.0 }, { 0.0, 1.0, 0.0 }, { 0.0, 0.0, 1.0 } };
 static const size_t map2[3][3] = { { 0, 1, 2 }, { 1, 3, 4 }, { 2, 4, 5 } };
 static const size_t map3[3][3][3] = { { { 0, 1, 2 }, { 1, 3, 4 }, { 2, 4, 5 } }, { { 1, 3, 4 }, { 3, 6, 7 }, { 4, 7, 8 } }, { { 2, 4, 5 }, { 4, 7, 8 }, { 5, 8,
 		9 } } };
@@ -16,36 +14,36 @@ static const size_t map3[3][3][3] = { { { 0, 1, 2 }, { 1, 3, 4 }, { 2, 4, 5 } },
 #define POLE3_CNT (POLE2_CNT+1+2+3+4)
 
 template<int EXPANSION_POLES, bool NO_DIPOLE = false>
-class Expansion: public Vector<Real, EXPANSION_POLES> {
+class Expansion: public Vector<double, EXPANSION_POLES> {
 public:
 	Expansion() {
 	}
 
-	Real operator ()() const {
+	double operator ()() const {
 		return (*this)[0];
 	}
-	Real& operator ()() {
+	double& operator ()() {
 		return (*this)[0];
 	}
 
-	Real operator ()(int i) const {
+	double operator ()(int i) const {
 		return (*this)[EXPANSION_POLES - 3 + i];
 	}
-	Real& operator ()(int i) {
+	double& operator ()(int i) {
 		return (*this)[EXPANSION_POLES - 3 + i];
 	}
 
-	Real operator ()(int i, int j) const {
+	double operator ()(int i, int j) const {
 		return (*this)[1 + map2[i][j]];
 	}
-	Real& operator ()(int i, int j) {
+	double& operator ()(int i, int j) {
 		return (*this)[1 + map2[i][j]];
 	}
 
-	Real operator ()(int i, int j, int k) const {
+	double operator ()(int i, int j, int k) const {
 		return (*this)[1 + 6 + map3[i][j][k]];
 	}
-	Real& operator ()(int i, int j, int k) {
+	double& operator ()(int i, int j, int k) {
 		return (*this)[1 + 6 + map3[i][j][k]];
 	}
 
@@ -56,7 +54,7 @@ public:
 		return *this;
 	}
 
-	Expansion& operator =(Real expansion) {
+	Expansion& operator =(double expansion) {
 		for (int i = 0; i < EXPANSION_POLES; i++) {
 			(*this)[i] = expansion;
 		}
@@ -148,7 +146,7 @@ public:
 		return me;
 	}
 
-	Vector<Real, EXPANSION_POLES>& operator +=(const Vector<Real, EXPANSION_POLES>& vec) {
+	Vector<double, EXPANSION_POLES>& operator +=(const Vector<double, EXPANSION_POLES>& vec) {
 		for (int i = 0; i < EXPANSION_POLES; i++) {
 			(*this)[i] += vec[i];
 		}
@@ -157,11 +155,11 @@ public:
 
 	void compute_D(const _3Vec& Y) {
 		Expansion& me = *this;
-		const Real r2inv = 1.0 / Y.dot(Y);
-		const Real d0 = -sqrt(r2inv);
-		const Real d1 = -d0 * r2inv;
-		const Real d2 = -3.0 * d1 * r2inv;
-		const Real d3 = -5.0 * d2 * r2inv;
+		const double r2inv = 1.0 / Y.dot(Y);
+		const double d0 = -sqrt(r2inv);
+		const double d1 = -d0 * r2inv;
+		const double d2 = -3.0 * d1 * r2inv;
+		const double d3 = -5.0 * d2 * r2inv;
 		me() = d0;
 		for (int a = 0; a < 3; a++) {
 			me(a) = Y[a] * d1;

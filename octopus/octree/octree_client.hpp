@@ -720,6 +720,20 @@ struct OCTOPUS_EXPORT octree_client
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
+    // {{{ child_to_parent_multipole
+    void child_to_parent_multipole(
+        boost::uint64_t phase
+        ) const
+    {
+    	child_to_parent_multipole_async(phase).get();
+    }
+
+    hpx::future<void> child_to_parent_multipole_async(
+        boost::uint64_t phase
+        ) const;
+    // }}}
+
+    ///////////////////////////////////////////////////////////////////////////
     // {{{ receive_child_state
     void receive_child_state(
         boost::uint64_t step ///< For debugging purposes.
