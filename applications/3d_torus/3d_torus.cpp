@@ -197,10 +197,10 @@ struct stepper
         std::ofstream dt_file("dt.csv");
         std::ofstream speed_file("speed.csv");
  
-        //dt_file    << "step, time [orbits], dt [orbits], output & refine?\n";
-        //speed_file << "step, speed [orbits/hours], output & refine?\n";
-        dt_file    << "# step, time [orbits], dt [orbits], dt cfl [orbits], output?\n";
-        speed_file << "# step, speed [orbits/hours], output?\n";
+        dt_file    << "# step, time [orbits], dt [orbits], dt cfl [orbits], "
+                      "output?\n";
+        speed_file << "# step, orbital speed [orbits/hours], "
+                      "step speed [steps/second], output?\n";
  
         ///////////////////////////////////////////////////////////////////////
         // Crude, temporary stepper.
@@ -297,17 +297,21 @@ struct stepper
             ///////////////////////////////////////////////////////////////////
             // I/O of stats
             char const* fmt = "STEP %06u : ORBITS %.7g %|34t| += %.7g "
-                              "%|52t|: SPEED %.7g %|76t| [orbits/hour] ";
+                              "%|52t|: SPEED %.7g %|70t| [orbits/hour], "
+                              " %.7g %|97t| [steps/second]";
 
-            double const speed =
+            double const orbital_speed =
                 ((this_dt / period_) / (local_clock.elapsed() / 3600));
+
+            double const step_speed = (1 / local_clock.elapsed());
 
             std::cout <<
                 ( boost::format(fmt)
                 % this_step
                 % (this_time / period_)
                 % (this_dt / period_)
-                % speed 
+                % orbital_speed 
+                % step_speed
                 );
  
             //if (output_and_refine)
@@ -326,9 +330,10 @@ struct stepper
                        % output_and_refine); 
 
             // Record speed. 
-            speed_file << ( boost::format("%e %e %i\n")
+            speed_file << ( boost::format("%e %e %e %i\n")
                           % this_step 
-                          % speed 
+                          % orbital_speed
+                          % step_speed 
                           % output_and_refine); 
         }
 
