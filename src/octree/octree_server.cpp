@@ -310,6 +310,7 @@ void octree_server::prepare_compute_queues()
             children_state_deps_[i](j).reset();
 */
 
+    // REVIEW: Do we actually need these anymore?
     for (boost::uint64_t i = 0; i < children_flux_deps_.size(); ++i)
         for (boost::uint64_t j = 0; j < children_flux_deps_[i].size(); ++j)
             children_flux_deps_[i](j).reset();
@@ -2587,7 +2588,6 @@ void octree_server::child_to_parent_flux_injection_kernel(
     } // }}}
 } // }}}
 
-// IMPLEMENT
 void octree_server::add_child_flux(
     axis a ///< Bound parameter.
   , boost::uint64_t i0 ///< Bound parameter.
@@ -2595,7 +2595,7 @@ void octree_server::add_child_flux(
   , boost::uint8_t ck ///< Bound parameter.
   , hpx::future<vector4d<double> > flux_f
     )
-{ 
+{ // {{{
     boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
@@ -2672,11 +2672,10 @@ void octree_server::add_child_flux(
 
         default: { OCTOPUS_ASSERT(false); break; }
     };
-} 
+} // }}}
 
-// IMPLEMENT
 vector4d<double> octree_server::send_child_flux(face f)
-{ 
+{ // {{{
     boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
@@ -2795,7 +2794,7 @@ vector4d<double> octree_server::send_child_flux(face f)
 
     OCTOPUS_ASSERT(false);
     return vector4d<double>();
-} 
+} // }}}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Tree traversal.
