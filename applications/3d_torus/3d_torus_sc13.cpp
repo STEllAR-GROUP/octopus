@@ -14,6 +14,24 @@
 
 #include <hpx/util/high_resolution_timer.hpp>
 
+#include <octopus/filesystem.hpp>
+
+#include <boost/spirit/include/qi_rule.hpp>
+#include <boost/spirit/include/qi_parse.hpp>
+#include <boost/spirit/include/qi_kleene.hpp>
+#include <boost/spirit/include/qi_char.hpp>
+#include <boost/spirit/include/qi_alternative.hpp>
+#include <boost/spirit/include/qi_sequence.hpp>
+#include <boost/spirit/include/qi_difference.hpp>
+#include <boost/spirit/include/qi_eol.hpp>
+#include <boost/spirit/include/qi_lit.hpp>
+#include <boost/spirit/include/support_istream_iterator.hpp>
+#include <boost/spirit/include/support_ascii.hpp>
+
+// Please forgive me! 
+std::string gnuplot_script = ""; 
+std::string buffer_directory = "";
+
 void octopus_define_problem(
     boost::program_options::variables_map& vm
   , octopus::science_table& sci
@@ -35,7 +53,11 @@ void octopus_define_problem(
         ("rotating_grid", rotating_grid, true)
         ("kappa", kappa, 1.0)
         ("X_in", X_in, 0.5)
-        ("kick_mode", kick_mode, 0) 
+        ("kick_mode", kick_mode, 0)
+ 
+        ("sc13.gnuplot_script", gnuplot_script,
+            octopus::join_paths(OCTOPUS_CURRENT_SOURCE_DIRECTORY, "sc13.gpi"))
+        ("sc13.buffer_directory", buffer_directory, "/tmp/octopus_sc13_buffer")
     ;
 
     if (rot_dir_str == "clockwise")
@@ -70,6 +92,14 @@ void octopus_define_problem(
            % X_in.get())
         << ( boost::format("kick_mode                     = %i\n")
            % kick_mode.get())
+        << "\n";
+
+    std::cout
+        << "[octopus.3d_torus.sc13]\n"
+        << ( boost::format("gnuplot_script                = %s\n")
+           % gnuplot_script)
+        << ( boost::format("buffer_directory              = %s\n")
+           % buffer_directory)
         << "\n";
 
     // FIXME: Move this into core code.
@@ -132,53 +162,66 @@ void octopus_define_problem(
       , "slice_z_L%06u_S%06u.dat");
 }
 
+std::string load_gnuplot_template(std::string const& filename)
+{
+    std::ifstream ifs(filename, std::fstream::in);
+    ifs.unsetf(std::ios::skipws);
+
+    OCTOPUS_ASSERT(ifs.is_open());
+
+    // Get the length of the file.
+    ifs.seekg(0, std::ios::end);
+    std::streamsize length = ifs.tellg();
+
+    // Move back to the beginning of the file.
+    ifs.seekg(0, std::ios::beg);
+
+    if (length == 0)
+        return "";
+
+//    char* buffer = new char [length];
+//    ifs.read(buffer, length);
+//    std::string contents = buffer; 
+//    delete[] buffer;
+
+    namespace qi = boost::spirit::qi;
+
+    typedef boost::spirit::istream_iterator iterator;
+    iterator begin(ifs), end;
+    std::string contents;
+
+    qi::rule<iterator> skipper =
+        (qi::lit('#') >> *(qi::char_ - qi::eol) >> qi::eol);
+
+    qi::phrase_parse(begin, end, *(~qi::char_('#')), skipper, contents);
+
+    return contents; 
+}
+
 void generate_jpeg(
-    boost::uint64_t step
+    std::string const& gnuplot_template 
+  , boost::uint64_t step
   , double time
   , double period
     )
 {
-    char const* script =
-        "set terminal jpeg size 1200,1200;"
-        "set view 0,0;"
-        "set object 1 rectangle from screen 0,0 to "
-            "screen 1,1 fillcolor rgb 'black' behind;"
-        "unset xtics;"
-        "unset ytics;"
-        "unset ztics;"
-        "unset border;"
-        "unset key;"
-        "unset colorbox;"
-//        "set cbrange [3e-14:0.00025];"
-        "set cbrange [3e-12:0.00025];"
-        "set logscale cb;"
-        "set title '%1$.4f orbits' font 'arial, 30';"
-        "set title tc rgb 'white';"
-        "set lmargin 3.0;"
-        "set rmargin 3.0;"
-        "set tmargin 3.5;"
-        "set output '/home/wash/sandbox/sc13_demo_buffer/slice_z_L%2$06u_S%3$06u.jpeg';"
-        "set multiplot;"
-        "plot "
-            "'./slice_z_L%2$06u_S%3$06u.dat' using 1:2:($4==%4%-1?$13:1/0) "
-                "with points palette pt 5 ps 3;"
-//        "plot "
-//            "'./slice_z_L%2$06u_S%3$06u.dat' using 1:2:($4==%4%?$13:1/0) "
-//                "with points palette pt 5 ps 3;"
-    
-        ;
-
     std::vector<std::string> args;
+
     args.push_back("-e");
-    args.push_back(boost::str(boost::format(script)
+
+    // FIXME: Not sure boost.format is robust enough for this, I'd like to use
+    // something that gives the parameters named variables in the gnuplot
+    // script. I guess we could format them, and then stick in a couple of
+    // -e statements defining them as gnuplot variables.
+    args.push_back(boost::str(boost::format(gnuplot_template)
                   % (time / period)
                   % hpx::get_locality_id()
                   % step
-//                  ));
-                  % octopus::config().levels_of_refinement));
+                  % octopus::config().levels_of_refinement
+                  % buffer_directory));
 
     boost::process::context ctx;
-//    ctx.stdout_behavior = boost::process::silence_stream(); 
+//    ctx.stdout_behavior = boost::process::silence_stream();
     ctx.stdout_behavior = boost::process::capture_stream();
     ctx.stderr_behavior = boost::process::capture_stream();
 
@@ -208,6 +251,14 @@ struct stepper
 
     void operator()(octopus::octree_server& root) const
     {
+        OCTOPUS_ASSERT(gnuplot_script);
+        OCTOPUS_ASSERT(buffer_directory);
+
+        // Make sure the directory exists.
+        boost::filesystem::create_directories(buffer_directory);
+
+        std::string gnuplot_template = load_gnuplot_template(gnuplot_script);
+
         hpx::util::high_resolution_timer refine_clock;
 
         boost::uint64_t refine_passes = 0;
@@ -260,7 +311,7 @@ struct stepper
         else
         {
             root.output(0.0);
-            generate_jpeg(0, 0, period_);
+            generate_jpeg(gnuplot_template, 0, 0, period_);
         }
 
         std::ofstream dt_file("dt.csv");
@@ -321,7 +372,8 @@ struct stepper
 
                 root.output(root.get_time() / period_);
 
-                generate_jpeg(root.get_step(), root.get_time(), period_);
+                generate_jpeg(gnuplot_template
+                            , root.get_step(), root.get_time(), period_);
 
                 next_output_time +=
                     (octopus::config().output_frequency * period_); 
