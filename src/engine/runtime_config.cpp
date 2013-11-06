@@ -97,19 +97,19 @@ config_data config_from_ini()
     // FIXME: Math in INI would make this smoother, some of these settings
     // should default to a formula not a hard-coded value.
     reader
-        ("levels_of_refinement", cfg.levels_of_refinement, 0) 
+        ("levels_of_refinement", cfg.levels_of_refinement, 3) 
 
         ("runge_kutta_order", cfg.runge_kutta_order, 3) 
-        ("reflect_on_z", cfg.reflect_on_z, true) 
+        ("reflect_on_z", cfg.reflect_on_z, false) 
 
         ("spatial_domain", cfg.spatial_domain, 1.5) 
         ("grid_node_length", cfg.grid_node_length, 14) // FIXME: This should be
                                                        // computed dynamically. 
 
-        ("temporal_domain", cfg.temporal_domain, 1.0) 
+        ("temporal_domain", cfg.temporal_domain, 0.15) 
         ("temporal_prediction_gap", cfg.temporal_prediction_gap, 10) 
         
-        ("output_frequency", cfg.output_frequency, 0.005)
+        ("output_frequency", cfg.output_frequency, 0.01)
 
         ("checkpoint_file", cfg.checkpoint_file, "checkpoint_L%06u.bin")
         ("load_checkpoint", cfg.load_checkpoint, false)
