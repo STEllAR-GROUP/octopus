@@ -260,6 +260,13 @@ octree_server::octree_server(
     parent_to_child_injection(*parent_U);
 } // }}}
 
+octree_server::~octree_server()
+{
+    std::stringstream ss;
+    ss << get_oid() << " is being destroyed\n";
+    std::cout << ss.str() << std::flush; 
+}
+
 // NOTE: Should be thread-safe, offset_ and origin_ are only read, and never
 // written to.
 double octree_server::x_face(boost::uint64_t i) const

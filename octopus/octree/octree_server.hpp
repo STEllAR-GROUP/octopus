@@ -481,6 +481,8 @@ struct OCTOPUS_EXPORT octree_server
       , boost::shared_ptr<vector4d<double> > const& parent_U
         );
 
+    ~octree_server();
+
     boost::uint64_t get_level() const
     {
         return level_;

@@ -12,6 +12,8 @@
 
 #include <hpx/util/high_resolution_timer.hpp>
 
+#include <hpx/runtime/threads/thread_helpers.hpp>
+
 void octopus_define_problem(
     boost::program_options::variables_map& vm
   , octopus::science_table& sci
@@ -296,9 +298,9 @@ struct stepper
 
             ///////////////////////////////////////////////////////////////////
             // I/O of stats
-            char const* fmt = "STEP %06u : ORBITS %.7g %|34t| += %.7g "
-                              "%|52t|: SPEED %.7g %|70t| [orbits/hour], "
-                              " %.7g %|97t| [steps/second]";
+            char const* fmt = "STEP %06u : ORBITS %.7g%|33t| += %.7g%|49t|: "
+                              "SPEED %.7g%|70t| [orbits/hour], "
+                              "%.7g %|98t| [steps/second]";
 
             double const orbital_speed =
                 ((this_dt / period_) / (local_clock.elapsed() / 3600));
@@ -356,15 +358,29 @@ struct stepper
 
 int octopus_main(boost::program_options::variables_map& vm)
 {
-    octopus::octree_client root;
-
-    octopus::octree_init_data root_data;
-    // FIXME: create_root or root_data should do this.
-    root_data.dx = octopus::science().initial_dx();
-    root.create_root(hpx::find_here(), root_data);
-
-    root.apply_leaf<void>(stepper(orbital_period()));
+    {
+        octopus::octree_client root;
     
+        octopus::octree_init_data root_data;
+        // FIXME: create_root or root_data should do this.
+        root_data.dx = octopus::science().initial_dx();
+        root.create_root(hpx::find_here(), root_data);
+    
+        root.apply_leaf<void>(stepper(orbital_period()));
+    }
+
+    // Flush pending reference counting operations on the target locality.
+    hpx::agas::garbage_collect(hpx::find_here());
+
+    boost::posix_time::milliseconds d(1000);
+
+    // Schedule a wakeup.
+    hpx::threads::set_thread_state(
+        hpx::threads::get_self_id(), d, hpx::threads::pending);
+
+    // Suspend this pxthread.
+    hpx::threads::get_self().yield(hpx::threads::suspended);
+     
     return 0;
 }
 
