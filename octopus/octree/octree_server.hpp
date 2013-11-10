@@ -720,10 +720,11 @@ struct OCTOPUS_EXPORT octree_server
     {
         mutex_type::scoped_lock l(mtx_);
         state_interpolation_data sid(nephew.gid_, f);
-//        flux_interpolation_data fid(f, invert(f, idx));
-        bool erased = nephews_.erase(sid) != 0;
-//        exterior_nephews_.erase(fid);
-        OCTOPUS_ASSERT(erased); 
+
+        //bool erased = nephews_.erase(sid) != 0;
+        //OCTOPUS_ASSERT(erased); 
+
+        nephews_.erase(sid);
     }
 
     HPX_DEFINE_COMPONENT_ACTION(octree_server,
