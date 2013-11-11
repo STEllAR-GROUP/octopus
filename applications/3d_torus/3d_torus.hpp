@@ -73,6 +73,9 @@ double const polytropic_n = 3.0;
 /// Amplitude of the perturbation.
 double const kick_amplitude = 1e-2;
 
+// Rotation index 
+double const q = 0.0;
+
 /// Angular speed of the frame, e.g. how fast the grid rotates.
 OCTOPUS_GLOBAL_VARIABLE((double), omega);
 
@@ -270,9 +273,30 @@ double speed_of_sound(octopus::state const& u)
 // Omega at the radius with the highest pressure.
 double omega_R_0()
 {
-    double const j_H = std::sqrt(2.0*X_in/(1.0+X_in));
-    double const j_here = j_H*std::sqrt(G*M_C*R_outer);
-    return (G*M_C)*(G*M_C)/(j_here*j_here*j_here);
+    return J_0()/(R_0()*R_0());
+}
+
+double R_0()
+{
+    double const R_inner = X_in*R_outer;
+    double const A = pow(R_inner,(2.0*(q-1.0))) - pow(R_outer,(2.0*(q-1.0)));
+    double const B = -2.0*(q-1.0)*(1.0/R_inner - 1.0/R_outer);
+    return pow(A/B, 1.0/(2.0*q-1.0) );
+}
+
+double j_0()
+{
+    return std::sqrt(G*M_C*R_0());
+}
+
+double Psi(double R)
+{
+    return -( pow(j_0()/R_0(),2.0) * pow(R/R_0(),(2.0*(q-1.0))) / (2.0*(q-1.0)));
+}
+
+double H(double R, double Z)
+{
+    return G*M_C/std::sqrt(pow(R,2.0)+pow(Z,2.0)) - Psi(R) + C();
 }
 
 void initialize_omega()
@@ -289,34 +313,32 @@ double orbital_period()
     return 2.0*pi/omega_R_0(); 
 }
 
+double J(double R)
+{
+    return J_0()*pow(R/R_0(),q);
+}
+
 double z_max(double R)
 {
     using std::pow;
     using std::sqrt;
 
-    double const X = R/R_outer;
-    double const j_H = sqrt(2.0*X_in/(1.0+X_in));
-    double const C = 1.0/(1.0+X_in);
-    double const tmp = pow(C+0.5*(j_H/X)*(j_H/X), -2.0) - X*X;
-
+    tmp = pow(G*M_C/(C()-Psi(R)),2.0) - pow(R,2.0)
+    
     if (tmp <= 0.0)
         return 0.0; 
 
-    return R_outer*sqrt(tmp);
+    return sqrt(tmp);
 }
 
-double rho_max() 
+double rho_max()
 {
     using std::pow;
     using std::sqrt;
 
     double const n = polytropic_n;
-
-    double const R_0 = R_outer*2.0*X_in/(1.0+X_in);        
-    double const j_H = sqrt(2.0*X_in/(1.0+X_in));
-    double const X_max = R_0/R_outer;
-    double const C = 1.0/(1.0+X_in);
-    double const H_max = 1.0/sqrt(X_max*X_max) - 0.5*(j_H/X_max)*(j_H/X_max)-C;
+    
+    H_max = H(R_0(),0.0);
 
     return pow(H_max/((n+1)*kappa), n);
 }
@@ -366,12 +388,7 @@ struct initialize : octopus::trivial_serialization
     
         double const R_inner = X_in * R_outer;
 
-        double const C = 1.0/(1.0+X_in);
 
-        double const j_H = sqrt(2.0*X_in/(1.0+X_in));
-        // Conversion to "real" units (REVIEW: What does this mean?)
-        double const j_here = j_H*sqrt(G*M_C*R_outer); 
-  
         boost::uint64_t const gnx = octopus::config().grid_node_length;
  
         for (boost::uint64_t i = 0; i < gnx; ++i)
@@ -401,14 +418,14 @@ struct initialize : octopus::trivial_serialization
                         if (z_here <= z_max(R))
                         {
                             double const X = R/R_outer;
-
                             double const z = z_here/R_outer;
-                            double const H_here = 1.0/sqrt(X*X+z*z)
-                                                - 0.5*(j_H/X)*(j_H/X) - C;
+
+                            double const H_here = H(R,z_here);
+
+                            double const J_here = J(R);
 
                             double const n = polytropic_n;
-                            double rho_here = (pow(H_here/((n+1)*kappa), n))
-                                            * (G*M_C/R_outer);
+                            double rho_here = (pow(H_here/((n+1)*kappa), n));
 
                             OCTOPUS_ASSERT(rho_here > 0.0);
 
@@ -446,7 +463,7 @@ struct initialize : octopus::trivial_serialization
 
                             total_energy(U(i, j, k))     = ei0;
                             tau(U(i, j, k))              = tau0;
-                            angular_momentum(U(i, j, k)) = j_here*rho_here;
+                            angular_momentum(U(i, j, k)) = J_here*rho_here;
                         }
 
                         else
