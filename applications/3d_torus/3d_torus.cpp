@@ -296,9 +296,9 @@ struct stepper
 
             ///////////////////////////////////////////////////////////////////
             // I/O of stats
-            char const* fmt = "STEP %06u : ORBITS %.7g %|34t| += %.7g "
-                              "%|52t|: SPEED %.7g %|70t| [orbits/hour], "
-                              " %.7g %|97t| [steps/second]";
+            char const* fmt = "STEP %06u : ORBITS %.7g%|33t| += %.7g%|49t| : "
+                              "SPEED %.7g%|71t| [orbits/hour], "
+                              "%.7g %|99t| [steps/second]";
 
             double const orbital_speed =
                 ((this_dt / period_) / (local_clock.elapsed() / 3600));
@@ -317,7 +317,7 @@ struct stepper
             //if (output_and_refine)
             //    std::cout << ": OUTPUT & REFINE";
             if (output_and_refine)
-                std::cout << ": OUTPUT";
+                std::cout << " : OUTPUT";
 
             std::cout << "\n";
  
