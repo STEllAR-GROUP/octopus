@@ -278,26 +278,25 @@ double R_0()
     return pow(A/B, 1.0/(2.0*q-1.0) );
 }
 
-double C()
-{
-    return Psi(R_outer)-G*M_C/R_outer;
-}
-
-
 double J_0()
 {
     return std::sqrt(G*M_C*R_0());
+}
+
+double Psi(double R)
+{
+    return -( pow(J_0()/R_0(),2.0) * pow(R/R_0(),(2.0*(q-1.0))) / (2.0*(q-1.0)));
+}
+
+double C()
+{
+    return Psi(R_outer)-G*M_C/R_outer;
 }
 
 // Omega at the radius with the highest pressure.
 double omega_R_0()
 {
     return J_0()/(R_0()*R_0());
-}
-
-double Psi(double R)
-{
-    return -( pow(J_0()/R_0(),2.0) * pow(R/R_0(),(2.0*(q-1.0))) / (2.0*(q-1.0)));
 }
 
 double H(double R, double Z)
@@ -329,7 +328,7 @@ double z_max(double R)
     using std::pow;
     using std::sqrt;
 
-    double const tmp = pow(G*M_C/(C()-Psi(R)),2.0) - pow(R,2.0)
+    double const tmp = pow(G*M_C/(C()-Psi(R)),2.0) - pow(R,2.0);
     
     if (tmp <= 0.0)
         return 0.0; 
@@ -344,7 +343,7 @@ double rho_max()
 
     double const n = polytropic_n;
     
-    H_max = H(R_0(),0.0);
+    double const H_max = H(R_0(),0.0);
 
     return pow(H_max/((n+1)*kappa), n);
 }
@@ -452,15 +451,15 @@ struct initialize : octopus::trivial_serialization
                             {
                                 case rotate_counterclockwise:
                                 {
-                                    mom_x = (-y_here)*rho_here*j_here/pow(R, 2);
-                                    mom_y = (+x_here)*rho_here*j_here/pow(R, 2);
+                                    mom_x = (-y_here)*rho_here*J_here/pow(R, 2);
+                                    mom_y = (+x_here)*rho_here*J_here/pow(R, 2);
                                     break;
                                 }
 
                                 case rotate_clockwise:
                                 {
-                                    mom_x = (+y_here)*rho_here*j_here/pow(R, 2);
-                                    mom_y = (-x_here)*rho_here*j_here/pow(R, 2);
+                                    mom_x = (+y_here)*rho_here*J_here/pow(R, 2);
+                                    mom_y = (-x_here)*rho_here*J_here/pow(R, 2);
                                     break;
                                 }
 
