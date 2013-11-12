@@ -184,7 +184,7 @@ std::string load_gnuplot_template(std::string const& filename)
     std::ifstream ifs(filename, std::fstream::in);
     ifs.unsetf(std::ios::skipws);
 
-    OCTOPUS_ASSERT(ifs.is_open());
+    OCTOPUS_ALWAYS_ASSERT(ifs.is_open());
 
     // Get the length of the file.
     ifs.seekg(0, std::ios::end);
@@ -251,7 +251,7 @@ void generate_jpeg(
     boost::process::pistream &is = c.get_stderr(); 
     std::string line; 
     while (std::getline(is, line)) 
-      std::cout << line << std::endl; 
+        std::cout << line << std::endl; 
 
     OCTOPUS_ASSERT(!(s.exited() ? s.exit_status() : 0));
 }
