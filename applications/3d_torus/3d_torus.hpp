@@ -270,12 +270,6 @@ double speed_of_sound(octopus::state const& u)
     return std::sqrt(gamma_ * pressure(u) / rho(u)); 
 }
 
-// Omega at the radius with the highest pressure.
-double omega_R_0()
-{
-    return J_0()/(R_0()*R_0());
-}
-
 double R_0()
 {
     double const R_inner = X_in*R_outer;
@@ -293,6 +287,12 @@ double C()
 double J_0()
 {
     return std::sqrt(G*M_C*R_0());
+}
+
+// Omega at the radius with the highest pressure.
+double omega_R_0()
+{
+    return J_0()/(R_0()*R_0());
 }
 
 double Psi(double R)
@@ -329,7 +329,7 @@ double z_max(double R)
     using std::pow;
     using std::sqrt;
 
-    tmp = pow(G*M_C/(C()-Psi(R)),2.0) - pow(R,2.0)
+    double const tmp = pow(G*M_C/(C()-Psi(R)),2.0) - pow(R,2.0)
     
     if (tmp <= 0.0)
         return 0.0; 
