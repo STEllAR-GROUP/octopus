@@ -16,101 +16,21 @@
 #include <boost/algorithm/string/classification.hpp>
 
 // Dummy.
-void set_zoom(std::string const& arg) { BOOST_ASSERT(false); }
-HPX_PLAIN_ACTION(set_zoom, set_zoom_action);
-HPX_ACTION_HAS_CRITICAL_PRIORITY(set_zoom_action);
-
-// Dummy.
-void set_angle(std::string const& arg1, std::string const& arg2)
-{ BOOST_ASSERT(false); }
-HPX_PLAIN_ACTION(set_angle, set_angle_action);
-HPX_ACTION_HAS_CRITICAL_PRIORITY(set_angle_action);
-
-// Dummy.
-void update_kappa(double k) { BOOST_ASSERT(false); }
-HPX_PLAIN_ACTION(update_kappa, update_kappa_action);
-HPX_ACTION_HAS_CRITICAL_PRIORITY(update_kappa_action);
-
-char const* const help = "commands: set_zoom [double], "
-                                   "set_angle [int, int], "
-                                   "set_kappa [double]";
+void set_momentum_conservation(std::string const& arg) { BOOST_ASSERT(false); }
+HPX_PLAIN_ACTION(set_momentum_conservation, set_momentum_conservation_action);
 
 ///////////////////////////////////////////////////////////////////////////////
 int hpx_main(boost::program_options::variables_map& vm)
 {
     {
         BOOST_ASSERT(vm.count("target"));
+        BOOST_ASSERT(vm.count("set-momentum-conservation"));
 
         hpx::id_type target = hpx::naming::get_id_from_locality_id
             (vm["target"].as<boost::uint32_t>());
 
-        // Print out the available commands.
-        std::cout << help << std::endl << "> ";
-
-        // Enter the interpreter loop.
-        std::string line;
-        while (std::getline(std::cin, line))
-        {
-            boost::algorithm::trim(line);
-
-            std::vector<std::string> cmd;
-            boost::algorithm::split(cmd, line,
-                boost::algorithm::is_any_of(" \t\n"),
-                boost::algorithm::token_compress_on);
-
-            if (!cmd.empty() && !cmd[0].empty()) 
-            {
-                if (cmd[0] == "set_zoom")
-                {
-                    if (cmd.size() == 2)
-                    {
-                        hpx::async<set_zoom_action>(target, cmd[1]).get();
-                    }
-                    else
-                    {
-                        std::cout << "error: invalid command '"
-                                  << line << "'" << std::endl
-                                  << help << std::endl;
-                    }
-                }
-                else if (cmd[0] == "set_angle")
-                {
-                    if (cmd.size() == 3)
-                    {
-                        hpx::async<set_angle_action>
-                            (target, cmd[1], cmd[2]).get();
-                    }
-                    else
-                    {
-                        std::cout << "error: invalid command '"
-                                  << line << "'" << std::endl
-                                  << help << std::endl;
-                    }
-                }
-                else if (cmd[0] == "set_kappa")
-                {
-                    if (cmd.size() == 2)
-                    {
-                        hpx::async<update_kappa_action>(target
-                            , boost::lexical_cast<double>(cmd[1])).get();
-                    }
-                    else
-                    {
-                        std::cout << "error: invalid command '"
-                                  << line << "'" << std::endl
-                                  << help << std::endl;
-                    }
-                }
-                else
-                {
-                    std::cout << "error: invalid command '"
-                              << line << "'" << std::endl
-                              << help << std::endl;
-                }
-            }
-
-            std:: cout << "> ";
-        }
+        std::string scheme = vm["set-momentum-conservation"].as<std::string>();
+        hpx::async<set_momentum_conservation_action>(target, scheme).get();
     }
 
     hpx::disconnect();
@@ -127,7 +47,12 @@ int main(int argc, char* argv[])
     options_description cmdline("Usage: " HPX_APPLICATION_STRING " [options]");
 
     cmdline.add_options()
-        ("target", value<boost::uint32_t>(), "locality to connect to")
+        ("target"
+        , value<boost::uint32_t>()->default_value(0)
+        , "locality to connect to")
+        ( "set-momentum-conservation"
+        , value<std::string>()
+        , "new momentum conservation scheme")
     ;
 
     // Disable loading of all external components.

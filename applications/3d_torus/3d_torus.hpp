@@ -47,8 +47,9 @@ enum rotational_direction
 
 enum momentum_conservation
 {
-    angular_momentum_conservation,
-    cartesian_momentum_conservation
+    invalid_momentum_conservation  
+  , angular_momentum_conservation
+  , cartesian_momentum_conservation
 };
 
 ///////////////////////////////////////////////////////////////////////////////

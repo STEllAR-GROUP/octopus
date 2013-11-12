@@ -32,6 +32,19 @@
 std::string gnuplot_script = ""; 
 std::string buffer_directory = "";
 
+boost::atomic<momentum_conservation> new_mom_cons(invalid_momentum_conservation);
+
+void set_momentum_conservation(std::string const& arg)
+{
+    if (arg == "angular")
+        new_mom_cons.store(angular_momentum_conservation);
+    else if (arg == "cartesian")
+        new_mom_cons.store(cartesian_momentum_conservation);
+    else
+        OCTOPUS_ASSERT_MSG(false, "invalid momentum conservation");
+}
+HPX_PLAIN_ACTION(set_momentum_conservation, set_momentum_conservation_action);
+
 void octopus_define_problem(
     boost::program_options::variables_map& vm
   , octopus::science_table& sci
@@ -73,6 +86,10 @@ void octopus_define_problem(
         mom_cons = cartesian_momentum_conservation;
     else
         OCTOPUS_ASSERT_MSG(false, "invalid momentum conservation");
+
+    // Make sure new_mom_cons is set to something other than invalid.
+    momentum_conservation expected = invalid_momentum_conservation;
+    new_mom_cons.compare_exchange_strong(expected, mom_cons);
 
     std::cout
         << "[octopus.3d_torus]\n"
@@ -352,6 +369,22 @@ struct stepper
 
         while (!last_step)
         {
+            // Set new advection scheme.
+            momentum_conservation scheme = new_mom_cons.load();
+
+            // Do a comparison to avoid the global update if it's not necessary.
+            if (scheme != mom_cons)
+            {
+                OCTOPUS_ASSERT(scheme != invalid_momentum_conservation);
+                OCTOPUS_ASSERT(mom_cons != invalid_momentum_conservation);
+
+                if (scheme == angular_momentum_conservation)
+                    std::cout << "Switching to cartesian advection scheme\n";  
+                else 
+                    std::cout << "Switching to angular advection scheme\n";  
+                    
+                mom_cons = scheme; 
+            }
             hpx::util::high_resolution_timer local_clock;
 
             boost::uint64_t const this_step = root.get_step();
