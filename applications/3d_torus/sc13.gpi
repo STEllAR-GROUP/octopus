@@ -1,0 +1,43 @@
+# gnuplot script template.
+
+# REVIEW: Probably not needed as we now look at an actual 2D plot instead of
+# looking at a slice of the 3D plot.
+set view 0,0;
+
+set terminal jpeg size 1200,1200;
+
+# Setup margins
+set lmargin 3.0;
+set rmargin 3.0;
+set tmargin 3.5;
+
+# Make the background black
+set object 1 rectangle from screen 0,0 to screen 1,1 fillcolor rgb 'black' behind;
+
+# Hide various things we don't want to see.
+unset xtics;
+unset ytics;
+unset ztics;
+unset border;
+unset key;
+unset colorbox;
+
+# Set the range of the density color gradient. Note that we're effectively
+# applying a second "floor" here, to try and hide tiny non-physical effects that
+# appear in our visualization due to the use of log scaling 
+set cbrange [3e-12:0.00025];
+
+# Logscale density, so that we can see the motion of the tracking fluid better.
+set logscale cb;
+
+# Display the number of orbits as our title.
+set title '%1$.4f orbits' font 'arial, 30';
+set title tc rgb 'white';
+ 
+set output '%5%/slice_z_L%2$06u_S%3$06u.jpeg';
+
+# REVIEW: Do we need this?
+set multiplot;
+
+# Plot only points from the second most refined level of the tree.
+plot './slice_z_L%2$06u_S%3$06u.dat' using 1:2:($4==%4%?$13:1/0) with points palette pt 5 ps 3;
