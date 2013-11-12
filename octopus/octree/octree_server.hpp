@@ -1226,11 +1226,10 @@ struct OCTOPUS_EXPORT octree_server
       , hpx::future<T> value
         )
     {
-        T tmp = reducer(result, value.get()); 
+        T tmp = value.get();
 
-        // REVIEW: Why is this here?
         mutex_type::scoped_lock l(mtx_);
-        result = boost::move(tmp);
+        result = reducer(result, boost::move(tmp)); 
     }
 
   public:
