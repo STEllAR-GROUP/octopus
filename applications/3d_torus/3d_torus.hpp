@@ -284,6 +284,12 @@ double R_0()
     return pow(A/B, 1.0/(2.0*q-1.0) );
 }
 
+double C()
+{
+    return Psi(R_outer)-G*M_C/R_outer;
+}
+
+
 double J_0()
 {
     return std::sqrt(G*M_C*R_0());
