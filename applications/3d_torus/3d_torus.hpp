@@ -284,14 +284,14 @@ double R_0()
     return pow(A/B, 1.0/(2.0*q-1.0) );
 }
 
-double j_0()
+double J_0()
 {
     return std::sqrt(G*M_C*R_0());
 }
 
 double Psi(double R)
 {
-    return -( pow(j_0()/R_0(),2.0) * pow(R/R_0(),(2.0*(q-1.0))) / (2.0*(q-1.0)));
+    return -( pow(J_0()/R_0(),2.0) * pow(R/R_0(),(2.0*(q-1.0))) / (2.0*(q-1.0)));
 }
 
 double H(double R, double Z)
