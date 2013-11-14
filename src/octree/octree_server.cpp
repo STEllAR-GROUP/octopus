@@ -3923,8 +3923,8 @@ void octree_server::slice_y_kernel(slice_function const& f, double eps)
     boost::uint64_t const gnx = config().grid_node_length;
 
     // Make sure we are within epsilon of the equatorial plane.
-    if (!(  (x_center(bw) - 0.5 * dx_ < eps)
-         && (x_center(gnx - bw - 1) + 0.5 * dx_ >= eps)))
+    if (!(  (y_center(bw) - 0.5 * dx_ < eps)
+         && (y_center(gnx - bw - 1) + 0.5 * dx_ >= eps)))
         return;
 
     boost::uint64_t j = 0;
