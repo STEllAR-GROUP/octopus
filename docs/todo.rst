@@ -3,7 +3,10 @@ Possible Performance Problems
 * GIDs of engine servers should be stripped everywhere.
 * GIDs of octree components should never be passed with credits to the children;
   the lifetime of these components is deterministic and well understood.
-
+* Some of our operations that iterate over our children assume that we have all
+  eight children for certain things (like allocating temporary storage), because
+  we don't store the number of actual children that we have anywhere.
+ 
 Runtime/INI Configuration
 =========================
 * Configuration data should be stored in one structure instead of in individual
