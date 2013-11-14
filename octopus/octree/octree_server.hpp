@@ -1217,6 +1217,8 @@ struct OCTOPUS_EXPORT octree_server
     // }}}
 
     ///////////////////////////////////////////////////////////////////////////
+    // FIXME: the *_zonal forms can probably be implemented in terms of the
+    // per node forms.
     // {{{ reduce - definitions are out-of-line in octree_reduce.hpp.
   private:
     template <typename T>
@@ -1312,6 +1314,31 @@ struct OCTOPUS_EXPORT octree_server
                 , T const&)
           , &octree_server::template reduce_zonal<T>
           , reduce_zonal_action<T>
+        >
+    {};
+
+    /// Calls \param f on every discrete value in the octree, and reduces the
+    /// result using \param reducer. \param initial should be the identity for
+    /// reducer (e.g. reducer(initial, T) == T and reducer(initial, T)). This
+    /// form of reduction does not gurantee the order in which f is called but
+    /// does gurantee the order in which the reducer is called on the results
+    /// of f. 
+    template <typename T>
+    T reduce_zonal_ordered(
+        hpx::util::function<T(state&)> const& f
+      , hpx::util::function<T(T const&, T const&)> const& reducer
+      , T const& initial = T()
+        );
+
+    template <typename T>
+    struct reduce_zonal_ordered_action
+      : hpx::actions::make_action<
+            T (octree_server::*)
+                ( hpx::util::function<T(state&)> const&
+                , hpx::util::function<T(T const&, T const&)> const&
+                , T const&)
+          , &octree_server::template reduce_zonal_ordered<T>
+          , reduce_zonal_ordered_action<T>
         >
     {};
     // }}}
