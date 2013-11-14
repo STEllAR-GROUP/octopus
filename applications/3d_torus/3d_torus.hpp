@@ -73,8 +73,8 @@ double const polytropic_n = 3.0;
 /// Amplitude of the perturbation.
 double const kick_amplitude = 1e-2;
 
-// Rotation index 
-double const q = 0.0;
+/// Rotation index 
+double const q = 0.48;
 
 /// Angular speed of the frame, e.g. how fast the grid rotates.
 OCTOPUS_GLOBAL_VARIABLE((double), omega);
