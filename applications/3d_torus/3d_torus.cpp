@@ -125,9 +125,14 @@ void octopus_define_problem(
         sci.output = octopus::single_variable_silo_writer(0, "rho");
     #endif
 */
+/*
     sci.output = octopus::fstream_writer(
         output_equatorial_plane(octopus::z_axis)
       , "slice_z_L%06u_S%06u.dat");
+*/
+    sci.output = octopus::fstream_writer(
+        output_equatorial_plane(octopus::y_axis)
+      , "slice_y_L%06u_S%06u.dat");
 }
 
 struct stepper 
