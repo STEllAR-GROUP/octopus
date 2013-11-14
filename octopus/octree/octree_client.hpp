@@ -908,6 +908,20 @@ struct OCTOPUS_EXPORT octree_client
         ) const;
 
     template <typename T>
+    T reduce_ordered(
+        hpx::util::function<T(octree_server&)> const& f
+      , hpx::util::function<T(T const&, T const&)> const& reducer
+      , T const& initial = T()
+        ) const;
+
+    template <typename T>
+    hpx::future<T> reduce_ordered_async(
+        hpx::util::function<T(octree_server&)> const& f
+      , hpx::util::function<T(T const&, T const&)> const& reducer
+      , T const& initial = T()
+        ) const;
+
+    template <typename T>
     T reduce_zonal(
         hpx::util::function<T(state&)> const& f
       , hpx::util::function<T(T const&, T const&)> const& reducer

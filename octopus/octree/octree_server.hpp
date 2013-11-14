@@ -1232,13 +1232,27 @@ struct OCTOPUS_EXPORT octree_server
         result = reducer(result, boost::move(tmp)); 
     }
 
+    template <typename T>
+    void buffer_reduce_ordered(
+        boost::array<T, 8>& results
+      , boost::uint64_t index 
+      , hpx::future<T> value
+        )
+    {
+        results[index] = value.get(); 
+    }
+
   public:
-    // Initial should be an identity.
+    /// Calls \param f on every node in the octree, and reduces the result
+    /// using \param reducer. \param initial should be the identity for reducer
+    /// (e.g. reducer(initial, T) == T and reducer(initial, T)). This form of
+    /// reduction does not gurantee the order in which f is called nor the order
+    /// in which reducer is called on the results of f. 
     template <typename T>
     T reduce(
         hpx::util::function<T(octree_server&)> const& f
       , hpx::util::function<T(T const&, T const&)> const& reducer
-      , T const& initial = T()
+      , T const& initial = T() 
         );
 
     template <typename T>
@@ -1253,7 +1267,35 @@ struct OCTOPUS_EXPORT octree_server
         >
     {};
 
-    // Initial should be an identity.
+    /// Calls \param f on every node in the octree, and reduces the result
+    /// using \param reducer. \param initial should be the identity for reducer
+    /// (e.g. reducer(initial, T) == T and reducer(initial, T)). This form of
+    /// reduction does not gurantee the order in which f is called but does
+    /// gurantee the order in which the reducer is called on the results of f. 
+    template <typename T>
+    T reduce_ordered(
+        hpx::util::function<T(octree_server&)> const& f
+      , hpx::util::function<T(T const&, T const&)> const& reducer
+      , T const& initial = T() 
+        );
+
+    template <typename T>
+    struct reduce_ordered_action
+      : hpx::actions::make_action<
+            T (octree_server::*)
+                ( hpx::util::function<T(octree_server&)> const&
+                , hpx::util::function<T(T const&, T const&)> const&
+                , T const&)
+          , &octree_server::template reduce_ordered<T>
+          , reduce_ordered_action<T>
+        >
+    {};
+
+    /// Calls \param f on every discrete value in the octree, and reduces the
+    /// result using \param reducer. \param initial should be the identity for
+    /// reducer (e.g. reducer(initial, T) == T and reducer(initial, T)). This
+    /// form of reduction does not gurantee the order in which f is called nor
+    /// in which reducer is called on the results of f. 
     template <typename T>
     T reduce_zonal(
         hpx::util::function<T(state&)> const& f
