@@ -38,25 +38,25 @@ def z_max(R_inner,R):
     return math.sqrt(B)
     
 
-R_inner = 0.01
+R_inner = 0.1
 
 
 
 N = 0
 start = R_inner
 stop  = R_outer
-while (N < 100):
+while (N < 1000):
     N=N+1
-    R = start + (stop-start)*N/101.0
+    R = start + (stop-start)*N/1001.0
     
     print R, z_max(R_inner,R)
-#    startz = 0.0
-#    stopz = 0.1
-#    NZ = 0
-#    while (NZ < 100):
-#        NZ = NZ + 1
-#        Z = startz + (stopz-startz)*NZ/101.0
-#        print R, Z, H(R_inner,R,Z)
+    startz = 0.0
+    stopz = 0.1
+    NZ = 0
+    while (NZ < 1000):
+        NZ = NZ + 1
+        Z = startz + (stopz-startz)*NZ/1001.0
+        print R, Z, H(R_inner,R,Z)
     
         
         
