@@ -2925,7 +2925,6 @@ void octree_server::add_differentials_kernel(double dt, double beta)
 
             D_(i, j, k) += science().source(*this, (*U_)(i, j, k), c);
 
-            // Discretization. 
             (*U_)(i, j, k) = (*U_)(i, j, k) * beta + D_(i, j, k) * dt * beta
                            + (*U0_)(i, j, k) * (1.0 - beta); 
 
@@ -2940,6 +2939,7 @@ void octree_server::add_differentials_kernel(double dt, double beta)
 
     (*FO_) = ((*FO_) + DFO_ * dt) * beta + (*FO0_) * (1.0 - beta);
 
+    // FIXME: This seems redundant.
     for (boost::uint64_t i = 0; i < DFO_.size(); ++i)
         DFO_[i] = 0.0;
 } // }}}
