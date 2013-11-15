@@ -16,21 +16,21 @@
 #include <boost/algorithm/string/classification.hpp>
 
 // Dummy.
-void set_momentum_conservation(std::string const& arg) { BOOST_ASSERT(false); }
-HPX_PLAIN_ACTION(set_momentum_conservation, set_momentum_conservation_action);
+void set_advection_scheme(std::string const& arg) { BOOST_ASSERT(false); }
+HPX_PLAIN_ACTION(set_advection_scheme, set_advection_scheme_action);
 
 ///////////////////////////////////////////////////////////////////////////////
 int hpx_main(boost::program_options::variables_map& vm)
 {
     {
         BOOST_ASSERT(vm.count("target"));
-        BOOST_ASSERT(vm.count("set-momentum-conservation"));
+        BOOST_ASSERT(vm.count("set-advection-scheme"));
 
         hpx::id_type target = hpx::naming::get_id_from_locality_id
             (vm["target"].as<boost::uint32_t>());
 
-        std::string scheme = vm["set-momentum-conservation"].as<std::string>();
-        hpx::async<set_momentum_conservation_action>(target, scheme).get();
+        std::string scheme = vm["set-advection-scheme"].as<std::string>();
+        hpx::async<set_advection_scheme_action>(target, scheme).get();
     }
 
     hpx::disconnect();
@@ -50,9 +50,9 @@ int main(int argc, char* argv[])
         ("target"
         , value<boost::uint32_t>()->default_value(0)
         , "locality to connect to")
-        ( "set-momentum-conservation"
+        ( "set-advection-scheme"
         , value<std::string>()
-        , "new momentum conservation scheme")
+        , "new advection scheme")
     ;
 
     // Disable loading of all external components.

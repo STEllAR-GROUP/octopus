@@ -11,8 +11,10 @@
 #include <fenv.h>
 
 #include <boost/process.hpp>
+#include <boost/circular_buffer.hpp>
 
 #include <hpx/util/high_resolution_timer.hpp>
+#include <hpx/runtime/threads/executors/service_executor.hpp>
 
 #include <octopus/filesystem.hpp>
 
@@ -32,18 +34,18 @@
 std::string gnuplot_script = ""; 
 std::string buffer_directory = "";
 
-boost::atomic<momentum_conservation> new_mom_cons(invalid_momentum_conservation);
+boost::atomic<advection_scheme> new_adv_scheme(invalid_advection_scheme);
 
-void set_momentum_conservation(std::string const& arg)
+void set_advection_scheme(std::string const& arg)
 {
     if (arg == "angular")
-        new_mom_cons.store(angular_momentum_conservation);
+        new_adv_scheme.store(angular_advection_scheme);
     else if (arg == "cartesian")
-        new_mom_cons.store(cartesian_momentum_conservation);
+        new_adv_scheme.store(cartesian_advection_scheme);
     else
-        OCTOPUS_ASSERT_MSG(false, "invalid momentum conservation");
+        OCTOPUS_ASSERT_MSG(false, "invalid advection scheme");
 }
-HPX_PLAIN_ACTION(set_momentum_conservation, set_momentum_conservation_action);
+HPX_PLAIN_ACTION(set_advection_scheme, set_advection_scheme_action);
 
 void octopus_define_problem(
     boost::program_options::variables_map& vm
@@ -54,7 +56,7 @@ void octopus_define_problem(
     double temporal_prediction_limiter = 0.0; 
 
     std::string rot_dir_str = "";
-    std::string mom_cons_str = "";
+    std::string adv_scheme_str = "";
 
     octopus::config_reader reader("octopus.3d_torus");
 
@@ -62,7 +64,7 @@ void octopus_define_problem(
         ("max_dt_growth", max_dt_growth, 1.25)
         ("temporal_prediction_limiter", temporal_prediction_limiter, 0.5)
         ("rotational_direction", rot_dir_str, "counterclockwise")
-        ("momentum_conservation", mom_cons_str, "angular")
+        ("advection_scheme", adv_scheme_str, "angular")
         ("rotating_grid", rotating_grid, true)
         ("kappa", kappa, 1.0)
         ("X_in", X_in, 0.5)
@@ -80,16 +82,16 @@ void octopus_define_problem(
     else
         OCTOPUS_ASSERT_MSG(false, "invalid rotational direction");
 
-    if (mom_cons_str == "angular")
-        mom_cons = angular_momentum_conservation;
-    else if (mom_cons_str == "cartesian")
-        mom_cons = cartesian_momentum_conservation;
+    if (adv_scheme_str == "angular")
+        adv_scheme = angular_advection_scheme;
+    else if (adv_scheme_str == "cartesian")
+        adv_scheme = cartesian_advection_scheme;
     else
-        OCTOPUS_ASSERT_MSG(false, "invalid momentum conservation");
+        OCTOPUS_ASSERT_MSG(false, "invalid advection scheme");
 
-    // Make sure new_mom_cons is set to something other than invalid.
-    momentum_conservation expected = invalid_momentum_conservation;
-    new_mom_cons.compare_exchange_strong(expected, mom_cons);
+    // Make sure new_adv_scheme is set to something other than invalid.
+    advection_scheme expected = invalid_advection_scheme;
+    new_adv_scheme.compare_exchange_strong(expected, adv_scheme);
 
     std::cout
         << "[octopus.3d_torus]\n"
@@ -99,8 +101,8 @@ void octopus_define_problem(
            % temporal_prediction_limiter)
         << ( boost::format("rotational_direction          = %s\n")
            % rot_dir_str)
-        << ( boost::format("momentum_conservation         = %s\n")
-           % mom_cons_str)
+        << ( boost::format("advection_scheme              = %s\n")
+           % adv_scheme_str)
         << ( boost::format("rotating_grid                 = %i\n")
            % rotating_grid.get())
         << ( boost::format("kappa                         = %.6g\n")
@@ -179,50 +181,22 @@ void octopus_define_problem(
       , "slice_z_L%06u_S%06u.dat");
 }
 
-std::string load_gnuplot_template(std::string const& filename)
-{
-    std::ifstream ifs(filename, std::fstream::in);
-    ifs.unsetf(std::ios::skipws);
-
-    OCTOPUS_ALWAYS_ASSERT(ifs.is_open());
-
-    // Get the length of the file.
-    ifs.seekg(0, std::ios::end);
-    std::streamsize length = ifs.tellg();
-
-    // Move back to the beginning of the file.
-    ifs.seekg(0, std::ios::beg);
-
-    if (length == 0)
-        return "";
-
-//    char* buffer = new char [length];
-//    ifs.read(buffer, length);
-//    std::string contents = buffer; 
-//    delete[] buffer;
-
-    namespace qi = boost::spirit::qi;
-
-    typedef boost::spirit::istream_iterator iterator;
-    iterator begin(ifs), end;
-    std::string contents;
-
-    qi::rule<iterator> skipper =
-        (qi::lit('#') >> *(qi::char_ - qi::eol) >> qi::eol);
-
-    qi::phrase_parse(begin, end, *(~qi::char_('#')), skipper, contents);
-
-    return contents; 
-}
-
 void generate_jpeg(
-    std::string const& gnuplot_template 
-  , boost::uint64_t step
+    boost::uint64_t step
   , double time
   , double period
     )
 {
     std::vector<std::string> args;
+
+    const char* definitions = 
+        "locality=%1%;"
+        "step=%2%;"
+        "time=%3%;"
+        "lor=%4%;"
+        "buffer_directory='%5%';"
+        "suffix='L%1$06u_S%2$06u';"
+        ;
 
     args.push_back("-e");
 
@@ -230,12 +204,14 @@ void generate_jpeg(
     // something that gives the parameters named variables in the gnuplot
     // script. I guess we could format them, and then stick in a couple of
     // -e statements defining them as gnuplot variables.
-    args.push_back(boost::str(boost::format(gnuplot_template)
-                  % (time / period)
+    args.push_back(boost::str(boost::format(definitions)
                   % hpx::get_locality_id()
                   % step
+                  % (time / period)
                   % octopus::config().levels_of_refinement
                   % buffer_directory));
+
+    args.push_back(gnuplot_script);
 
     boost::process::context ctx;
 //    ctx.stdout_behavior = boost::process::silence_stream();
@@ -256,6 +232,11 @@ void generate_jpeg(
     OCTOPUS_ASSERT(!(s.exited() ? s.exit_status() : 0));
 }
 
+double relative_change(double a, double a_not)
+{
+    return (a - a_not) / a_not;
+}
+
 struct stepper 
 {
   private:
@@ -273,8 +254,6 @@ struct stepper
 
         // Make sure the directory exists.
         boost::filesystem::create_directories(buffer_directory);
-
-        std::string gnuplot_template = load_gnuplot_template(gnuplot_script);
 
         hpx::util::high_resolution_timer refine_clock;
 
@@ -309,6 +288,25 @@ struct stepper
 
         double refine_walltime = refine_clock.elapsed();
 
+        hpx::threads::executors::io_pool_executor io_sched;
+
+        // time, state
+        typedef std::pair<double, total_state> total_state_entry;
+
+        boost::circular_buffer<total_state_entry> cons_history(10);
+
+        total_state_entry initial_sum(0.0, sum_state(root));
+
+        cons_history.push_back(initial_sum);
+ 
+        // Insert it twice so that we show up in the first few cons graphs.
+        cons_history.push_back(cons_history.back());
+
+        std::ofstream cons_file("cons.csv");
+
+        cons_file  << "# step, time [orbits], total density, total angular momentum, \n"
+                   << std::flush; 
+ 
         if (octopus::config().load_checkpoint)
         {
             boost::uint64_t step = 0;
@@ -328,16 +326,45 @@ struct stepper
         else
         {
             root.output(0.0);
-            generate_jpeg(gnuplot_template, 0, 0, period_);
+            generate_jpeg(0, 0, period_);
+
+            std::cout << (boost::format(
+                "\n"
+                "TOTAL DENSITY:          %.7e\n"
+                "TOTAL ANGULAR MOMENTUM: %.7e\n"
+                "\n")
+                % cons_history[0].second.rho
+                % cons_history[0].second.angular_momentum);
+
+                cons_file <<
+                    ( boost::format("%i %e %.7e %.7e %.7e\n")
+                    % 0 
+                    % 0.0 
+                    % cons_history[0].second.rho
+                    % cons_history[0].second.angular_momentum
+                    % 0.0) 
+                    << std::flush;
+
+            // Write out the "fake" cons graph for the initial state.            
+            std::ofstream cons_dat_file(boost::str(boost::format(
+                "cons_L%06u_S%06u.dat")
+                % hpx::get_locality_id()
+                % 0));
+    
+            cons_dat_file << (boost::format("%e %.7e\n") % 0.0 % 0.0)
+                          << std::flush;
         }
 
+        // FIXME: These aren't actually csv files anymore. 
         std::ofstream dt_file("dt.csv");
         std::ofstream speed_file("speed.csv");
- 
+
         //dt_file    << "step, time [orbits], dt [orbits], output & refine?\n";
         //speed_file << "step, speed [orbits/hours], output & refine?\n";
-        dt_file    << "# step, time [orbits], dt [orbits], dt cfl [orbits], output?\n";
-        speed_file << "# step, speed [orbits/hours], output?\n";
+        dt_file    << "# step, time [orbits], dt [orbits], dt cfl [orbits], output?\n"
+                   << std::flush;
+        speed_file << "# step, speed [orbits/hours], output?\n"
+                   << std::flush;
  
         ///////////////////////////////////////////////////////////////////////
         // Crude, temporary stepper.
@@ -364,27 +391,30 @@ struct stepper
         hpx::reset_active_counters();
 
         hpx::util::high_resolution_timer global_clock;
+
+        hpx::future<void> jpeg_future;
    
         bool last_step = false;
 
         while (!last_step)
         {
             // Set new advection scheme.
-            momentum_conservation scheme = new_mom_cons.load();
+            advection_scheme updated = new_adv_scheme.load();
 
             // Do a comparison to avoid the global update if it's not necessary.
-            if (scheme != mom_cons)
+            if (updated != adv_scheme)
             {
-                OCTOPUS_ASSERT(scheme != invalid_momentum_conservation);
-                OCTOPUS_ASSERT(mom_cons != invalid_momentum_conservation);
+                OCTOPUS_ASSERT(updated != invalid_advection_scheme);
+                OCTOPUS_ASSERT(adv_scheme != invalid_advection_scheme);
 
-                if (scheme == angular_momentum_conservation)
-                    std::cout << "Switching to cartesian advection scheme\n";  
+                if (updated == angular_advection_scheme)
+                    std::cout << "SWITCHING TO CARTESIAN ADVECTION SCHEME\n";  
                 else 
-                    std::cout << "Switching to angular advection scheme\n";  
+                    std::cout << "SWITCHING TO ANGULAR ADVECTION SCHEME\n";  
                     
-                mom_cons = scheme; 
+                adv_scheme = updated; 
             }
+
             hpx::util::high_resolution_timer local_clock;
 
             boost::uint64_t const this_step = root.get_step();
@@ -401,16 +431,55 @@ struct stepper
 
             if (root.get_time() >= next_output_time)
             {   
+                total_state_entry ts
+                    (root.get_time() / period_, sum_state(root));
+
+                cons_file <<
+                    ( boost::format("%i %e %.7e %.7e %.7e\n")
+                    % this_step 
+                    % (this_time / period_) 
+                    % ts.second.rho
+                    % ts.second.angular_momentum
+                    % relative_change(
+                          ts.second.angular_momentum
+                        , initial_sum.second.angular_momentum))
+//                        , cons_history.back().second.angular_momentum))
+                    << std::flush;
+
+                cons_history.push_back(ts);
+
                 output_and_refine = true;
 
                 root.output(root.get_time() / period_);
 
-                generate_jpeg(gnuplot_template
-                            , root.get_step(), root.get_time(), period_);
+                std::ofstream cons_dat_file(boost::str(boost::format(
+                    "cons_L%06u_S%06u.dat")
+                    % hpx::get_locality_id()
+                    % root.get_step()));
+
+                for (boost::uint64_t i = 0; i < (cons_history.size() - 1); ++i)
+                {
+                    cons_dat_file <<
+                        ( boost::format("%e %.7e 1e-16 -1e-16\n")
+                        % cons_history[i + 1].first 
+                        % relative_change(
+                            cons_history[i].second.angular_momentum
+                          , cons_history[i + 1].second.angular_momentum))
+//                          , initial_sum.second.angular_momentum))
+                        << std::flush;
+                }
+
+                if (jpeg_future.valid())
+                    jpeg_future.then(boost::bind(&generate_jpeg
+                      , root.get_step(), root.get_time(), period_));
+                else
+                    jpeg_future = hpx::async(boost::bind(&generate_jpeg
+                      , root.get_step(), root.get_time(), period_));
 
                 next_output_time +=
                     (octopus::config().output_frequency * period_); 
 
+/*
                 reset_checkpoint rc;
                 hpx::wait(octopus::call_everywhere(rc));
 
@@ -425,6 +494,7 @@ struct stepper
                 root.save();
 
                 octopus::backup_checkpoint(".bak");
+*/
 
                 //root.refine();
             }
@@ -480,13 +550,15 @@ struct stepper
                        % (this_time / period_) 
                        % (this_dt / period_) 
                        % (prediction.next_dt / period_)
-                       % output_and_refine); 
+                       % output_and_refine) 
+                    << std::flush; 
 
             // Record speed. 
             speed_file << ( boost::format("%e %e %i\n")
                           % this_step 
                           % speed 
-                          % output_and_refine); 
+                          % output_and_refine)
+                       << std::flush; 
         }
 
         double solve_walltime = global_clock.elapsed();

@@ -45,11 +45,11 @@ enum rotational_direction
     rotate_counterclockwise
 };
 
-enum momentum_conservation
+enum advection_scheme
 {
-    invalid_momentum_conservation  
-  , angular_momentum_conservation
-  , cartesian_momentum_conservation
+    invalid_advection_scheme  
+  , angular_advection_scheme
+  , cartesian_advection_scheme
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -81,7 +81,7 @@ OCTOPUS_GLOBAL_VARIABLE((double), omega);
 OCTOPUS_GLOBAL_VARIABLE((rotational_direction), rot_dir);
 
 /// Advection scheme. 
-OCTOPUS_GLOBAL_VARIABLE((momentum_conservation), mom_cons);
+OCTOPUS_GLOBAL_VARIABLE((advection_scheme), adv_scheme);
 
 /// If true, a rotating frame of reference is used. 
 OCTOPUS_GLOBAL_VARIABLE((bool), rotating_grid);
@@ -144,11 +144,11 @@ inline double radial_momentum(
   , octopus::array<double, 3> const& v
     )
 {
-    switch (mom_cons)
+    switch (adv_scheme)
     {
-        case angular_momentum_conservation:
+        case angular_advection_scheme:
             return u[radial_momentum_idx]; 
-        case cartesian_momentum_conservation:
+        case cartesian_advection_scheme:
         {
             double const R = radius(v);
             return momentum_x(u)*v[0]/R + momentum_y(u)*v[1]/R;
@@ -167,11 +167,11 @@ inline double tangential_momentum(
 {
     double const R = radius(v);
     
-    switch (mom_cons)
+    switch (adv_scheme)
     {
-        case angular_momentum_conservation:
+        case angular_advection_scheme:
             return angular_momentum(u)/R - rho(u)*R*omega; 
-        case cartesian_momentum_conservation:
+        case cartesian_advection_scheme:
             return momentum_y(u)*v[0]/R
                  - momentum_x(u)*v[1]/R
                  - rho(u)*R*omega;
@@ -386,9 +386,9 @@ struct initialize : octopus::trivial_serialization
         double const C = 1.0/(1.0+X_in);
 
         double const j_H = sqrt(2.0*X_in/(1.0+X_in));
-        // Conversion to "real" units (REVIEW: What does this mean?)
+        // Conversion to "real" units 
         double const j_here = j_H*sqrt(G*M_C*R_outer); 
-  
+ 
         boost::uint64_t const gnx = octopus::config().grid_node_length;
  
         for (boost::uint64_t i = 0; i < gnx; ++i)
@@ -643,6 +643,7 @@ struct enforce_lower_limits : octopus::trivial_serialization
                                        , 1.0 / gamma_); 
         }
 
+/*
         // Floor everything in the center of the grid.
         double const R_inner = X_in * R_outer;
 
@@ -656,13 +657,14 @@ struct enforce_lower_limits : octopus::trivial_serialization
             angular_momentum(u)    = 0.0;
             u[radial_momentum_idx] = 0.0;
         }
+*/
 
         // If we're not conserving angular momentum, define angular momentum 
         // in terms of x and y momentum. 
         // FIXME: Not sure this belongs in this particular function, or perhaps
         // this hook should be renamed to be something more generic than
         // enforce_lower_limits.
-        else if (mom_cons != angular_momentum_conservation)
+        /*else*/ if (adv_scheme != angular_advection_scheme)
             angular_momentum(u) = momentum_y(u)*v[0] - momentum_x(u)*v[1];
     }
 };
@@ -1263,9 +1265,10 @@ struct output_equatorial_plane
     };
 };
 
+template <typename T>
 struct add_functor : octopus::trivial_serialization
 {
-    boost::uint64_t operator()(boost::uint64_t a, boost::uint64_t b) const
+    T operator()(T a, T b) const
     {
         return a + b;
     } 
@@ -1281,8 +1284,77 @@ struct one_functor : octopus::trivial_serialization
 
 boost::uint64_t count_nodes(octopus::octree_server& U)
 {
-    return U.reduce<boost::uint64_t>(one_functor(), add_functor(), 0);
+    return U.reduce<boost::uint64_t>(one_functor()
+                                   , add_functor<boost::uint64_t>()
+                                   , 0);
 }
+
+struct total_state
+{
+    double rho;
+    double angular_momentum;
+
+    total_state operator+(total_state other) const
+    {
+        total_state tmp;
+        tmp.rho = rho + other.rho;
+        tmp.angular_momentum = angular_momentum + other.angular_momentum;
+        return tmp;
+    }
+
+    template <typename Archive>
+    void serialize(Archive& ar, unsigned int)
+    {
+        ar & rho;
+        ar & angular_momentum;
+    }
+};
+
+struct sum_state_functor : octopus::trivial_serialization
+{
+    total_state operator()(octopus::octree_server& U, octopus::state& u) const
+    {
+        double h3 = std::pow(U.get_dx(), 3);
+
+        total_state ts;
+        ts.rho = rho(u) * h3;
+        ts.angular_momentum = angular_momentum(u) * h3;
+        return ts;
+    } 
+};
+
+total_state sum_state(octopus::octree_server& U)
+{
+    total_state zero;
+    zero.rho = 0.0;
+    zero.angular_momentum = 0.0;
+    return U.reduce_terminal_zonal_ordered<total_state>
+        (sum_state_functor(), add_functor<total_state>(), zero);
+}
+
+/*
+struct sum_flowoffs_functor : octopus::trivial_serialization
+{
+    total_state operator()(octopus::octree_server& U) const
+    {
+        octopus::state tmp = U.get_flowoffs();
+        total_state ts;
+        ts.rho = rho(tmp);
+        ts.angular_momentum = angular_momentum(tmp);
+        return ts;
+    } 
+};
+
+total_state sum_flowoffs(octopus::octree_server& U)
+{
+    total_state zero;
+    zero.rho = 0.0;
+    zero.angular_momentum = 0.0;
+    return U.reduce_ordered<total_state>(sum_flowoffs_functor()
+                                       , add_functor<total_state>()
+                                       , zero);
+}
+*/
 
 struct slice_distribution : octopus::trivial_serialization
 {
@@ -1307,9 +1379,9 @@ struct slice_distribution : octopus::trivial_serialization
         double const dx0 = octopus::science().initial_dx();
 
         double const x = double(init.offset[0] + i) * init.dx - grid_dim
-                            - bw * dx0 - init.origin[0];
+                       - bw * dx0 - init.origin[0];
         double const y = double(init.offset[1] + j) * init.dx - grid_dim
-                            - bw * dx0 - init.origin[1]; 
+                       - bw * dx0 - init.origin[1]; 
 
 //        double const x = x_face + 0.5 * init.dx;
 //        double const y = y_face + 0.5 * init.dx;
