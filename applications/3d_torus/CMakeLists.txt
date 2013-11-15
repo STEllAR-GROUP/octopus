@@ -6,7 +6,7 @@
 add_definitions(-DOCTOPUS_CURRENT_SOURCE_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}")
 
 set(applications
-    3d_torus_driver
+#    3d_torus_driver
     3d_torus_sc13
     3d_torus_cli
 #    3d_torus_initial_state
@@ -27,7 +27,7 @@ if(VISIT_DRIVER_FOUND AND VISIT_LIBSIM_FOUND)
       DEPENDENCIES 3d_torus_lib)
 endif()
 
-add_hpx_library(3d_torus COMPONENT_DEPENDENCIES octopus SOURCES 3d_torus.cpp)
+#add_hpx_library(3d_torus COMPONENT_DEPENDENCIES octopus SOURCES 3d_torus.cpp)
 add_hpx_library(3d_torus_sc13 COMPONENT_DEPENDENCIES octopus SOURCES 3d_torus_sc13.cpp)
 
 foreach(application ${applications})
