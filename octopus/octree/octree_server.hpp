@@ -1349,7 +1349,7 @@ struct OCTOPUS_EXPORT octree_server
 
     template <typename T>
     T reduce_terminal_zonal_ordered(
-        hpx::util::function<T(state&)> const& f
+        hpx::util::function<T(octree_server&, state&)> const& f
       , hpx::util::function<T(T const&, T const&)> const& reducer
       , T const& initial = T()
         );
@@ -1358,7 +1358,7 @@ struct OCTOPUS_EXPORT octree_server
     struct reduce_terminal_zonal_ordered_action
       : hpx::actions::make_action<
             T (octree_server::*)
-                ( hpx::util::function<T(state&)> const&
+                ( hpx::util::function<T(octree_server&, state&)> const&
                 , hpx::util::function<T(T const&, T const&)> const&
                 , T const&)
           , &octree_server::template reduce_terminal_zonal_ordered<T>

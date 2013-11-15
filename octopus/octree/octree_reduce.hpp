@@ -204,7 +204,7 @@ inline T octree_server::reduce_zonal_ordered(
 // FIXME: This really should be built with generic functions.
 template <typename T>
 inline T octree_server::reduce_terminal_zonal_ordered(
-    hpx::util::function<T(state&)> const& f
+    hpx::util::function<T(octree_server&, state&)> const& f
   , hpx::util::function<T(T const&, T const&)> const& reducer
   , T const& initial
     ) 
@@ -255,7 +255,7 @@ inline T octree_server::reduce_terminal_zonal_ordered(
                             = k + bw + idx.z() * ((gnx / 2) - bw);
 
                         local_result = reducer(local_result
-                                             , f((*U_)(ii, jj, kk)));
+                                             , f(*this, (*U_)(ii, jj, kk)));
                     } 
 
     hpx::wait(recursion_is_parallelism);
@@ -360,7 +360,7 @@ inline hpx::future<T> octree_client::reduce_zonal_ordered_async(
 
 template <typename T>
 inline T octree_client::reduce_terminal_zonal_ordered(
-    hpx::util::function<T(state&)> const& f
+    hpx::util::function<T(octree_server&, state&)> const& f
   , hpx::util::function<T(T const&, T const&)> const& reducer
   , T const& initial 
     ) const 
@@ -370,7 +370,7 @@ inline T octree_client::reduce_terminal_zonal_ordered(
 
 template <typename T>
 inline hpx::future<T> octree_client::reduce_terminal_zonal_ordered_async(
-    hpx::util::function<T(state&)> const& f
+    hpx::util::function<T(octree_server&, state&)> const& f
   , hpx::util::function<T(T const&, T const&)> const& reducer
   , T const& initial
     ) const
