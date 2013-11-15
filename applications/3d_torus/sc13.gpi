@@ -1,43 +1,79 @@
-# gnuplot script template.
+#locality=%1%
+#step=%2%
+#time=%3%
+#lor=%4%
+#buffer_directory='%5%'
+#suffix='L%1$06u_S%2$06u'
+
+tracking_cons_file='./cons_'.suffix.'.dat'
+slice_file='./slice_z_'.suffix.'.dat'
+global_cons_file='./cons.csv'
+output_file=buffer_directory.'/slice_and_cons_'.suffix.'.jpeg'
 
 # REVIEW: Probably not needed as we now look at an actual 2D plot instead of
 # looking at a slice of the 3D plot.
-set view 0,0;
-
-set terminal jpeg size 1200,1200;
+set view 0,0
+set terminal jpeg size 1800,1200
 
 # Setup margins
-set lmargin 3.0;
-set rmargin 3.0;
-set tmargin 3.5;
+#set lmargin 3.0
+#set rmargin 3.0
+#set tmargin 3.5
 
 # Make the background black
-set object 1 rectangle from screen 0,0 to screen 1,1 fillcolor rgb 'black' behind;
+#set object 1 rectangle from screen 0,0 to screen 1,1 fillcolor rgb 'black' behind
 
 # Hide various things we don't want to see.
-unset xtics;
-unset ytics;
-unset ztics;
-unset border;
-unset key;
-unset colorbox;
+unset xtics
+unset ytics
+unset border
+unset key
+unset colorbox
 
 # Set the range of the density color gradient. Note that we're effectively
-# applying a second "floor" here, to try and hide tiny non-physical effects that
+# applying a second 'floor' here, to try and hide tiny non-physical effects that
 # appear in our visualization due to the use of log scaling 
-set cbrange [3e-12:0.00025];
+#set cbrange [3e-12:0.00025]
 
 # Logscale density, so that we can see the motion of the tracking fluid better.
-set logscale cb;
+#set logscale cb
 
 # Display the number of orbits as our title.
-set title '%1$.4f orbits' font 'arial, 30';
-set title tc rgb 'white';
+#set title '%3$.4f orbits' font 'arial, 30'
+#set title tc rgb 'white'
  
-set output '%5%/slice_z_L%2$06u_S%3$06u.jpeg';
+set output output_file
+set multiplot layout 1,2
 
-# REVIEW: Do we need this?
-set multiplot;
+set size 0.6, 0.9 
+set origin 0.05, 0.05
 
 # Plot only points from the second most refined level of the tree.
-plot './slice_z_L%2$06u_S%3$06u.dat' using 1:2:($4==%4%?$13:1/0) with points palette pt 5 ps 3;
+#plot slice_file using 1:2:($4==4?$13:1/0) with points palette pt 5 ps 3
+plot slice_file using 1:2:($4==4?$13:1/0) with points palette pt 5 ps 2
+
+set xtics out
+set ytics out
+set autoscale xfix
+#set autoscale y
+set border
+
+set format y '%e'
+
+set size 0.35, 0.4
+set origin 0.65, 0.5
+
+if (step > 1) \
+    plot tracking_cons_file using 1:2 with lines, \
+         tracking_cons_file using 1:3 with lines, \
+         tracking_cons_file using 1:4 with lines
+
+#set xrange[0.0:]
+#set yrange[:]
+
+set size 0.35, 0.4 
+set origin 0.65, 0.1
+
+if (step != 0) plot global_cons_file using 2:5 with lines
+
+
