@@ -1,3 +1,8 @@
+Possible Physics Issues
+=======================
+* We're summing flowoffs incorrectly, they are always 0 in the root grid if we 
+  use more than LOR.
+
 Possible Performance Problems
 =============================
 * GIDs of engine servers should be stripped everywhere.
