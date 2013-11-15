@@ -150,7 +150,6 @@ inline T octree_server::reduce_zonal(
     return reducer(result, local_result);
 }
 
-
 template <typename T>
 inline T octree_server::reduce_zonal_ordered(
     hpx::util::function<T(state&)> const& f
@@ -201,6 +200,75 @@ inline T octree_server::reduce_zonal_ordered(
 
     return reducer(result, local_result);
 }
+
+// FIXME: This really should be built with generic functions.
+template <typename T>
+inline T octree_server::reduce_terminal_zonal_ordered(
+    hpx::util::function<T(state&)> const& f
+  , hpx::util::function<T(T const&, T const&)> const& reducer
+  , T const& initial
+    ) 
+{
+    std::vector<hpx::future<T> > keep_alive;
+    keep_alive.reserve(8);
+
+    std::vector<hpx::future<void> > recursion_is_parallelism;
+    recursion_is_parallelism.reserve(8);
+
+    boost::array<T, 8> results;
+
+    // Start recursively executing the ourself on our children.
+    for (boost::uint64_t i = 0; i < 8; ++i)
+        if (hpx::invalid_id != children_[i])
+        {
+            keep_alive.emplace_back
+                (children_[i].template reduce_terminal_zonal_ordered_async<T>
+                    (f, reducer, initial)); 
+
+            // Buffer the results from our children.
+            recursion_is_parallelism.emplace_back(
+                keep_alive.back().then(boost::bind(
+                    &octree_server::template buffer_reduce_ordered<T>
+                  , this, boost::ref(results), i, _1))); 
+        }
+
+    boost::uint64_t bw = science().ghost_zone_length;
+    boost::uint64_t gnx = config().grid_node_length;
+
+    T local_result = initial;
+
+    // Only apply the kernel to points that are in a region where we don't have
+    // children.
+    for (boost::uint64_t c = 0; c < 8; ++c)
+        if (hpx::invalid_id == children_[c])
+            for (boost::uint64_t i = 0; i < ((gnx - 2 * bw) / 2); ++i)
+                for (boost::uint64_t j = 0; j < ((gnx - 2 * bw) / 2); ++j)
+                    for (boost::uint64_t k = 0; k < ((gnx - 2 * bw) / 2); ++k)
+                    {
+                        child_index const idx(c);
+                        // Adjusted indices.
+                        boost::uint64_t const ii
+                            = i + bw + idx.x() * ((gnx / 2) - bw);
+                        boost::uint64_t const jj
+                            = j + bw + idx.y() * ((gnx / 2) - bw);
+                        boost::uint64_t const kk
+                            = k + bw + idx.z() * ((gnx / 2) - bw);
+
+                        local_result = reducer(local_result
+                                             , f((*U_)(ii, jj, kk)));
+                    } 
+
+    hpx::wait(recursion_is_parallelism);
+
+    T result = initial;
+
+    for (boost::uint64_t i = 0; i < 8; ++i)
+        if (hpx::invalid_id != children_[i])
+            result = reducer(result, results[i]);
+
+    return reducer(result, local_result);
+}
+
 
 template <typename T>
 inline T octree_client::reduce(
@@ -290,6 +358,29 @@ inline hpx::future<T> octree_client::reduce_zonal_ordered_async(
     return hpx::async<action_type>(gid_, f, reducer, initial); 
 }
 
+template <typename T>
+inline T octree_client::reduce_terminal_zonal_ordered(
+    hpx::util::function<T(state&)> const& f
+  , hpx::util::function<T(T const&, T const&)> const& reducer
+  , T const& initial 
+    ) const 
+{
+    return reduce_terminal_zonal_ordered_async<T>(f, reducer, initial).get();
+}
+
+template <typename T>
+inline hpx::future<T> octree_client::reduce_terminal_zonal_ordered_async(
+    hpx::util::function<T(state&)> const& f
+  , hpx::util::function<T(T const&, T const&)> const& reducer
+  , T const& initial
+    ) const
+{
+    ensure_real();
+    typedef octopus::octree_server::reduce_terminal_zonal_ordered_action<T>
+        action_type;
+    return hpx::async<action_type>(gid_, f, reducer, initial); 
+}
+
 }
 
 HPX_REGISTER_ACTION_DECLARATION_TEMPLATE(
@@ -307,6 +398,10 @@ HPX_REGISTER_ACTION_DECLARATION_TEMPLATE(
 HPX_REGISTER_ACTION_DECLARATION_TEMPLATE(
     (template <typename T>),
     (octopus::octree_server::reduce_zonal_ordered_action<T>))
+
+HPX_REGISTER_ACTION_DECLARATION_TEMPLATE(
+    (template <typename T>),
+    (octopus::octree_server::reduce_terminal_zonal_ordered_action<T>))
 
 #endif // OCTOPUS_CAB36801_B41D_4CED_A034_0BA437666DB3
 

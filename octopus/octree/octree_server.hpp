@@ -513,6 +513,11 @@ struct OCTOPUS_EXPORT octree_server
         dt_.post(dt);
     }
 
+    state get_flowoffs()
+    {
+        return *FO_;
+    }
+
     state& operator()(
         boost::uint64_t i
       , boost::uint64_t j
@@ -1339,6 +1344,25 @@ struct OCTOPUS_EXPORT octree_server
                 , T const&)
           , &octree_server::template reduce_zonal_ordered<T>
           , reduce_zonal_ordered_action<T>
+        >
+    {};
+
+    template <typename T>
+    T reduce_terminal_zonal_ordered(
+        hpx::util::function<T(state&)> const& f
+      , hpx::util::function<T(T const&, T const&)> const& reducer
+      , T const& initial = T()
+        );
+
+    template <typename T>
+    struct reduce_terminal_zonal_ordered_action
+      : hpx::actions::make_action<
+            T (octree_server::*)
+                ( hpx::util::function<T(state&)> const&
+                , hpx::util::function<T(T const&, T const&)> const&
+                , T const&)
+          , &octree_server::template reduce_terminal_zonal_ordered<T>
+          , reduce_terminal_zonal_ordered_action<T>
         >
     {};
     // }}}
