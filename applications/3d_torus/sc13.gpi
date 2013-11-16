@@ -63,7 +63,7 @@ set format y '%e'
 set size 0.35, 0.4
 set origin 0.65, 0.5
 
-if (step > 1) \
+if (iostep != 0) \
     plot tracking_cons_file using 1:2 with lines, \
          tracking_cons_file using 1:3 with lines, \
          tracking_cons_file using 1:4 with lines
@@ -74,6 +74,6 @@ if (step > 1) \
 set size 0.35, 0.4 
 set origin 0.65, 0.1
 
-if (step != 0) plot global_cons_file using 2:5 with lines
+if (iostep > 1) plot global_cons_file using 2:5 with lines
 
 

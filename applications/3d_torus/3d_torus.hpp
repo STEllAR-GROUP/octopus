@@ -41,8 +41,8 @@
 
 enum rotational_direction
 {
-    rotate_clockwise,
-    rotate_counterclockwise
+    rotate_clockwise
+  , rotate_counterclockwise
 };
 
 enum advection_scheme
@@ -95,6 +95,19 @@ OCTOPUS_GLOBAL_VARIABLE((double), X_in);
 
 /// Mode of the perturbation.
 OCTOPUS_GLOBAL_VARIABLE((boost::uint64_t), kick_mode);
+
+std::string gnuplot_script = ""; 
+
+std::string buffer_directory = "";
+
+double max_dt_growth = 0.0; 
+
+double temporal_prediction_limiter = 0.0; 
+
+typedef hpx::lcos::local::spinlock config_mutex_type;
+config_mutex_type config_mutex;
+
+bool update_config = true;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Mass density

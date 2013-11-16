@@ -30,50 +30,90 @@
 #include <boost/spirit/include/support_istream_iterator.hpp>
 #include <boost/spirit/include/support_ascii.hpp>
 
-// Please forgive me! 
-std::string gnuplot_script = ""; 
-std::string buffer_directory = "";
-
-boost::atomic<advection_scheme> new_adv_scheme(invalid_advection_scheme);
-
-void set_advection_scheme(std::string const& arg)
+// Merges with the running config on the server side, and enqueues a update of 
+// the configuration into the running application.
+void update_live_config(hpx::util::section const& ini)
 {
-    if (arg == "angular")
-        new_adv_scheme.store(angular_advection_scheme);
-    else if (arg == "cartesian")
-        new_adv_scheme.store(cartesian_advection_scheme);
-    else
-        OCTOPUS_ASSERT_MSG(false, "invalid advection scheme");
+    config_mutex_type::scoped_lock l(config_mutex);
+
+    hpx::util::section tmp(ini);
+    hpx::get_runtime().get_config().merge(tmp);
+
+    update_config = true;
 }
-HPX_PLAIN_ACTION(set_advection_scheme, set_advection_scheme_action);
+HPX_PLAIN_ACTION(update_live_config, update_live_config_action);
 
-void octopus_define_problem(
-    boost::program_options::variables_map& vm
-  , octopus::science_table& sci
-    )
+// NOTE: This needs to determine whether the entry is a section or a value.
+hpx::util::section get_live_config(std::string const& query)
+{ 
+    hpx::util::section& ini = hpx::get_runtime().get_config();
+
+    hpx::util::section* sec = ini.get_section(query);
+    if (sec)
+        return *sec; 
+
+    OCTOPUS_ALWAYS_ASSERT(ini.has_entry(query));
+
+    std::string entry = ini.get_entry(query);
+
+    hpx::util::section r;
+    r.add_entry(query, entry);
+    return r;
+}
+HPX_PLAIN_ACTION(get_live_config, get_live_config_action);
+
+void load_configuration(bool use_defaults = false)
 {
-    double max_dt_growth = 0.0; 
-    double temporal_prediction_limiter = 0.0; 
-
     std::string rot_dir_str = "";
     std::string adv_scheme_str = "";
 
+    if (rot_dir == rotate_clockwise)
+        rot_dir_str = "clockwise";
+    else if (rot_dir == rotate_counterclockwise) 
+        rot_dir_str = "counterclockwise";
+    else
+        OCTOPUS_ASSERT_MSG(false, "invalid rotational direction");
+
+    if (adv_scheme == cartesian_advection_scheme)
+        adv_scheme_str = "angular";
+    else if (adv_scheme == angular_advection_scheme)
+        adv_scheme_str = "cartesian";
+    else
+        OCTOPUS_ASSERT_MSG(false, "invalid advection scheme");
+
     octopus::config_reader reader("octopus.3d_torus");
 
-    reader
-        ("max_dt_growth", max_dt_growth, 1.25)
-        ("temporal_prediction_limiter", temporal_prediction_limiter, 0.5)
-        ("rotational_direction", rot_dir_str, "counterclockwise")
-        ("advection_scheme", adv_scheme_str, "angular")
-        ("rotating_grid", rotating_grid, true)
-        ("kappa", kappa, 1.0)
-        ("X_in", X_in, 0.5)
-        ("kick_mode", kick_mode, 0)
- 
-        ("sc13.gnuplot_script", gnuplot_script,
-            octopus::join_paths(OCTOPUS_CURRENT_SOURCE_DIRECTORY, "sc13.gpi"))
-        ("sc13.buffer_directory", buffer_directory, "/tmp/octopus_sc13_buffer")
-    ;
+    if (use_defaults)
+        reader
+            ("max_dt_growth", max_dt_growth, 1.25)
+            ("temporal_prediction_limiter", temporal_prediction_limiter, 0.5)
+            ("rotational_direction", rot_dir_str, "counterclockwise")
+            ("advection_scheme", adv_scheme_str, "angular")
+            ("rotating_grid", rotating_grid, true)
+            ("kappa", kappa, 1.0)
+            ("X_in", X_in, 0.5)
+            ("kick_mode", kick_mode, 0)
+     
+            ("sc13.gnuplot_script", gnuplot_script,
+                octopus::join_paths(OCTOPUS_CURRENT_SOURCE_DIRECTORY, "sc13.gpi"))
+            ("sc13.buffer_directory", buffer_directory, "/tmp/octopus_sc13_buffer")
+        ;
+    else
+        reader
+            ("max_dt_growth", max_dt_growth, max_dt_growth)
+            ( "temporal_prediction_limiter"
+            , temporal_prediction_limiter, temporal_prediction_limiter)
+            ("rotational_direction", rot_dir_str, rot_dir_str)
+            ("advection_scheme", adv_scheme_str, adv_scheme_str)
+            ("rotating_grid", rotating_grid, rotating_grid)
+            ("kappa", kappa, kappa)
+            ("X_in", X_in, X_in)
+            ("kick_mode", kick_mode, kick_mode)
+     
+            ("sc13.gnuplot_script", gnuplot_script, gnuplot_script)
+            ("sc13.buffer_directory", buffer_directory, buffer_directory)
+        ;
+
 
     if (rot_dir_str == "clockwise")
         rot_dir = rotate_clockwise;
@@ -88,10 +128,6 @@ void octopus_define_problem(
         adv_scheme = cartesian_advection_scheme;
     else
         OCTOPUS_ASSERT_MSG(false, "invalid advection scheme");
-
-    // Make sure new_adv_scheme is set to something other than invalid.
-    advection_scheme expected = invalid_advection_scheme;
-    new_adv_scheme.compare_exchange_strong(expected, adv_scheme);
 
     std::cout
         << "[octopus.3d_torus]\n"
@@ -121,12 +157,34 @@ void octopus_define_problem(
            % buffer_directory)
         << "\n";
 
+    initialize_omega();
+}
+
+void commit_configuration(bool use_default = false)
+{
+    config_mutex_type::scoped_lock l(config_mutex);
+
+    if (update_config)
+    {
+        std::cout << "COMMITTING NEW CONFIGURATION\n";
+
+        load_configuration(use_default); 
+
+        update_config = false;
+    }
+}
+
+void octopus_define_problem(
+    boost::program_options::variables_map& vm
+  , octopus::science_table& sci
+    )
+{
+    commit_configuration(true);
+
     // FIXME: Move this into core code.
 	feenableexcept(FE_DIVBYZERO);
 	feenableexcept(FE_INVALID);
 	feenableexcept(FE_OVERFLOW);
-
-    initialize_omega();
 
     std::cout << "R_0     = " << (R_outer*2.0*X_in/(1.0+X_in)) << "\n";
     std::cout << "R_inner = " << (X_in*R_outer) << "\n";
@@ -183,6 +241,7 @@ void octopus_define_problem(
 
 void generate_jpeg(
     boost::uint64_t step
+  , boost::uint64_t iostep
   , double time
   , double period
     )
@@ -192,9 +251,10 @@ void generate_jpeg(
     const char* definitions = 
         "locality=%1%;"
         "step=%2%;"
-        "time=%3%;"
-        "lor=%4%;"
-        "buffer_directory='%5%';"
+        "iostep=%3%;"
+        "time=%4%;"
+        "lor=%5%;"
+        "buffer_directory='%6%';"
         "suffix='L%1$06u_S%2$06u';"
         ;
 
@@ -207,6 +267,7 @@ void generate_jpeg(
     args.push_back(boost::str(boost::format(definitions)
                   % hpx::get_locality_id()
                   % step
+                  % iostep
                   % (time / period)
                   % octopus::config().levels_of_refinement
                   % buffer_directory));
@@ -326,7 +387,7 @@ struct stepper
         else
         {
             root.output(0.0);
-            generate_jpeg(0, 0, period_);
+            generate_jpeg(0, 0, 0.0, period_);
 
             std::cout << (boost::format(
                 "\n"
@@ -395,25 +456,11 @@ struct stepper
         hpx::future<void> jpeg_future;
    
         bool last_step = false;
+        boost::uint64_t iostep = 0;
 
         while (!last_step)
         {
-            // Set new advection scheme.
-            advection_scheme updated = new_adv_scheme.load();
-
-            // Do a comparison to avoid the global update if it's not necessary.
-            if (updated != adv_scheme)
-            {
-                OCTOPUS_ASSERT(updated != invalid_advection_scheme);
-                OCTOPUS_ASSERT(adv_scheme != invalid_advection_scheme);
-
-                if (updated == angular_advection_scheme)
-                    std::cout << "SWITCHING TO CARTESIAN ADVECTION SCHEME\n";  
-                else 
-                    std::cout << "SWITCHING TO ANGULAR ADVECTION SCHEME\n";  
-                    
-                adv_scheme = updated; 
-            }
+            commit_configuration();
 
             hpx::util::high_resolution_timer local_clock;
 
@@ -431,6 +478,8 @@ struct stepper
 
             if (root.get_time() >= next_output_time)
             {   
+                ++iostep;
+
                 total_state_entry ts
                     (root.get_time() / period_, sum_state(root));
 
@@ -469,12 +518,13 @@ struct stepper
                         << std::flush;
                 }
 
+                // FIXME: try io_pool scheduler
                 if (jpeg_future.valid())
                     jpeg_future.then(boost::bind(&generate_jpeg
-                      , root.get_step(), root.get_time(), period_));
+                      , root.get_step(), iostep, root.get_time(), period_));
                 else
                     jpeg_future = hpx::async(boost::bind(&generate_jpeg
-                      , root.get_step(), root.get_time(), period_));
+                      , root.get_step(), iostep, root.get_time(), period_));
 
                 next_output_time +=
                     (octopus::config().output_frequency * period_); 

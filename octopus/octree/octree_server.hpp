@@ -199,7 +199,7 @@ struct OCTOPUS_EXPORT octree_server
     typedef hpx::components::managed_component<octree_server>*
         back_pointer_type;
 
-    typedef hpx::lcos::local::mutex mutex_type;
+    typedef hpx::lcos::local::spinlock mutex_type;
 
     ///< This event is triggered when we are first initialized. 
 //    hpx::lcos::local::event initialized_;
