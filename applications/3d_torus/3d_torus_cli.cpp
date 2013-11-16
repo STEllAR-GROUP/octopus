@@ -106,6 +106,14 @@ void ini_to_json_kernel(
     }
 }
 
+// FIXME FIXME FIXME
+// The entire command string has to be parsed with cgi_query_to_ini, including
+// the command. We can't do a pop_front on std::vector, so we need to handle
+// the first cgi query (which should be the command) separately from the rest. 
+//
+// Also, update_config should take any number of arguments greater than 1.
+// FIXME FIXME FIXME
+
 std::vector<std::string> cgi_query_to_ini(std::string const& cgi_query)
 {
     // FIXME: We should do escaping just to be safe. I don't think we need it

@@ -424,7 +424,8 @@ struct stepper
         //speed_file << "step, speed [orbits/hours], output & refine?\n";
         dt_file    << "# step, time [orbits], dt [orbits], dt cfl [orbits], output?\n"
                    << std::flush;
-        speed_file << "# step, speed [orbits/hours], output?\n"
+        speed_file << "# step, orbital speed [orbits/hours], "
+                      "step speed [steps/second], output?\n"
                    << std::flush;
  
         ///////////////////////////////////////////////////////////////////////
@@ -573,24 +574,29 @@ struct stepper
 
             ///////////////////////////////////////////////////////////////////
             // I/O of stats
-            char const* fmt = "STEP %06u : ORBITS %.7g %|34t| += %.7g "
-                              "%|52t|: SPEED %.7g %|76t| [orbits/hour] ";
+            char const* fmt = "STEP %06u : ORBITS %.7g%|33t| += %.7g%|49t| : "
+                              "SPEED %.7g%|71t| [orbits/hour], "
+                              "%.7g %|99t| [steps/second]";
 
-            double const speed =
+            double const orbital_speed =
                 ((this_dt / period_) / (local_clock.elapsed() / 3600));
+
+            double const step_speed = (1 / local_clock.elapsed());
 
             std::cout <<
                 ( boost::format(fmt)
                 % this_step
                 % (this_time / period_)
                 % (this_dt / period_)
-                % speed 
-                );
-
+                % orbital_speed 
+                % step_speed
+                )
+                << std::flush;
+ 
             //if (output_and_refine)
             //    std::cout << ": OUTPUT & REFINE";
             if (output_and_refine)
-                std::cout << ": OUTPUT";
+                std::cout << " : OUTPUT";
 
             std::cout << "\n";
  
@@ -600,15 +606,16 @@ struct stepper
                        % (this_time / period_) 
                        % (this_dt / period_) 
                        % (prediction.next_dt / period_)
-                       % output_and_refine) 
-                    << std::flush; 
+                       % output_and_refine)
+                    << std::flush;
 
             // Record speed. 
-            speed_file << ( boost::format("%e %e %i\n")
+            speed_file << ( boost::format("%e %e %e %i\n")
                           % this_step 
-                          % speed 
-                          % output_and_refine)
-                       << std::flush; 
+                          % orbital_speed
+                          % step_speed 
+                          % output_and_refine) 
+                       << std::flush;
         }
 
         double solve_walltime = global_clock.elapsed();

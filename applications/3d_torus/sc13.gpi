@@ -47,12 +47,24 @@ set output output_file
 set multiplot layout 1,2
 
 set size 0.6, 0.9 
-set origin 0.05, 0.05
+set origin 0.025, 0.05
 
-# Plot only points from the second most refined level of the tree.
-#plot slice_file using 1:2:($4==lor?$13:1/0) with points palette pt 5 ps 2
-#plot slice_file using 1:2:($4==lor?$13:1/0) with points palette pt 5 ps 0.25
-plot slice_file using 1:2:($4==lor?$5:1/0) with points palette pt 5 ps 0.25
+#set palette maxcolors 9000
+#set palette defined (0 "white", 250 "pink", 1500 "red", 3000 "dark-red", 4500 "dark-orange", 6000 "orange", 9000 "yellow")
+
+#set palette maxcolors 9000
+#set palette defined (0 "white", 250 "#461D7C", 4500 "dark-green", 9000 "#FDD023")
+
+# FIXME: Pick pointsized based on lor.
+
+#plot slice_file using 1:2:($4==lor?$13:1/0) with dots palette
+
+# 4LOR
+#plot slice_file using 1:2:($4==lor?$13:1/0) with points palette pt 5 ps 1.5
+plot slice_file using 1:2:($4==lor?$13:1/0) with points palette pt 5 ps 1
+
+# 5LOR
+#plot slice_file using 1:2:($4==lor?$5:1/0) with points palette pt 5 ps 0.25
 
 set xtics out
 set ytics out
@@ -60,10 +72,14 @@ set autoscale xfix
 #set autoscale y
 set border
 
-set format y '%e'
+set format y '%.0te%+T'
 
-set size 0.35, 0.4
-set origin 0.65, 0.5
+set xtics font "Arial,9" rotate nomirror 
+set ytics font "Arial,9" nomirror 
+set size 0.4, 0.4
+set origin 0.60, 0.5
+
+#set yrange [-0.001:0.001]
 
 if (iostep != 0) \
     plot tracking_cons_file using 1:2 with lines, \
@@ -73,8 +89,8 @@ if (iostep != 0) \
 #set xrange[0.0:]
 #set yrange[:]
 
-set size 0.35, 0.4 
-set origin 0.65, 0.1
+set size 0.4, 0.4 
+set origin 0.60, 0.1
 
 if (iostep > 1) plot global_cons_file using 2:5 with lines
 
