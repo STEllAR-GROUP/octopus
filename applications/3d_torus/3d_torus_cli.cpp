@@ -155,7 +155,8 @@ void command_interpreter(hpx::id_type const& target, std::string raw_cmd)
         std::cout << ini_to_json(ini) << std::flush;
     }
 
-    OCTOPUS_ALWAYS_ASSERT(false); // Unknown command.
+    else
+        OCTOPUS_ALWAYS_ASSERT(false); // Unknown command.
 }
 
 ///////////////////////////////////////////////////////////////////////////////
