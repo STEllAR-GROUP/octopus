@@ -1,0 +1,12 @@
+set terminal png size 3000,3000
+
+#set isosamples 500
+
+set pm3d map
+set pm3d interpolate 4,4
+
+set output 'rho.interpolated.png'
+splot './slice.filled.dat' using 1:2:4
+
+set output 'tracker.interpolated.png'
+splot './slice.filled.dat' using 1:2:5
