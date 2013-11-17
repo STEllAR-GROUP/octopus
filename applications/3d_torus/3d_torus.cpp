@@ -330,7 +330,7 @@ struct stepper
                        % output_and_refine); 
 
             // Record speed. 
-            speed_file << ( boost::format("%e %e %e %i\n")
+            speed_file << ( boost::format("%i %e %e %i\n")
                           % this_step 
                           % orbital_speed
                           % step_speed 
