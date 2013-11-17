@@ -68,8 +68,12 @@ void single_variable_silo_writer::start_write_locked(
 
     for (boost::uint64_t i = 0; i < directory_names_.size(); ++i)
     {
+#if OCTOPUS_ENABLE_VERIFICATION
         int error = DBMkDir(file_, directory_names_[i].c_str());
         OCTOPUS_ASSERT(error == 0);
+#else
+        DBMkDir(file_, directory_names_[i].c_str());
+#endif
     }
 }
 

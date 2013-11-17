@@ -114,65 +114,105 @@ void ini_to_json_kernel(
 // Also, update_config should take any number of arguments greater than 1.
 // FIXME FIXME FIXME
 
-std::vector<std::string> cgi_query_to_ini(std::string const& cgi_query)
+typedef std::pair<std::string, std::vector<std::string> > command;
+
+command parse_cgi_query_to_command(std::string raw_cmd)
 {
-    // FIXME: We should do escaping just to be safe. I don't think we need it
-    // for the demo.
-    std::vector<std::string> ini;
-    boost::algorithm::split(ini, cgi_query,
+    std::size_t found = raw_cmd.find_first_of("&");
+
+    if (found == std::string::npos)
+        return std::pair<std::string, std::vector<std::string> >
+            (raw_cmd, std::vector<std::string>());
+
+    std::pair<std::string, std::vector<std::string> > parsed_cmd;
+
+    parsed_cmd.first = raw_cmd.substr(0, found);
+    raw_cmd = raw_cmd.substr(found + 1);
+
+    boost::algorithm::split(parsed_cmd.second, raw_cmd,
         boost::algorithm::is_any_of("&"),
         boost::algorithm::token_compress_on);
-    return ini;
-} 
+
+    return parsed_cmd;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
-void command_interpreter(hpx::id_type const& target, std::string raw_cmd)
+void command_interpreter(hpx::id_type const& target, std::string const& raw_cmd)
 {
-    boost::algorithm::trim(raw_cmd);
+    command parsed_cmd = parse_cgi_query_to_command(raw_cmd);
 
-    std::vector<std::string> cmd;
-    boost::algorithm::split(cmd, raw_cmd,
-        boost::algorithm::is_any_of(" \t\n"),
-        boost::algorithm::token_compress_on);
+    std::string& cmd = parsed_cmd.first;
+    std::vector<std::string>& args = parsed_cmd.second;
 
-    OCTOPUS_ALWAYS_ASSERT(!cmd.empty() && !cmd[0].empty());
+    if (cmd.empty())
+    {
+        HPX_THROW_EXCEPTION(hpx::bad_parameter, "command_interpreter",
+                "no command specified");
+        return;
+    }
+
+    // jQuery adds a timestep to HTTP GET requests in the form of _= as a cache
+    // buster.
+
+    if (  args.back().size() >= 2
+       && (args.back()[0] == '_' && args.back()[1] == '='))
+        args.resize(args.size() - 1);
 
     ///////////////////////////////////////////////////////////////////////////
     // Update the INI config. 
-    if (cmd[0] == "update_config")
+    if (cmd == "update_config")
     {
-        OCTOPUS_ALWAYS_ASSERT(cmd.size() == 2);
-
-        std::vector<std::string> raw_ini = cgi_query_to_ini(cmd[1]); 
+        if (args.size() == 0)
+        {
+            HPX_THROW_EXCEPTION(hpx::bad_parameter, "command_interpreter",
+                "get_config takes 1 or more arguments");
+            return;
+        }
 
         hpx::util::section ini;
-        ini.parse("runtime update", raw_ini, false);
+        ini.parse("runtime update", args, false);
 
         hpx::async<update_live_config_action>(target, ini).get();
+
+        std::cout << ini_to_json(ini) << std::flush;
     }
 
     ///////////////////////////////////////////////////////////////////////////
     // Gets the current config
-    else if (cmd[0] == "get_config")
+    else if (cmd == "get_config")
     {
-        OCTOPUS_ALWAYS_ASSERT(cmd.size() == 2);
+        if (args.size() != 1)
+        {
+            HPX_THROW_EXCEPTION(hpx::bad_parameter, "command_interpreter",
+                "get_config takes only 1 argument");
+            return;
+        }
 
         hpx::util::section ini
-            = hpx::async<get_live_config_action>(target, cmd[1]).get();
+            = hpx::async<get_live_config_action>(target, args[0]).get();
 
         std::cout << ini_to_json(ini) << std::flush;
     }
 
     else
-        OCTOPUS_ALWAYS_ASSERT(false); // Unknown command.
+        {
+            HPX_THROW_EXCEPTION(hpx::bad_parameter, "command_interpreter",
+                "unknown command");
+            return;
+        }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 int hpx_main(boost::program_options::variables_map& vm)
 {
+    try
     {
-        OCTOPUS_ALWAYS_ASSERT(vm.count("target"));
-        OCTOPUS_ALWAYS_ASSERT(vm.count("command"));
+        if (!vm.count("command"))
+        {
+            HPX_THROW_EXCEPTION(hpx::bad_parameter, "hpx_main",
+                "no command specified");
+            return 1;
+        }
 
         hpx::id_type target = hpx::naming::get_id_from_locality_id
             (vm["target"].as<boost::uint32_t>());
@@ -180,6 +220,41 @@ int hpx_main(boost::program_options::variables_map& vm)
         std::string raw_cmd = vm["command"].as<std::string>();
 
         command_interpreter(target, raw_cmd);
+    }
+
+    catch (hpx::exception const& e)
+    {
+        std::cout << "{what}: "        << hpx::get_error_what(e) << "\n";
+        std::cout << "{function}: "    << hpx::get_error_function_name(e) << "\n";
+        std::cout << "{file}: "        << hpx::get_error_file_name(e) << "\n";
+        std::cout << "{line}: "        << hpx::get_error_line_number(e) << "\n";
+        std::cout << "{locality-id}: " << hpx::get_error_locality_id(e) << "\n";
+        std::cout << "{os-thread}: "   << hpx::get_error_os_thread(e) << "\n";
+        std::cout << "{thread-id}: "   << std::hex << hpx::get_error_thread_id(e) << "\n";
+        //std::cout << "{stack-trace}: " << hpx::get_error_backtrace(e) << "\n";
+        std::cout << std::flush;
+
+        hpx::disconnect();
+        return 1;
+    }  
+
+    catch (boost::system::system_error const& e) {
+        std::cout << "{what}: " << e.what() << "\n";
+        std::cout << std::flush;        
+        hpx::disconnect();
+        return 1;
+    }
+    catch (std::exception const& e) {
+        std::cout << "{what}: " << e.what() << "\n";
+        std::cout << std::flush;
+        hpx::disconnect();
+        return 1;
+    }
+    catch (...) {
+        std::cout << "{what}: unknown exception\n";
+        std::cout << std::flush;
+        hpx::disconnect();
+        return 1;
     }
 
     hpx::disconnect();
@@ -198,7 +273,7 @@ int main(int argc, char* argv[])
     cmdline.add_options()
         ( "target", value<boost::uint32_t>()->default_value(0)
         , "locality to connect to")
-        ( "command,c", value<std::string>(), "command to execute")
+        ( "command", value<std::string>(), "command to execute")
     ;
 
     // Disable loading of all external components.

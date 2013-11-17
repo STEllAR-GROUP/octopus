@@ -648,6 +648,8 @@ struct enforce_lower_limits : octopus::trivial_serialization
 
         rho(u) = (std::max)(rho(u), density_floor()); 
 
+        rho_tracker(u) = (std::max)(rho_tracker(u), density_floor()); 
+
         double const internal_energy = total_energy(u) - kinetic_energy(u, v);
 
         if (internal_energy > 0.1 * total_energy(u))

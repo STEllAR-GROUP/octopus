@@ -6,7 +6,7 @@
 #suffix='L%1$06u_S%2$06u'
 
 tracking_cons_file='./cons_'.suffix.'.dat'
-slice_file='./slice_z_'.suffix.'.dat'
+slice_file='< sort ./slice_z_'.suffix.'.dat'
 global_cons_file='./cons.csv'
 output_file=buffer_directory.'/slice_and_cons_'.suffix.'.jpeg'
 
@@ -61,10 +61,10 @@ set origin 0.025, 0.05
 
 # 4LOR
 #plot slice_file using 1:2:($4==lor?$13:1/0) with points palette pt 5 ps 1.5
-plot slice_file using 1:2:($4==lor?$13:1/0) with points palette pt 5 ps 1
+#plot slice_file using 1:2:($4==lor?$13:1/0) with points palette pt 5 ps 1.0
 
 # 5LOR
-#plot slice_file using 1:2:($4==lor?$5:1/0) with points palette pt 5 ps 0.25
+plot slice_file using 1:2:($4==lor?$13:1/0) with points palette pt 5 ps 0.75
 
 set xtics out
 set ytics out
