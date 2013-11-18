@@ -58,10 +58,10 @@ double const initial_cfl_factor = 1.0e-2;
 double const cfl_factor = 0.4;
 
 /// Gravitation constant.
-double const G = 1.0; 
+double G = 1.0; 
 
 /// Mass of the central object.
-double const M_C = 1.0;
+double M_C = 1.0;
 
 /// Outer radius of the torus.
 double const R_outer = 1.0;
@@ -114,33 +114,37 @@ bool update_config = true;
 inline double&       rho(octopus::state& u)       { return u[0]; }
 inline double const& rho(octopus::state const& u) { return u[0]; }
 
-/// Momentum density (X-axis)
+/// Momentum (X-axis)
 inline double&       momentum_x(octopus::state& u)       { return u[1]; }
 inline double const& momentum_x(octopus::state const& u) { return u[1]; }
 
-/// Momentum density (Y-axis)
+/// Momentum (Y-axis)
 inline double&       momentum_y(octopus::state& u)       { return u[2]; }
 inline double const& momentum_y(octopus::state const& u) { return u[2]; }
 
-/// Momentum density (Z-axis)
+/// Momentum (Z-axis)
 inline double&       momentum_z(octopus::state& u)       { return u[3]; }
 inline double const& momentum_z(octopus::state const& u) { return u[3]; }
 
+/*
 /// Total energy of the gas 
 inline double&       total_energy(octopus::state& u)       { return u[4]; }
 inline double const& total_energy(octopus::state const& u) { return u[4]; }
+*/
 
+/*
 /// Entropy tracer
 inline double&       tau(octopus::state& u)       { return u[5]; }
 inline double const& tau(octopus::state const& u) { return u[5]; }
+*/
 
-enum { radial_momentum_idx = 6 };
+enum { radial_momentum_idx = 4 };
 
-inline double&       angular_momentum(octopus::state& u)       { return u[7]; }
-inline double const& angular_momentum(octopus::state const& u) { return u[7]; }
+inline double&       angular_momentum(octopus::state& u)       { return u[5]; }
+inline double const& angular_momentum(octopus::state const& u) { return u[5]; }
 
-inline double&       rho_tracker(octopus::state& u)       { return u[8]; }
-inline double const& rho_tracker(octopus::state const& u) { return u[8]; }
+inline double&       rho_tracker(octopus::state& u)       { return u[6]; }
+inline double const& rho_tracker(octopus::state const& u) { return u[6]; }
 
 inline double radius(octopus::array<double, 3> const& v)
 {
@@ -388,11 +392,11 @@ struct initialize : octopus::trivial_serialization
         using std::atan2;
         using std::cos;
 
-        double const ei0 = 1.0;
-        double const tau0 = pow(ei0, 1.0 / gamma_);
+//        double const ei0 = 1.0;
+//        double const tau0 = pow(ei0, 1.0 / gamma_);
         double const rho1 = density_floor();
-        double const ei1 = density_floor();
-        double const tau1 = pow(ei1, 1.0 / gamma_);
+//        double const ei1 = density_floor();
+//        double const tau1 = pow(ei1, 1.0 / gamma_);
     
         double const R_inner = X_in * R_outer;
 
@@ -474,8 +478,8 @@ struct initialize : octopus::trivial_serialization
                                 default: OCTOPUS_ASSERT(false);
                             }
 
-                            total_energy(U(i, j, k))     = ei0;
-                            tau(U(i, j, k))              = tau0;
+//                            total_energy(U(i, j, k))     = ei0;
+//                            tau(U(i, j, k))              = tau0;
                             angular_momentum(U(i, j, k)) = j_here*rho_here;
                         }
 
@@ -484,8 +488,8 @@ struct initialize : octopus::trivial_serialization
                             rho(U(i, j, k))              = rho1;
                             momentum_x(U(i, j, k))       = 0.0; 
                             momentum_y(U(i, j, k))       = 0.0;
-                            total_energy(U(i, j, k))     = ei1;  
-                            tau(U(i, j, k))              = tau1;
+//                            total_energy(U(i, j, k))     = ei1;  
+//                            tau(U(i, j, k))              = tau1;
                             angular_momentum(U(i, j, k)) = 0.0;
                         }
                     }
@@ -495,8 +499,8 @@ struct initialize : octopus::trivial_serialization
                         rho(U(i, j, k))              = rho1;
                         momentum_x(U(i, j, k))       = 0.0; 
                         momentum_y(U(i, j, k))       = 0.0;
-                        total_energy(U(i, j, k))     = ei1;  
-                        tau(U(i, j, k))              = tau1;
+//                        total_energy(U(i, j, k))     = ei1;  
+//                        tau(U(i, j, k))              = tau1;
                         angular_momentum(U(i, j, k)) = 0.0;
                     }
 
@@ -544,7 +548,7 @@ struct enforce_outflow : octopus::trivial_serialization
                 if (velocity<octopus::x_axis>(u, loc) > 0.0)
                 {
 //                    std::cout << " OUTFLOW";
-                    total_energy(u) -= 0.5*momentum_x(u)*momentum_x(u)/rho(u);
+//                    total_energy(u) -= 0.5*momentum_x(u)*momentum_x(u)/rho(u);
                     momentum_x(u) = 0.0;
 
                     //double const vy = velocity<octopus::y_axis>(u, loc);
@@ -561,7 +565,7 @@ struct enforce_outflow : octopus::trivial_serialization
                 if (velocity<octopus::x_axis>(u, loc) < 0.0)
                 {
 //                    std::cout << " OUTFLOW";
-                    total_energy(u) -= 0.5*momentum_x(u)*momentum_x(u)/rho(u);
+//                    total_energy(u) -= 0.5*momentum_x(u)*momentum_x(u)/rho(u);
                     momentum_x(u) = 0.0;
 
                     //double const vy = velocity<octopus::y_axis>(u, loc);
@@ -579,7 +583,7 @@ struct enforce_outflow : octopus::trivial_serialization
                 if (velocity<octopus::y_axis>(u, loc) > 0.0)
                 {
 //                    std::cout << " OUTFLOW";
-                    total_energy(u) -= 0.5*momentum_y(u)*momentum_y(u)/rho(u);
+//                    total_energy(u) -= 0.5*momentum_y(u)*momentum_y(u)/rho(u);
                     momentum_y(u) = 0.0;
 
                     //double const vx = velocity<octopus::x_axis>(u, loc);
@@ -596,7 +600,7 @@ struct enforce_outflow : octopus::trivial_serialization
                 if (velocity<octopus::y_axis>(u, loc) < 0.0)
                 {
 //                    std::cout << " OUTFLOW";
-                    total_energy(u) -= 0.5*momentum_y(u)*momentum_y(u)/rho(u);
+//                    total_energy(u) -= 0.5*momentum_y(u)*momentum_y(u)/rho(u);
                     momentum_y(u) = 0.0;
 
                     //double const vx = velocity<octopus::x_axis>(u, loc);
@@ -614,7 +618,7 @@ struct enforce_outflow : octopus::trivial_serialization
                 if (momentum_z(u) > 0.0)
                 {
 //                    std::cout << " OUTFLOW";
-                    total_energy(u) -= 0.5*momentum_z(u)*momentum_z(u)/rho(u);
+//                    total_energy(u) -= 0.5*momentum_z(u)*momentum_z(u)/rho(u);
                     momentum_z(u) = 0.0;
                 }
                 break;
@@ -624,7 +628,7 @@ struct enforce_outflow : octopus::trivial_serialization
                 if (momentum_z(u) < 0.0)
                 {
 //                    std::cout << " OUTFLOW";
-                    total_energy(u) -= 0.5*momentum_z(u)*momentum_z(u)/rho(u);
+//                    total_energy(u) -= 0.5*momentum_z(u)*momentum_z(u)/rho(u);
                     momentum_z(u) = 0.0;
                 }
                 break;
@@ -650,13 +654,15 @@ struct enforce_lower_limits : octopus::trivial_serialization
 
         rho_tracker(u) = (std::max)(rho_tracker(u), density_floor()); 
 
-        double const internal_energy = total_energy(u) - kinetic_energy(u, v);
+//        double const internal_energy = total_energy(u) - kinetic_energy(u, v);
 
+/*
         if (internal_energy > 0.1 * total_energy(u))
         {
             tau(u) = std::pow((std::max)(internal_energy, density_floor())
                                        , 1.0 / gamma_); 
         }
+*/
 
 /*
         // Floor everything in the center of the grid.
@@ -971,7 +977,7 @@ struct conserved_to_primitive : octopus::trivial_serialization
     {
         double const R = radius(v);
 
-        total_energy(u)        -= kinetic_energy(u, v);
+//        total_energy(u)        -= kinetic_energy(u, v);
         momentum_x(u)          /= rho(u);
         momentum_y(u)          /= rho(u);
         momentum_z(u)          /= rho(u);
@@ -996,7 +1002,7 @@ struct primitive_to_conserved : octopus::trivial_serialization
         u[radial_momentum_idx] *= rho(u);
         angular_momentum(u)    += omega * R;
         angular_momentum(u)    *= rho(u) * R;
-        total_energy(u)        += kinetic_energy(u, v);
+//        total_energy(u)        += kinetic_energy(u, v);
     }
 };
 
@@ -1082,7 +1088,7 @@ struct flux : octopus::trivial_serialization
                     fl[i] = u[i] * v;
 
                 momentum_x(fl)   += p;
-                total_energy(fl) += v * p;
+//                total_energy(fl) += v * p;
 
                 fl[radial_momentum_idx] += loc[0] * p / R;
                 angular_momentum(fl)    -= loc[1] * p;
@@ -1127,7 +1133,7 @@ struct flux : octopus::trivial_serialization
                     fl[i] = u[i] * v;
 
                 momentum_y(fl)   += p;
-                total_energy(fl) += v * p;
+//                total_energy(fl) += v * p;
 
                 fl[radial_momentum_idx] += loc[1] * p / R;
                 angular_momentum(fl)    += loc[0] * p;
@@ -1143,7 +1149,7 @@ struct flux : octopus::trivial_serialization
                     fl[i] = u[i] * v;
 
                 momentum_z(fl)   += p;
-                total_energy(fl) += v * p;
+//                total_energy(fl) += v * p;
 
                 break;
             }
@@ -1235,20 +1241,14 @@ struct output_equatorial_plane
           , octopus::array<double, 3>& loc
             ) const
         {
-            (*ofs_) << ( boost::format("%g %g %g %i")
+            if (U.get_level() != octopus::config().levels_of_refinement)
+                return;
+
+            (*ofs_) << ( boost::format("%.12g %.12g %.14e %.14e\n")
                        % loc[0]
                        % loc[1]
-                       % loc[2]
-                       % U.get_level());
-
-            for (boost::uint64_t i = 0; i < u.size(); ++i)
-            {
-//                (*ofs_) << ( boost::format(" %016x")
-//                           % octopus::hex_real(u[i]));
-                (*ofs_) << " " << u[i];
-            }
-
-            (*ofs_) << "\n";
+                       % rho(u)
+                       % rho_tracker(u));
         }
 
         template <typename Archive>

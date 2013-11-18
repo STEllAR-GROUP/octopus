@@ -46,7 +46,7 @@
 #endif
 
 #if !defined(OCTOPUS_STATE_SIZE)
-    #define OCTOPUS_STATE_SIZE 9
+    #define OCTOPUS_STATE_SIZE 7
 #endif
 
 #if BOOST_VERSION < 105300

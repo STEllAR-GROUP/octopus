@@ -81,37 +81,48 @@ void load_configuration(bool use_defaults = false)
     else
         OCTOPUS_ASSERT_MSG(false, "invalid advection scheme");
 
-    octopus::config_reader reader("octopus.3d_torus");
+    octopus::config_reader reader("octopus");
 
+    // FIXME: These need to actually be loaded into the HPX ini config.
     if (use_defaults)
         reader
-            ("max_dt_growth", max_dt_growth, 1.25)
-            ("temporal_prediction_limiter", temporal_prediction_limiter, 0.5)
-            ("rotational_direction", rot_dir_str, "counterclockwise")
-            ("advection_scheme", adv_scheme_str, "angular")
-            ("rotating_grid", rotating_grid, true)
-            ("kappa", kappa, 1.0)
-            ("X_in", X_in, 0.5)
-            ("kick_mode", kick_mode, 0)
+            // This is fine here, as the RK order has already been read once.
+            ("runge_kutta_order", octopus::config().runge_kutta_order,
+                octopus::config().runge_kutta_order)
+            ("3d_torus.max_dt_growth", max_dt_growth, 1.25)
+            ("3d_torus.temporal_prediction_limiter", temporal_prediction_limiter, 0.5)
+            ("3d_torus.rotational_direction", rot_dir_str, "counterclockwise")
+            ("3d_torus.advection_scheme", adv_scheme_str, "angular")
+            ("3d_torus.rotating_grid", rotating_grid, true)
+            ("3d_torus.kappa", kappa, 1.0)
+            ("3d_torus.X_in", X_in, 0.5)
+            ("3d_torus.G", G, 1.0)
+            ("3d_torus.M_C", M_C, 1.0)
+            ("3d_torus.kick_mode", kick_mode, 0)
      
-            ("sc13.gnuplot_script", gnuplot_script,
+            ("3d_torus.sc13.gnuplot_script", gnuplot_script,
                 octopus::join_paths(OCTOPUS_CURRENT_SOURCE_DIRECTORY, "sc13.gpi"))
-            ("sc13.buffer_directory", buffer_directory, "/tmp/octopus_sc13_buffer")
+            ("3d_torus.sc13.buffer_directory", buffer_directory, "/tmp/octopus_sc13_buffer")
         ;
     else
         reader
-            ("max_dt_growth", max_dt_growth, max_dt_growth)
-            ( "temporal_prediction_limiter"
+            // This is fine here, as the RK order has already been read once.
+            ("runge_kutta_order", octopus::config().runge_kutta_order,
+                octopus::config().runge_kutta_order)
+            ("3d_torus.max_dt_growth", max_dt_growth, max_dt_growth)
+            ( "3d_torus.temporal_prediction_limiter"
             , temporal_prediction_limiter, temporal_prediction_limiter)
-            ("rotational_direction", rot_dir_str, rot_dir_str)
-            ("advection_scheme", adv_scheme_str, adv_scheme_str)
-            ("rotating_grid", rotating_grid, rotating_grid)
-            ("kappa", kappa, kappa)
-            ("X_in", X_in, X_in)
-            ("kick_mode", kick_mode, kick_mode)
+            ("3d_torus.rotational_direction", rot_dir_str, rot_dir_str)
+            ("3d_torus.advection_scheme", adv_scheme_str, adv_scheme_str)
+            ("3d_torus.rotating_grid", rotating_grid, rotating_grid)
+            ("3d_torus.kappa", kappa, kappa)
+            ("3d_torus.X_in", X_in, X_in)
+            ("3d_torus.G", G, G)
+            ("3d_torus.M_C", M_C, M_C)
+            ("3d_torus.kick_mode", kick_mode, kick_mode)
      
-            ("sc13.gnuplot_script", gnuplot_script, gnuplot_script)
-            ("sc13.buffer_directory", buffer_directory, buffer_directory)
+            ("3d_torus.sc13.gnuplot_script", gnuplot_script, gnuplot_script)
+            ("3d_torus.sc13.buffer_directory", buffer_directory, buffer_directory)
         ;
 
 
@@ -145,6 +156,10 @@ void load_configuration(bool use_defaults = false)
            % kappa.get())
         << ( boost::format("X_in                          = %.6g\n")
            % X_in.get())
+        << ( boost::format("G                             = %.6g\n")
+           % G)
+        << ( boost::format("M_C                           = %.6g\n")
+           % M_C)
         << ( boost::format("kick_mode                     = %i\n")
            % kick_mode.get())
         << "\n";
@@ -365,7 +380,7 @@ struct stepper
 
         std::ofstream cons_file("cons.csv");
 
-        cons_file  << "# step, time [orbits], total density, total angular momentum, \n"
+        cons_file  << "# step, time [orbits], total density, total angular momentum, relative change in angular momentum\n"
                    << std::flush; 
  
         if (octopus::config().load_checkpoint)
@@ -391,14 +406,14 @@ struct stepper
 
             std::cout << (boost::format(
                 "\n"
-                "TOTAL DENSITY:          %.7e\n"
-                "TOTAL ANGULAR MOMENTUM: %.7e\n"
+                "TOTAL DENSITY:          %.14e\n"
+                "TOTAL ANGULAR MOMENTUM: %.14e\n"
                 "\n")
                 % cons_history[0].second.rho
                 % cons_history[0].second.angular_momentum);
 
                 cons_file <<
-                    ( boost::format("%i %e %.7e %.7e %.7e\n")
+                    ( boost::format("%i %e %.14e %.14e %.14e\n")
                     % 0 
                     % 0.0 
                     % cons_history[0].second.rho
@@ -412,7 +427,7 @@ struct stepper
                 % hpx::get_locality_id()
                 % 0));
     
-            cons_dat_file << (boost::format("%e %.7e\n") % 0.0 % 0.0)
+            cons_dat_file << (boost::format("%e %.14e\n") % 0.0 % 0.0)
                           << std::flush;
         }
 
@@ -485,7 +500,7 @@ struct stepper
                     (root.get_time() / period_, sum_state(root));
 
                 cons_file <<
-                    ( boost::format("%i %e %.7e %.7e %.7e\n")
+                    ( boost::format("%i %.14e %.14e %.14e %.14e\n")
                     % this_step 
                     % (this_time / period_) 
                     % ts.second.rho
@@ -510,7 +525,7 @@ struct stepper
                 for (boost::uint64_t i = 0; i < (cons_history.size() - 1); ++i)
                 {
                     cons_dat_file <<
-                        ( boost::format("%e %.7e 1e-16 -1e-16\n")
+                        ( boost::format("%.14e %.14e 1e-16 -1e-16\n")
                         % cons_history[i + 1].first 
                         % relative_change(
                             cons_history[i].second.angular_momentum
@@ -601,7 +616,7 @@ struct stepper
             std::cout << "\n";
  
             // Record timestep size.
-            dt_file << ( boost::format("%i %e %e %e %i\n")
+            dt_file << ( boost::format("%i %.14e %.14e %.14e %i\n")
                        % this_step 
                        % (this_time / period_) 
                        % (this_dt / period_) 
@@ -610,7 +625,7 @@ struct stepper
                     << std::flush;
 
             // Record speed. 
-            speed_file << ( boost::format("%e %e %e %i\n")
+            speed_file << ( boost::format("%i %.14e %.14e %i\n")
                           % this_step 
                           % orbital_speed
                           % step_speed 

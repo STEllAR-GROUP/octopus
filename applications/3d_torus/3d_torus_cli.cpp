@@ -238,19 +238,24 @@ int hpx_main(boost::program_options::variables_map& vm)
         return 1;
     }  
 
-    catch (boost::system::system_error const& e) {
+    catch (boost::system::system_error const& e)
+    {
         std::cout << "{what}: " << e.what() << "\n";
         std::cout << std::flush;        
         hpx::disconnect();
         return 1;
     }
-    catch (std::exception const& e) {
+
+    catch (std::exception const& e)
+    {
         std::cout << "{what}: " << e.what() << "\n";
         std::cout << std::flush;
         hpx::disconnect();
         return 1;
     }
-    catch (...) {
+
+    catch (...)
+    {
         std::cout << "{what}: unknown exception\n";
         std::cout << std::flush;
         hpx::disconnect();
@@ -264,24 +269,42 @@ int hpx_main(boost::program_options::variables_map& vm)
 ///////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[])
 {
-    using boost::program_options::value;
-    using boost::program_options::options_description;
+    try
+    {
+        using boost::program_options::value;
+        using boost::program_options::options_description;
+    
+        // Configure application-specific options.
+        options_description cmdline("Usage: " HPX_APPLICATION_STRING " [options]");
+    
+        cmdline.add_options()
+            ( "target", value<boost::uint32_t>()->default_value(0)
+            , "locality to connect to")
+            ( "command", value<std::string>(), "command to execute")
+        ;
+    
+        // Disable loading of all external components.
+        std::vector<std::string> cfg;
+        cfg.push_back("hpx.components.load_external=0");
+        HPX_STD_FUNCTION<void()> empty;
 
-    // Configure application-specific options.
-    options_description cmdline("Usage: " HPX_APPLICATION_STRING " [options]");
+        return hpx::init(cmdline, argc, argv, cfg, empty, empty,
+            hpx::runtime_mode_connect);
+    }
 
-    cmdline.add_options()
-        ( "target", value<boost::uint32_t>()->default_value(0)
-        , "locality to connect to")
-        ( "command", value<std::string>(), "command to execute")
-    ;
-
-    // Disable loading of all external components.
-    std::vector<std::string> cfg;
-    cfg.push_back("hpx.components.load_external=0");
-    HPX_STD_FUNCTION<void()> empty;
-
-    return hpx::init(cmdline, argc, argv, cfg, empty, empty,
-        hpx::runtime_mode_connect);
+    catch (std::exception const& e)
+    {
+        std::cout << "{what}: " << e.what() << "\n";
+        std::cout << std::flush;
+        hpx::disconnect();
+        return 1;
+    }
+    catch (...)
+    {
+        std::cout << "{what}: unknown exception\n";
+        std::cout << std::flush;
+        hpx::disconnect();
+        return 1;
+    }
 }
 

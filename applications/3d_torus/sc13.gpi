@@ -49,8 +49,8 @@ set multiplot layout 1,2
 set size 0.6, 0.9 
 set origin 0.025, 0.05
 
-#set palette maxcolors 9000
-#set palette defined (0 "white", 250 "pink", 1500 "red", 3000 "dark-red", 4500 "dark-orange", 6000 "orange", 9000 "yellow")
+set palette maxcolors 9000
+set palette defined (0 "grey", 250 "pink", 1500 "red", 3000 "dark-red", 4500 "dark-orange", 6000 "orange", 9000 "yellow")
 
 #set palette maxcolors 9000
 #set palette defined (0 "white", 250 "#461D7C", 4500 "dark-green", 9000 "#FDD023")
@@ -64,7 +64,8 @@ set origin 0.025, 0.05
 #plot slice_file using 1:2:($4==lor?$13:1/0) with points palette pt 5 ps 1.0
 
 # 5LOR
-plot slice_file using 1:2:($4==lor?$13:1/0) with points palette pt 5 ps 0.75
+#plot slice_file using 1:2:($4==lor?$13:1/0) with points palette pt 5 ps 0.75
+plot slice_file using 1:2:4 with points palette pt 5 ps 1.0
 
 set xtics out
 set ytics out
