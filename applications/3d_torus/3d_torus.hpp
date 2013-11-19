@@ -104,11 +104,6 @@ double max_dt_growth = 0.0;
 
 double temporal_prediction_limiter = 0.0; 
 
-typedef hpx::lcos::local::spinlock config_mutex_type;
-config_mutex_type config_mutex;
-
-bool update_config = true;
-
 ///////////////////////////////////////////////////////////////////////////////
 /// Mass density
 inline double&       rho(octopus::state& u)       { return u[0]; }

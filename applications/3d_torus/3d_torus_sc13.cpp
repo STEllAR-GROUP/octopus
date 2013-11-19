@@ -30,16 +30,14 @@
 #include <boost/spirit/include/support_istream_iterator.hpp>
 #include <boost/spirit/include/support_ascii.hpp>
 
+std::string config_file = "";
+
 // Merges with the running config on the server side, and enqueues a update of 
 // the configuration into the running application.
 void update_live_config(hpx::util::section const& ini)
 {
-    config_mutex_type::scoped_lock l(config_mutex);
-
     hpx::util::section tmp(ini);
     hpx::get_runtime().get_config().merge(tmp);
-
-    update_config = true;
 }
 HPX_PLAIN_ACTION(update_live_config, update_live_config_action);
 
@@ -87,6 +85,7 @@ void load_configuration(bool use_defaults = false)
     if (use_defaults)
         reader
             // This is fine here, as the RK order has already been read once.
+            ("config_file", config_file, config_file)
             ("runge_kutta_order", octopus::config().runge_kutta_order,
                 octopus::config().runge_kutta_order)
             ("3d_torus.max_dt_growth", max_dt_growth, 1.25)
@@ -105,6 +104,19 @@ void load_configuration(bool use_defaults = false)
             ("3d_torus.sc13.buffer_directory", buffer_directory, "/tmp/octopus_sc13_buffer")
         ;
     else
+    {
+        try
+        {
+            hpx::util::section tmp;
+            tmp.read(config_file);
+            hpx::get_runtime().get_config().merge(tmp);
+        }
+        catch (...)
+        {
+            std::cout << "READ FAILED\n";
+            // Get it next timestep, hopefully.
+        }
+
         reader
             // This is fine here, as the RK order has already been read once.
             ("runge_kutta_order", octopus::config().runge_kutta_order,
@@ -124,7 +136,7 @@ void load_configuration(bool use_defaults = false)
             ("3d_torus.sc13.gnuplot_script", gnuplot_script, gnuplot_script)
             ("3d_torus.sc13.buffer_directory", buffer_directory, buffer_directory)
         ;
-
+    }
 
     if (rot_dir_str == "clockwise")
         rot_dir = rotate_clockwise;
@@ -177,16 +189,9 @@ void load_configuration(bool use_defaults = false)
 
 void commit_configuration(bool use_default = false)
 {
-    config_mutex_type::scoped_lock l(config_mutex);
+    std::cout << "COMMITTING NEW CONFIGURATION\n";
 
-    if (update_config)
-    {
-        std::cout << "COMMITTING NEW CONFIGURATION\n";
-
-        load_configuration(use_default); 
-
-        update_config = false;
-    }
+    load_configuration(use_default); 
 }
 
 void octopus_define_problem(
@@ -267,7 +272,7 @@ void generate_jpeg(
         "locality=%1%;"
         "step=%2%;"
         "iostep=%3%;"
-        "time=%4%;"
+        "orbits=\"%4%\";"
         "lor=%5%;"
         "buffer_directory='%6%';"
         "suffix='L%1$06u_S%2$06u';"
