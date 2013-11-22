@@ -89,11 +89,13 @@ void load_configuration(bool use_defaults = false)
             ("runge_kutta_order", octopus::config().runge_kutta_order,
                 octopus::config().runge_kutta_order)
             ("3d_torus.max_dt_growth", max_dt_growth, 1.25)
+            ("3d_torus.refine_density", refine_density, 1e-2)
             ("3d_torus.temporal_prediction_limiter", temporal_prediction_limiter, 0.5)
             ("3d_torus.rotational_direction", rot_dir_str, "counterclockwise")
             ("3d_torus.advection_scheme", adv_scheme_str, "angular")
             ("3d_torus.rotating_grid", rotating_grid, true)
             ("3d_torus.kappa", kappa, 1.0)
+            ("3d_torus.display_variable", display_variable, 4)
             ("3d_torus.X_in", X_in, 0.5)
             ("3d_torus.G", G, 1.0)
             ("3d_torus.M_C", M_C, 1.0)
@@ -122,12 +124,14 @@ void load_configuration(bool use_defaults = false)
             ("runge_kutta_order", octopus::config().runge_kutta_order,
                 octopus::config().runge_kutta_order)
             ("3d_torus.max_dt_growth", max_dt_growth, max_dt_growth)
+            ("3d_torus.refine_density", refine_density, refine_density)
             ( "3d_torus.temporal_prediction_limiter"
             , temporal_prediction_limiter, temporal_prediction_limiter)
             ("3d_torus.rotational_direction", rot_dir_str, rot_dir_str)
             ("3d_torus.advection_scheme", adv_scheme_str, adv_scheme_str)
             ("3d_torus.rotating_grid", rotating_grid, rotating_grid)
             ("3d_torus.kappa", kappa, kappa)
+            ("3d_torus.display_variable", display_variable, display_variable)
             ("3d_torus.X_in", X_in, X_in)
             ("3d_torus.G", G, G)
             ("3d_torus.M_C", M_C, M_C)
@@ -275,6 +279,7 @@ void generate_jpeg(
         "orbits=\"%4%\";"
         "lor=%5%;"
         "buffer_directory='%6%';"
+        "display_variable=%7%;"
         "suffix='L%1$06u_S%2$06u';"
         ;
 
@@ -290,7 +295,8 @@ void generate_jpeg(
                   % iostep
                   % (time / period)
                   % octopus::config().levels_of_refinement
-                  % buffer_directory));
+                  % buffer_directory
+                  % display_variable));
 
     args.push_back(gnuplot_script);
 
@@ -366,6 +372,8 @@ struct stepper
 //        #endif
 
 //        root.communicate_ghost_zones(0);
+
+        octopus::science().refine_policy = refine_by_density();
 
         double refine_walltime = refine_clock.elapsed();
 
@@ -547,9 +555,6 @@ struct stepper
                     jpeg_future = hpx::async(boost::bind(&generate_jpeg
                       , root.get_step(), iostep, root.get_time(), period_));
 
-                next_output_time +=
-                    (octopus::config().output_frequency * period_); 
-
 /*
                 reset_checkpoint rc;
                 hpx::wait(octopus::call_everywhere(rc));
@@ -569,11 +574,37 @@ struct stepper
 
                 //root.refine();
             }
-  
+
             // IMPLEMENT: Futurize w/ continutation.
             octopus::dt_prediction prediction
                 = root.apply_leaf(octopus::science().predict_dt);
  
+            if (root.get_time() >= next_output_time)
+            {   
+                boost::uint64_t refine_passes = 0;
+        
+                if (octopus::config().levels_of_refinement != 0)
+                {   
+                    if (octopus::config().levels_of_refinement > 1)
+                        refine_passes = octopus::config().levels_of_refinement;
+                    else
+                        refine_passes = 2;
+                }
+        
+                for (boost::uint64_t i = 0; i < refine_passes; ++i)
+                {
+                    root.refine();
+                    std::cout << "REFINEMENT PASS " << (i + 1)
+                              << " OF " << refine_passes << ", "
+                              << count_nodes(root) << " NODES" << "\n"; 
+                }
+
+                root.child_to_parent_state_injection(0);
+
+                next_output_time +=
+                    (octopus::config().output_frequency * period_); 
+            }
+  
 //            octopus::dt_prediction prediction(0.001, 0.001);
    
             OCTOPUS_ASSERT(0.0 < prediction.next_dt);

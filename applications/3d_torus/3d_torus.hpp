@@ -104,6 +104,9 @@ double max_dt_growth = 0.0;
 
 double temporal_prediction_limiter = 0.0; 
 
+// 3 == rho, 4 == tracking
+boost::uint64_t display_variable = 0;
+
 ///////////////////////////////////////////////////////////////////////////////
 /// Mass density
 inline double&       rho(octopus::state& u)       { return u[0]; }
@@ -1153,6 +1156,42 @@ struct flux : octopus::trivial_serialization
         }
 
         return fl;
+    }
+};
+
+double refine_density = 0.0;
+
+struct refine_by_density
+  : octopus::elementwise_refinement_criteria_base<refine_by_density>
+{
+    /// Returns true if we should refine the region that contains this point.
+    bool refine(
+        octopus::octree_server& U
+      , octopus::state const& u
+      , octopus::array<double, 3> loc
+        )
+    {
+        return (rho(u) >= rho_max() * refine_density);
+    }
+
+    /// If this returns true for all regions in a point, that region will be
+    /// unrefined.
+    bool unrefine(
+        octopus::octree_server& U
+      , octopus::state const& u
+      , octopus::array<double, 3> loc
+        )
+    {
+        // Unused currently.
+        return false;
+    }
+
+    template <typename Archive>
+    void serialize(Archive& ar, const unsigned int)
+    {
+        typedef elementwise_refinement_criteria_base<refine_by_density>
+            base_type;
+        ar & hpx::util::base_object_nonvirt<base_type>(*this);
     }
 };
 
