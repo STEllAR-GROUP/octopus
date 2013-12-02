@@ -11,6 +11,9 @@
 #if !defined(OCTOPUS_58B04A8F_72F9_4B01_A8B3_941867802BA0)
 #define OCTOPUS_58B04A8F_72F9_4B01_A8B3_941867802BA0
 
+#include <octopus/expansion.hpp>
+
+
 #include <hpx/traits.hpp>
 #include <hpx/runtime/components/server/managed_component_base.hpp>
 #include <hpx/lcos/local/mutex.hpp>
@@ -22,8 +25,6 @@
 #include <octopus/atomic_bitset.hpp>
 
 #include <bitset>
-
-#include <octopus/expansion.h>
 
 // TODO: apply_criteria, apply_zonal, apply_zonal_leaf, reduce_leaf,
 // reduce_zonal_leaf
@@ -190,7 +191,9 @@ private:
 
 	typedef array<hpx::lcos::local::channel<vector4d<double> >, 6> sibling_state_dependencies;
 
-	typedef array<hpx::lcos::local::channel<vector4d<double> >, 8> children_state_dependencies;
+    typedef array<hpx::lcos::local::channel<vector4d<double> >, 8> children_state_dependencies;
+
+    typedef array<hpx::lcos::local::channel<multipole_array_t>, 8> children_multipole_dependencies;
 
 	typedef array<hpx::lcos::local::channel<vector4d<double> >, 36> children_flux_dependencies;
 
@@ -220,7 +223,8 @@ private:
 	// vector remain the same throughout the entire step.
 	// NOTE: Some of these may be empty; if they are, these indicates that
 	// we don't have that child.
-	std::vector<children_state_dependencies> children_state_deps_;
+    std::vector<children_state_dependencies> children_state_deps_;
+    std::vector<children_multipole_dependencies> children_multipole_deps_;
 
 	// Queue for incoming flux from our children.
 	// NOTE: Elements of this queue should be cleared but not removed until the
@@ -299,30 +303,15 @@ private:
 
 	// Variables for Fast Multipole Method solver
 
-	typedef struct {
-		expansion_nodip_t M;
-		double x, y, z;
-		bool is_leaf;
-	} multipole_t;
 
-	typedef struct {
-		expansion_t phi;
-		expansion_m1_t g_lz;
-		double x, y, z;
-	} taylor_t;
 
-	typedef struct {
-		expansion_t M_dot;
-	} multipole_dot_t;
 
-	typedef struct {
-		expansion_t phi_dot;
-	} taylor_dot_t;
+	boost::shared_ptr<vector4d<taylor_t,1> > L_;
+	boost::shared_ptr<vector4d<taylor_dot_t,1> > L_dot_;
+	boost::shared_ptr<multipole_array_t> poles_;
+	boost::shared_ptr<vector4d<multipole_dot_t,1> > poles_dot_;
 
-	boost::shared_ptr<vector4d<taylor_t> > L_;
-	boost::shared_ptr<vector4d<taylor_dot_t> > L_dot_;
-	boost::shared_ptr<vector4d<multipole_t> > poles_;
-	boost::shared_ptr<vector4d<multipole_dot_t> > poles_dot_;
+
 
 	///////////////////////////////////////////////////////////////////////////
 	// TODO: Migration.
@@ -647,7 +636,7 @@ public:
 		mutex_type::scoped_lock l(mtx_);
 		state_interpolation_data sid(nephew.gid_, f);
 //        flux_interpolation_data fid(f, invert(f, idx));
-		bool erased = nephews_.erase(sid) != 0;
+//		bool erased = nephews_.erase(sid) != 0;
 //        exterior_nephews_.erase(fid);
 		OCTOPUS_ASSERT(erased);
 	}
@@ -907,7 +896,7 @@ private:
 
 	void add_child_multipole(
 			child_index idx///< Bound parameter.
-			, hpx::future<vector4d<multipole_t> > pole_f
+			, hpx::future<vector4d<multipole_t,1> > pole_f
 	);
 
 public:
@@ -938,11 +927,17 @@ public:
 		children_state_deps_[phase](idx).post(s);
 	} // }}}
 
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+            receive_child_state,
+            receive_child_state_action);
+
 	void receive_child_multipole(
 			boost::uint64_t step///< For debugging purposes.
 			, boost::uint64_t phase
 			, child_index idx
-			, BOOST_RV_REF(vector4d<double>) s
+			, BOOST_RV_REF(multipole_array_t) s
+
 	)
 	{ // {{{
 		//mutex_type::scoped_lock l(mtx_);
@@ -960,27 +955,23 @@ public:
 		// NOTE (wash): boost::move should be safe here, zone is a temporary,
 		// even if we're local to the caller. Plus, ATM set_value requires the
 		// value to be moved to it.
-		children_state_deps_[phase](idx).post(s);
+		children_multipole_deps_[phase](idx).post(s);
 	} // }}}
 
-	HPX_DEFINE_COMPONENT_ACTION(octree_server,
-			receive_child_state,
-			receive_child_state_action);
-
-	HPX_DEFINE_COMPONENT_ACTION(octree_server,
-			receive_child_multipole,
-			receive_child_multipole_action);
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+            receive_child_multipole,
+            receive_child_multipole_action);
 
 private:
 	vector4d<double> send_child_state();
 
-	vector4d<double> send_child_multipole();
+	multipole_array_t send_child_multipole();
 
 public:
 	///////////////////////////////////////////////////////////////////////////
 	// Child -> parent injection of flux.
 	void child_to_parent_flux_injection(
-			boost::uint64_t phase
+	        boost::uint64_t phase
 	);
 
 	HPX_DEFINE_COMPONENT_ACTION(octree_server,

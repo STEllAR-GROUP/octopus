@@ -18,6 +18,8 @@
 
 #include <octopus/engine/engine_server.hpp>
 
+#include <octopus/expansion.hpp>
+
 HPX_REGISTER_COMPONENT_MODULE();
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -60,6 +62,7 @@ OCTOPUS_REGISTER_ACTION(receive_child_state);
 
 OCTOPUS_REGISTER_ACTION(child_to_parent_flux_injection);
 OCTOPUS_REGISTER_ACTION(receive_child_flux);
+OCTOPUS_REGISTER_ACTION(receive_child_multipole);
 
 OCTOPUS_REGISTER_ACTION(apply);
 
@@ -79,6 +82,8 @@ OCTOPUS_REGISTER_ACTION(slice_leaf);
 
 OCTOPUS_REGISTER_ACTION(save);
 OCTOPUS_REGISTER_ACTION(load);
+
+
 
 #undef OCTOPUS_REGISTER_ACTION
 

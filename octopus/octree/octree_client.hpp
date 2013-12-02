@@ -17,6 +17,8 @@
 #include <octopus/face.hpp>
 #include <octopus/axis.hpp>
 #include <octopus/state.hpp>
+#include <octopus/expansion.hpp>
+
 
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/array.hpp>
@@ -757,6 +759,33 @@ struct OCTOPUS_EXPORT octree_client
       , boost::uint64_t phase 
       , child_index idx 
       , BOOST_RV_REF(vector4d<double>) zone
+        ) const;
+    // }}}
+
+
+
+    void receive_child_multipole(
+        boost::uint64_t step ///< For debugging purposes.
+      , boost::uint64_t phase
+      , child_index idx
+      , BOOST_RV_REF(multipole_array_t) zone
+        ) const
+    {
+        receive_child_multipole_async(step, phase, idx, boost::move(zone)).get();
+    }
+
+    hpx::future<void> receive_child_multipole_async(
+        boost::uint64_t step ///< For debugging purposes.
+      , boost::uint64_t phase
+      , child_index idx
+      , BOOST_RV_REF(multipole_array_t) zone
+        ) const;
+
+    void receive_child_multipole_push(
+        boost::uint64_t step ///< For debugging purposes.
+      , boost::uint64_t phase
+      , child_index idx
+      , BOOST_RV_REF(multipole_array_t) zone
         ) const;
     // }}}
 

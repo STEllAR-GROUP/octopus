@@ -426,6 +426,32 @@ void octree_client::receive_child_state_push(
         (gid_, step, phase, idx, boost::move(zone));
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+hpx::future<void> octree_client::receive_child_multipole_async(
+    boost::uint64_t step ///< For debugging purposes.
+  , boost::uint64_t phase
+  , child_index idx
+  , BOOST_RV_REF(multipole_array_t) zone
+    ) const
+{
+    ensure_real();
+    return hpx::async<octree_server::receive_child_multipole_action>
+        (gid_, step, phase, idx, boost::move(zone));
+}
+
+void octree_client::receive_child_multipole_push(
+    boost::uint64_t step ///< For debugging purposes.
+  , boost::uint64_t phase
+  , child_index idx
+  , BOOST_RV_REF(multipole_array_t) zone
+    ) const
+{
+    ensure_real();
+    hpx::apply<octree_server::receive_child_multipole_action>
+        (gid_, step, phase, idx, boost::move(zone));
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 hpx::future<void> octree_client::child_to_parent_flux_injection_async(
     boost::uint64_t phase 

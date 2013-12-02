@@ -1756,7 +1756,7 @@ void octree_server::child_to_parent_multipole(
     hpx::wait(recursion_is_parallelism);
 
     // ... and invoke the kernel on ourselves.
-    child_to_parent_state_multipole_kernel(phase);
+    child_to_parent_multipole_kernel(phase);
 } // }}}
 
 /// 0.) Wait for all children to signal us.
@@ -1909,13 +1909,13 @@ void octree_server::add_child_state(
 
 void octree_server::add_child_multipole(
     child_index idx ///< Bound parameter.
-  , hpx::future<vector4d<double> > state_f
+  , hpx::future<vector4d<multipole_t,1> > pole_f
     )
 { // {{{
     boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
-    vector4d<double> state(state_f.move());
+    vector4d<multipole_t,1> pole(pole_f.move());
 
     OCTOPUS_ASSERT(state.x_length() == ((gnx - 2 * bw) / 2));
     OCTOPUS_ASSERT(state.y_length() == ((gnx - 2 * bw) / 2));
@@ -1956,16 +1956,6 @@ vector4d<double> octree_server::send_child_state()
                 boost::uint64_t const jj = ((j + bw) / 2) - bw; 
                 boost::uint64_t const kk = ((k + bw) / 2) - bw; 
 
-/*
-                state(ii, jj, kk)  = (*U_)(i + 0, j + 0, k + 0) * 0.125;
-                state(ii, jj, kk) += (*U_)(i + 1, j + 0, k + 0) * 0.125;
-                state(ii, jj, kk) += (*U_)(i + 0, j + 1, k + 0) * 0.125;
-                state(ii, jj, kk) += (*U_)(i + 1, j + 1, k + 0) * 0.125;
-                state(ii, jj, kk) += (*U_)(i + 0, j + 0, k + 1) * 0.125;
-                state(ii, jj, kk) += (*U_)(i + 1, j + 0, k + 1) * 0.125;
-                state(ii, jj, kk) += (*U_)(i + 0, j + 1, k + 1) * 0.125;
-                state(ii, jj, kk) += (*U_)(i + 1, j + 1, k + 1) * 0.125;
-*/
 
                 state(ii, jj, kk) = ( (*U_)(i + 0, j + 0, k + 0)
                                     + (*U_)(i + 1, j + 0, k + 0)
@@ -1980,12 +1970,12 @@ vector4d<double> octree_server::send_child_state()
     return state; 
 } // }}}
 
-vector4d<double> octree_server::send_multipole()
+multipole_array_t octree_server::send_child_multipole()
 { // {{{
     boost::uint64_t const bw = science().ghost_zone_length;
     boost::uint64_t const gnx = config().grid_node_length;
 
-    vector4d<double> state
+    multipole_array_t state
         (
         (gnx - 2 * bw) / 2
       , (gnx - 2 * bw) / 2
