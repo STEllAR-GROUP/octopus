@@ -189,7 +189,9 @@ private:
 //    atomic_bitset<8> marked_for_refinement_;
 	std::bitset<8> marked_for_refinement_;
 
-	typedef array<hpx::lcos::local::channel<vector4d<double> >, 6> sibling_state_dependencies;
+    typedef array<hpx::lcos::local::channel<vector4d<double> >, 6> sibling_state_dependencies;
+
+    typedef array<hpx::lcos::local::channel<vector4d<multipole_t> >, 6> sibling_multipole_dependencies;
 
     typedef array<hpx::lcos::local::channel<vector4d<double> >, 8> children_state_dependencies;
 
@@ -215,7 +217,8 @@ private:
 	// NOTE: Elements of this queue should be cleared but not removed until the
 	// end of each timestep. This is necessary to ensure that indices into this
 	// vector remain the same throughout the entire step.
-	std::vector<sibling_state_dependencies> ghost_zone_deps_;
+    std::vector<sibling_state_dependencies> ghost_zone_deps_;
+    std::vector<sibling_multipole_dependencies> ghost_multipole_deps_;
 
 	// Queue for incoming state from our children.
 	// NOTE: Elements of this queue should be cleared but not removed until the
@@ -769,91 +772,166 @@ public:
 	///     we will receive.
 	/// 1.) Wait for our ghost zones to be delivered by our siblings.
 	/// 2.) Push ghost zone data to our nephews.
-	void communicate_ghost_zones(
-			boost::uint64_t phase
-	);
+    void communicate_ghost_zones(
+            boost::uint64_t phase
+    );
+    void communicate_ghost_multipoles(
+            boost::uint64_t phase
+    );
 
 private:
-	void add_ghost_zone(
-			face f
-			, BOOST_RV_REF(vector4d<double>) zone
-	);
+    void add_ghost_zone(
+            face f
+            , BOOST_RV_REF(vector4d<double>) zone
+    );
 
-	void add_ghost_zone_callback(
-			face f///< Bound parameter.
-			, hpx::future<vector4d<double> > zone_f
-	)
-	{
-		add_ghost_zone(f, boost::move(zone_f.move()));
-	}
+    void add_ghost_multipole(
+            face f
+            , BOOST_RV_REF(vector4d<multipole_t>) zone
+    );
+
+    void add_ghost_zone_callback(
+            face f///< Bound parameter.
+            , hpx::future<vector4d<double> > zone_f
+    )
+    {
+        add_ghost_zone(f, boost::move(zone_f.move()));
+    }
+    void add_ghost_multipole_callback(
+            face f///< Bound parameter.
+            , hpx::future<vector4d<multipole_t> > zone_f
+    )
+    {
+        add_ghost_multipole(f, boost::move(zone_f.move()));
+    }
 
 public:
 	// FIXME: Rvalue reference kung-fo must be applied here.
 	/// Called by our siblings.
-	void receive_ghost_zone(
-			boost::uint64_t step///< For debugging purposes.
-			, boost::uint64_t phase
-			, face f///< Relative to caller.
-			, vector4d<double> const& zone
-	)
-	{
-		mutex_type::scoped_lock l(mtx_);
+    void receive_ghost_zone(
+            boost::uint64_t step///< For debugging purposes.
+            , boost::uint64_t phase
+            , face f///< Relative to caller.
+            , vector4d<double> const& zone
+    )
+    {
+        mutex_type::scoped_lock l(mtx_);
 
-		OCTOPUS_ASSERT_MSG(step_ == step,
-				"cross-timestep communication occurred, octree is ill-formed");
+        OCTOPUS_ASSERT_MSG(step_ == step,
+                "cross-timestep communication occurred, octree is ill-formed");
 
-		OCTOPUS_ASSERT_FMT_MSG(
-				phase < ghost_zone_deps_.size(),
-				"phase (%1%) is greater than the ghost zone queue length (%2%)",
-				phase % ghost_zone_deps_.size());
+        OCTOPUS_ASSERT_FMT_MSG(
+                phase < ghost_zone_deps_.size(),
+                "phase (%1%) is greater than the ghost zone queue length (%2%)",
+                phase % ghost_zone_deps_.size());
 
-		OCTOPUS_ASSERT(f != invalid_face);
+        OCTOPUS_ASSERT(f != invalid_face);
 
-		// NOTE (wash): boost::move should be safe here, zone is a temporary,
-		// even if we're local to the caller. Plus, ATM set_value requires the
-		// value to be moved to it.
-		ghost_zone_deps_[phase](f).post(zone);
-	}
+        // NOTE (wash): boost::move should be safe here, zone is a temporary,
+        // even if we're local to the caller. Plus, ATM set_value requires the
+        // value to be moved to it.
+        ghost_zone_deps_[phase](f).post(zone);
+    }
 
-	HPX_DEFINE_COMPONENT_ACTION(octree_server,
-			receive_ghost_zone,
-			receive_ghost_zone_action);
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+            receive_ghost_zone,
+            receive_ghost_zone_action);
+
+    void receive_ghost_multipole(
+            boost::uint64_t step///< For debugging purposes.
+            , boost::uint64_t phase
+            , face f///< Relative to caller.
+            , vector4d<multipole_t> const& multipole
+    )
+    {
+        mutex_type::scoped_lock l(mtx_);
+
+        OCTOPUS_ASSERT_MSG(step_ == step,
+                "cross-timestep communication occurred, octree is ill-formed");
+
+        OCTOPUS_ASSERT_FMT_MSG(
+                phase < ghost_multipole_deps_.size(),
+                "phase (%1%) is greater than the ghost zone queue length (%2%)",
+                phase % ghost_multipole_deps_.size());
+
+        OCTOPUS_ASSERT(f != invalid_face);
+
+        // NOTE (wash): boost::move should be safe here, zone is a temporary,
+        // even if we're local to the caller. Plus, ATM set_value requires the
+        // value to be moved to it.
+        ghost_multipole_deps_[phase](f).post(multipole);
+    }
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+            receive_ghost_multipole,
+            receive_ghost_multipole_action);
 
 private:
-	vector4d<double> send_ghost_zone_locked(
-			face f ///< Our direction, relative to the caller.
-			/*, mutex_type::scoped_lock& l*/
-	);
+    vector4d<double> send_ghost_zone_locked(
+            face f ///< Our direction, relative to the caller.
+            /*, mutex_type::scoped_lock& l*/
+    );
+    vector4d<multipole_t> send_ghost_multipole_locked(
+            face f ///< Our direction, relative to the caller.
+            /*, mutex_type::scoped_lock& l*/
+    );
 public:
 
 	/// Produces ghost zone data for a sibling.
-	vector4d<double> send_ghost_zone(
-			face f///< Our direction, relative to the caller.
-	);
+    vector4d<double> send_ghost_zone(
+            face f///< Our direction, relative to the caller.
+    );
 
-	HPX_DEFINE_COMPONENT_ACTION(octree_server,
-			send_ghost_zone,
-			send_ghost_zone_action);
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+            send_ghost_zone,
+            send_ghost_zone_action);
+
+    vector4d<multipole_t> send_ghost_multipole(
+            face f///< Our direction, relative to the caller.
+    );
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+            send_ghost_multipole,
+            send_ghost_multipole_action);
 
 	// FIXME: The octree doing the interpolation could reverse-engineer the
 	// offset (probably) from the face (the child_index may also be needed).
-	vector4d<double> send_interpolated_ghost_zone(
-			face f///< Our direction, relative to the caller.
+    vector4d<double> send_interpolated_ghost_zone(
+            face f///< Our direction, relative to the caller.
 //      , boost::uint64_t disparity ///< Difference in refinement level
-			, array<boost::int64_t, 3> offset
-	);
+            , array<boost::int64_t, 3> offset
+    );
 
-	HPX_DEFINE_COMPONENT_ACTION(octree_server,
-			send_interpolated_ghost_zone,
-			send_interpolated_ghost_zone_action);
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+            send_interpolated_ghost_zone,
+            send_interpolated_ghost_zone_action);
 
-	void map_ghost_zone(
-			face f///< Our direction, relative to the caller.
-	);
+    vector4d<multipole_t> send_interpolated_ghost_multipole(
+            face f///< Our direction, relative to the caller.
+//      , boost::uint64_t disparity ///< Difference in refinement level
+            , array<boost::int64_t, 3> offset
+    );
 
-	HPX_DEFINE_COMPONENT_ACTION(octree_server,
-			map_ghost_zone,
-			map_ghost_zone_action);
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+            send_interpolated_ghost_multipole,
+            send_interpolated_ghost_multipole_action);
+
+    void map_ghost_zone(
+            face f///< Our direction, relative to the caller.
+    );
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+            map_ghost_zone,
+            map_ghost_zone_action);
+
+    void map_ghost_multipole(
+            face f///< Our direction, relative to the caller.
+    );
+
+    HPX_DEFINE_COMPONENT_ACTION(octree_server,
+            map_ghost_multipole,
+            map_ghost_multipole_action);
 
 	///////////////////////////////////////////////////////////////////////////
 	// Child -> parent injection of state.
@@ -1342,6 +1420,11 @@ OCTOPUS_REGISTER_ACTION(receive_ghost_zone);
 OCTOPUS_REGISTER_ACTION(send_ghost_zone);
 OCTOPUS_REGISTER_ACTION(send_interpolated_ghost_zone);
 OCTOPUS_REGISTER_ACTION(map_ghost_zone);
+
+OCTOPUS_REGISTER_ACTION(receive_ghost_multipole);
+OCTOPUS_REGISTER_ACTION(send_ghost_multipole);
+OCTOPUS_REGISTER_ACTION(send_interpolated_ghost_multipole);
+OCTOPUS_REGISTER_ACTION(map_ghost_multipole);
 
 OCTOPUS_REGISTER_ACTION(child_to_parent_state_injection);
 OCTOPUS_REGISTER_ACTION(receive_child_state);

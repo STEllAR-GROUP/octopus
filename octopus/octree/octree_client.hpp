@@ -647,12 +647,24 @@ struct OCTOPUS_EXPORT octree_client
     {
         return send_interpolated_ghost_zone_async(f).get();
     }
+    vector4d<multipole_t>
+    send_interpolated_ghost_multipole(
+        face f ///< Direction, relative to us
+        ) const
+    {
+        return send_interpolated_ghost_multipole_async(f).get();
+    }
 
     // AMR boundary.
     hpx::future<vector4d<double> >
-    send_interpolated_ghost_zone_async(
-        face f ///< Direction, relative to us 
-        ) const;
+     send_interpolated_ghost_zone_async(
+         face f ///< Direction, relative to us
+         ) const;
+
+    hpx::future<vector4d<multipole_t> >
+     send_interpolated_ghost_multipole_async(
+         face f ///< Direction, relative to us
+         ) const;
 
     // Physical boundary. 
     void map_ghost_zone(
@@ -662,9 +674,22 @@ struct OCTOPUS_EXPORT octree_client
         return map_ghost_zone_async(f).get();
     }
 
+    void map_ghost_multipole(
+        face f ///< Direction, relative to us
+        ) const
+    {
+        return map_ghost_multipole_async(f).get();
+    }
+
     // Physical boundary. 
     hpx::future<void> map_ghost_zone_async(
         face f ///< Direction, relative to us 
+        ) const;
+    // }}}
+
+    // Physical boundary.
+    hpx::future<void> map_ghost_multipole_async(
+        face f ///< Direction, relative to us
         ) const;
     // }}}
 
@@ -680,32 +705,66 @@ struct OCTOPUS_EXPORT octree_client
         ) const;
     // }}}
 
+    vector4d<multipole_t> send_ghost_multipole(
+        face f
+        ) const;
+
+    hpx::future<vector4d<multipole_t> > send_ghost_multipole_async(
+        face f
+        ) const;
+    // }}}
+
     ///////////////////////////////////////////////////////////////////////////
     // {{{ receive_ghost_zone
     void receive_ghost_zone(
-        boost::uint64_t step ///< For debugging purposes.
-      , boost::uint64_t phase 
-      , face f ///< Relative to caller.
-      , BOOST_RV_REF(vector4d<double>) zone
-        ) const
-    {
-        receive_ghost_zone_async(step, phase, f, boost::move(zone)).get();
-    }
+         boost::uint64_t step ///< For debugging purposes.
+       , boost::uint64_t phase
+       , face f ///< Relative to caller.
+       , BOOST_RV_REF(vector4d<double>) zone
+         ) const
+     {
+         receive_ghost_zone_async(step, phase, f, boost::move(zone)).get();
+     }
 
-    hpx::future<void> receive_ghost_zone_async(
-        boost::uint64_t step ///< For debugging purposes.
-      , boost::uint64_t phase 
-      , face f ///< Relative to caller.
-      , BOOST_RV_REF(vector4d<double>) zone
-        ) const;
+     hpx::future<void> receive_ghost_zone_async(
+         boost::uint64_t step ///< For debugging purposes.
+       , boost::uint64_t phase
+       , face f ///< Relative to caller.
+       , BOOST_RV_REF(vector4d<double>) zone
+         ) const;
 
-    void receive_ghost_zone_push(
-        boost::uint64_t step ///< For debugging purposes.
-      , boost::uint64_t phase 
-      , face f ///< Relative to caller.
-      , BOOST_RV_REF(vector4d<double>) zone
-        ) const;
-    // }}}
+     void receive_ghost_zone_push(
+         boost::uint64_t step ///< For debugging purposes.
+       , boost::uint64_t phase
+       , face f ///< Relative to caller.
+       , BOOST_RV_REF(vector4d<double>) zone
+         ) const;
+     // }}}
+
+     void receive_ghost_multipole(
+          boost::uint64_t step ///< For debugging purposes.
+        , boost::uint64_t phase
+        , face f ///< Relative to caller.
+        , BOOST_RV_REF(vector4d<multipole_t>) zone
+          ) const
+      {
+          receive_ghost_multipole_async(step, phase, f, boost::move(zone)).get();
+      }
+
+      hpx::future<void> receive_ghost_multipole_async(
+          boost::uint64_t step ///< For debugging purposes.
+        , boost::uint64_t phase
+        , face f ///< Relative to caller.
+        , BOOST_RV_REF(vector4d<multipole_t>) zone
+          ) const;
+
+      void receive_ghost_multipole_push(
+          boost::uint64_t step ///< For debugging purposes.
+        , boost::uint64_t phase
+        , face f ///< Relative to caller.
+        , BOOST_RV_REF(vector4d<multipole_t>) zone
+          ) const;
+      // }}}
 
     ///////////////////////////////////////////////////////////////////////////
     // {{{ child_to_parent_state_injection

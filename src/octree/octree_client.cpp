@@ -318,6 +318,21 @@ hpx::future<void> octree_client::map_ghost_zone_async(
         (gid_, face_);
 }
 
+
+hpx::future<void> octree_client::map_ghost_multipole_async(
+    face f ///< Direction, relative to us
+    ) const
+{
+/*
+    OCTOPUS_ASSERT_FMT_MSG(f == invert(face_)
+                         , "supplied face (%1%) is not inverse of the "
+                           "stored face (%2%)"
+                         , f % invert(face_));
+*/
+    return hpx::async<octree_server::map_ghost_multipole_action>
+        (gid_, face_);
+}
+
 vector4d<double> octree_client::send_ghost_zone(
     face f ///< Direction, relative to us 
     ) const
@@ -354,6 +369,24 @@ octree_client::send_ghost_zone_async(
     OCTOPUS_ASSERT(false);
     return hpx::future<vector4d<double> >();
 }
+hpx::future<vector4d<multipole_t> >
+octree_client::send_ghost_multipole_async(
+    face f ///< Direction, relative to us.
+    ) const
+{
+    switch (kind_)
+    {
+        case real_boundary:
+            return hpx::async<octree_server::send_ghost_multipole_action>(gid_, f);
+        case amr_boundary:
+            return send_interpolated_ghost_multipole_async(f);
+        default:
+            break;
+    }
+
+    OCTOPUS_ASSERT(false);
+    return hpx::future<vector4d<multipole_t> >();
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 hpx::future<void> octree_client::receive_ghost_zone_async(
@@ -378,6 +411,64 @@ void octree_client::receive_ghost_zone_push(
     ensure_real();
     hpx::apply<octree_server::receive_ghost_zone_action>
         (gid_, step, phase, f, boost::move(zone));
+}
+
+hpx::future<vector4d<multipole_t> >
+octree_client::send_interpolated_ghost_multipole_async(
+    face f ///< Direction, relative to us
+    ) const
+{
+/*
+    OCTOPUS_ASSERT_FMT_MSG(f == invert(face_)
+                         , "supplied face (%1%) is not inverse of the "
+                           "stored face (%2%)"
+                         , f % invert(face_));
+*/
+    return hpx::async<octree_server::send_interpolated_ghost_multipole_action>
+        (gid_, f, offset_);
+}
+
+vector4d<multipole_t> octree_client::send_ghost_multipole(
+    face f ///< Direction, relative to us
+    ) const
+{
+    switch (kind_)
+    {
+        case real_boundary:
+            return send_ghost_multipole_async(f).get();
+        case amr_boundary:
+            return send_interpolated_ghost_multipole(f);
+        default:
+            break;
+    }
+
+    OCTOPUS_ASSERT(false);
+    return vector4d<multipole_t>();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+hpx::future<void> octree_client::receive_ghost_multipole_async(
+    boost::uint64_t step ///< For debugging purposes.
+  , boost::uint64_t phase
+  , face f ///< Relative to caller.
+  , BOOST_RV_REF(vector4d<multipole_t>) multipole
+    ) const
+{
+    ensure_real();
+    return hpx::async<octree_server::receive_ghost_multipole_action>
+        (gid_, step, phase, f, boost::move(multipole));
+}
+
+void octree_client::receive_ghost_multipole_push(
+    boost::uint64_t step ///< For debugging purposes.
+  , boost::uint64_t phase
+  , face f ///< Relative to caller.
+  , BOOST_RV_REF(vector4d<multipole_t>) multipole
+    ) const
+{
+    ensure_real();
+    hpx::apply<octree_server::receive_ghost_multipole_action>
+        (gid_, step, phase, f, boost::move(multipole));
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -920,6 +920,183 @@ void octree_server::add_ghost_zone(
     };
 } // }}}
 
+
+void octree_server::add_ghost_multipole(
+    face f ///< Bound parameter.
+  , BOOST_RV_REF(vector4d<multipole_t>) zone
+    )
+{ // {{{
+
+    /*
+    boost::uint64_t const bw = science().ghost_zone_length;
+    boost::uint64_t const gnx = config().grid_node_length;
+
+    // The index of the futures in the vector is the face.
+    switch (f)
+    {
+        ///////////////////////////////////////////////////////////////////////
+        // X-axis.
+        /// for i in [0, BW)
+        ///     for j in [BW, GNX - BW)
+        ///         for k in [BW, GNX - BW)
+        ///             U(i, j, k) = sibling[XL].U(GNX - 2 * BW + i, j, k)
+        case XL:
+        {
+            OCTOPUS_ASSERT(zone.x_length() == bw);           // [0, BW)
+            OCTOPUS_ASSERT(zone.y_length() == gnx - 2 * bw); // [BW, GNX - BW)
+            OCTOPUS_ASSERT(zone.z_length() == gnx - 2 * bw); // [BW, GNX - BW)
+
+            for (boost::uint64_t i = 0; i < bw; ++i)
+                for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
+                    for (boost::uint64_t k = bw; k < (gnx - bw); ++k)
+                    {
+                        // Adjusted indices.
+                        boost::uint64_t const ii = i;
+                        boost::uint64_t const jj = j - bw;
+                        boost::uint64_t const kk = k - bw;
+
+                        (*U_)(i, j, k) = zone(ii, jj, kk);
+                    }
+
+            return;
+        }
+
+        /// for i in [GNX - BW, GNX)
+        ///     for j in [BW, GNX - BW)
+        ///         for k in [BW, GNX - BW)
+        ///             U(i, j, k) = sibling[XU].U(-GNX - 2 * BW + i, j, k)
+        case XU:
+        {
+            OCTOPUS_ASSERT(zone.x_length() == bw);           // [GNX - BW, GNX)
+            OCTOPUS_ASSERT(zone.y_length() == gnx - 2 * bw); // [BW, GNX - BW)
+            OCTOPUS_ASSERT(zone.z_length() == gnx - 2 * bw); // [BW, GNX - BW)
+
+            for (boost::uint64_t i = gnx - bw; i < gnx; ++i)
+                for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
+                    for (boost::uint64_t k = bw; k < (gnx - bw); ++k)
+                    {
+                        // Adjusted indices.
+                        boost::uint64_t const ii = i - (gnx - bw);
+                        boost::uint64_t const jj = j - bw;
+                        boost::uint64_t const kk = k - bw;
+
+                        (*U_)(i, j, k) = zone(ii, jj, kk);
+                    }
+
+            return;
+        }
+
+        ///////////////////////////////////////////////////////////////////////
+        // Y-axis.
+        /// for i in [BW, GNX - BW)
+        ///     for j in [0, BW)
+        ///         for k in [BW, GNX - BW)
+        ///             U(i, j, k) = sibling[YL].U(i, GNX - 2 * BW + j, k)
+        case YL:
+        {
+            OCTOPUS_ASSERT(zone.x_length() == gnx - 2 * bw); // [BW, GNX - BW)
+            OCTOPUS_ASSERT(zone.y_length() == bw);           // [0, BW)
+            OCTOPUS_ASSERT(zone.z_length() == gnx - 2 * bw); // [BW, GNX - BW)
+
+            for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
+                for (boost::uint64_t j = 0; j < bw; ++j)
+                    for (boost::uint64_t k = bw; k < (gnx - bw); ++k)
+                    {
+                        // Adjusted indices.
+                        boost::uint64_t const ii = i - bw;
+                        boost::uint64_t const jj = j;
+                        boost::uint64_t const kk = k - bw;
+
+                        (*U_)(i, j, k) = zone(ii, jj, kk);
+                    }
+
+            return;
+        }
+
+        /// for i in [BW, GNX - BW)
+        ///     for j in [GNX - BW, GNX)
+        ///         for k in [BW, GNX - BW)
+        ///             U(i, j, k) = sibling[YU].U(i, -GNX - 2 * BW + j, k)
+        case YU:
+        {
+            OCTOPUS_ASSERT(zone.x_length() == gnx - 2 * bw); // [BW, GNX - BW)
+            OCTOPUS_ASSERT(zone.y_length() == bw);           // [GNX - BW, GNX)
+            OCTOPUS_ASSERT(zone.z_length() == gnx - 2 * bw); // [BW, GNX - BW)
+
+            for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
+                for (boost::uint64_t j = gnx - bw; j < gnx; ++j)
+                    for (boost::uint64_t k = bw; k < (gnx - bw); ++k)
+                    {
+                        // Adjusted indices.
+                        boost::uint64_t const ii = i - bw;
+                        boost::uint64_t const jj = j - (gnx - bw);
+                        boost::uint64_t const kk = k - bw;
+
+                        (*U_)(i, j, k) = zone(ii, jj, kk);
+                    }
+
+            return;
+        }
+
+        ///////////////////////////////////////////////////////////////////////
+        // Z-axis.
+        /// for i in [BW, GNX - BW)
+        ///     for j in [BW, GNX - BW)
+        ///         for k in [0, BW)
+        ///             U(i, j, k) = sibling[ZL].U(i, j, GNX - 2 * BW + k)
+        case ZL:
+        {
+            OCTOPUS_ASSERT(zone.x_length() == gnx - 2 * bw); // [BW, GNX - BW)
+            OCTOPUS_ASSERT(zone.y_length() == gnx - 2 * bw); // [BW, GNX - BW)
+            OCTOPUS_ASSERT(zone.z_length() == bw);           // [0, BW)
+
+            for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
+                for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
+                    for (boost::uint64_t k = 0; k < bw; ++k)
+                    {
+                        // Adjusted indices.
+                        boost::uint64_t const ii = i - bw;
+                        boost::uint64_t const jj = j - bw;
+                        boost::uint64_t const kk = k;
+
+                        (*U_)(i, j, k) = zone(ii, jj, kk);
+                    }
+
+            return;
+        }
+
+        /// for i in [BW, GNX - BW)
+        ///     for j in [BW, GNX - BW)
+        ///         for k in [GNX - BW, GNX)
+        ///             U(i, j, k) = sibling[ZU].U(i, j, -GNX - 2 * BW + k)
+        case ZU:
+        {
+            OCTOPUS_ASSERT(zone.x_length() == gnx - 2 * bw); // [BW, GNX - BW)
+            OCTOPUS_ASSERT(zone.y_length() == gnx - 2 * bw); // [BW, GNX - BW)
+            OCTOPUS_ASSERT(zone.z_length() == bw);           // [GNX - BW, GNX)
+
+            for (boost::uint64_t i = bw; i < (gnx - bw); ++i)
+                for (boost::uint64_t j = bw; j < (gnx - bw); ++j)
+                    for (boost::uint64_t k = gnx - bw; k < gnx; ++k)
+                    {
+                        // Adjusted indices.
+                        boost::uint64_t const ii = i - bw;
+                        boost::uint64_t const jj = j - bw;
+                        boost::uint64_t const kk = k - (gnx - bw);
+
+                        (*U_)(i, j, k) = zone(ii, jj, kk);
+                    }
+
+            return;
+        }
+
+        default:
+        {
+            OCTOPUS_ASSERT_MSG(false, "face shouldn't be out-of-bounds");
+        }
+    };*/
+} // }}}
+
 // Who ya gonna call? Ghostbusters!
 vector4d<double> octree_server::send_ghost_zone(
     face f ///< Our direction, relative to the caller.
@@ -1116,6 +1293,15 @@ vector4d<double> octree_server::send_ghost_zone(
     OCTOPUS_ASSERT(false);
     return vector4d<double>();
 } // }}} 
+
+
+// Who ya gonna call? Ghostbusters!
+vector4d<multipole_t> octree_server::send_ghost_multipole(
+    face f ///< Our direction, relative to the caller.
+    )
+{ // {{{
+    return vector4d<multipole_t>();
+} // }}}
 
 ///////////////////////////////////////////////////////////////////////////////
 vector4d<double> octree_server::send_interpolated_ghost_zone(
@@ -1454,6 +1640,20 @@ vector4d<double> octree_server::send_interpolated_ghost_zone(
     return output;
 } // }}}
 
+
+///////////////////////////////////////////////////////////////////////////////
+vector4d<multipole_t> octree_server::send_interpolated_ghost_multipole(
+    face f ///< Our direction, relative to the caller.
+  , array<boost::int64_t, 3> amr_offset
+    )
+{ // {{{
+    boost::uint64_t const bw = science().ghost_zone_length;
+    boost::uint64_t const gnx = config().grid_node_length;
+
+    vector4d<multipole_t> output;
+    return output;
+} // }}}
+
 // FIXME: Range checking.
 array<boost::uint64_t, 3> map_location(
     face f ///< Our direction, relative to the caller.
@@ -1713,6 +1913,13 @@ void octree_server::map_ghost_zone(
             OCTOPUS_ASSERT_MSG(false, "face shouldn't be out-of-bounds");
         }
     };
+} // }}}
+
+
+void octree_server::map_ghost_multipole(
+    face f ///< Our direction, relative to the caller.
+    )
+{ // {{{
 } // }}}
 
 ///////////////////////////////////////////////////////////////////////////////
