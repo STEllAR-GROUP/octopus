@@ -369,7 +369,7 @@ octree_client::send_ghost_zone_async(
     OCTOPUS_ASSERT(false);
     return hpx::future<vector4d<double> >();
 }
-hpx::future<vector4d<multipole_t> >
+hpx::future<multipole_array_t >
 octree_client::send_ghost_multipole_async(
     face f ///< Direction, relative to us.
     ) const
@@ -385,7 +385,7 @@ octree_client::send_ghost_multipole_async(
     }
 
     OCTOPUS_ASSERT(false);
-    return hpx::future<vector4d<multipole_t> >();
+    return hpx::future<multipole_array_t >();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -413,7 +413,7 @@ void octree_client::receive_ghost_zone_push(
         (gid_, step, phase, f, boost::move(zone));
 }
 
-hpx::future<vector4d<multipole_t> >
+hpx::future<multipole_array_t >
 octree_client::send_interpolated_ghost_multipole_async(
     face f ///< Direction, relative to us
     ) const
@@ -428,7 +428,7 @@ octree_client::send_interpolated_ghost_multipole_async(
         (gid_, f, offset_);
 }
 
-vector4d<multipole_t> octree_client::send_ghost_multipole(
+multipole_array_t octree_client::send_ghost_multipole(
     face f ///< Direction, relative to us
     ) const
 {
@@ -443,7 +443,7 @@ vector4d<multipole_t> octree_client::send_ghost_multipole(
     }
 
     OCTOPUS_ASSERT(false);
-    return vector4d<multipole_t>();
+    return multipole_array_t();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -451,7 +451,7 @@ hpx::future<void> octree_client::receive_ghost_multipole_async(
     boost::uint64_t step ///< For debugging purposes.
   , boost::uint64_t phase
   , face f ///< Relative to caller.
-  , BOOST_RV_REF(vector4d<multipole_t>) multipole
+  , BOOST_RV_REF(multipole_array_t) multipole
     ) const
 {
     ensure_real();
@@ -463,7 +463,7 @@ void octree_client::receive_ghost_multipole_push(
     boost::uint64_t step ///< For debugging purposes.
   , boost::uint64_t phase
   , face f ///< Relative to caller.
-  , BOOST_RV_REF(vector4d<multipole_t>) multipole
+  , BOOST_RV_REF(multipole_array_t) multipole
     ) const
 {
     ensure_real();

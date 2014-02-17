@@ -191,7 +191,7 @@ private:
 
     typedef array<hpx::lcos::local::channel<vector4d<double> >, 6> sibling_state_dependencies;
 
-    typedef array<hpx::lcos::local::channel<vector4d<multipole_t> >, 6> sibling_multipole_dependencies;
+    typedef array<hpx::lcos::local::channel<multipole_array_t >, 6> sibling_multipole_dependencies;
 
     typedef array<hpx::lcos::local::channel<vector4d<double> >, 8> children_state_dependencies;
 
@@ -787,7 +787,7 @@ private:
 
     void add_ghost_multipole(
             face f
-            , BOOST_RV_REF(vector4d<multipole_t>) zone
+            , BOOST_RV_REF(multipole_array_t) zone
     );
 
     void add_ghost_zone_callback(
@@ -799,7 +799,7 @@ private:
     }
     void add_ghost_multipole_callback(
             face f///< Bound parameter.
-            , hpx::future<vector4d<multipole_t> > zone_f
+            , hpx::future<multipole_array_t > zone_f
     )
     {
         add_ghost_multipole(f, boost::move(zone_f.move()));
@@ -842,7 +842,7 @@ public:
             boost::uint64_t step///< For debugging purposes.
             , boost::uint64_t phase
             , face f///< Relative to caller.
-            , vector4d<multipole_t> const& multipole
+            , multipole_array_t const& multipole
     )
     {
         mutex_type::scoped_lock l(mtx_);
@@ -872,7 +872,7 @@ private:
             face f ///< Our direction, relative to the caller.
             /*, mutex_type::scoped_lock& l*/
     );
-    vector4d<multipole_t> send_ghost_multipole_locked(
+    multipole_array_t send_ghost_multipole_locked(
             face f ///< Our direction, relative to the caller.
             /*, mutex_type::scoped_lock& l*/
     );
@@ -887,7 +887,7 @@ public:
             send_ghost_zone,
             send_ghost_zone_action);
 
-    vector4d<multipole_t> send_ghost_multipole(
+    multipole_array_t send_ghost_multipole(
             face f///< Our direction, relative to the caller.
     );
 
@@ -907,7 +907,7 @@ public:
             send_interpolated_ghost_zone,
             send_interpolated_ghost_zone_action);
 
-    vector4d<multipole_t> send_interpolated_ghost_multipole(
+    multipole_array_t send_interpolated_ghost_multipole(
             face f///< Our direction, relative to the caller.
 //      , boost::uint64_t disparity ///< Difference in refinement level
             , array<boost::int64_t, 3> offset

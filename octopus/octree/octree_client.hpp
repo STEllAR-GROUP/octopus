@@ -647,7 +647,7 @@ struct OCTOPUS_EXPORT octree_client
     {
         return send_interpolated_ghost_zone_async(f).get();
     }
-    vector4d<multipole_t>
+    multipole_array_t
     send_interpolated_ghost_multipole(
         face f ///< Direction, relative to us
         ) const
@@ -661,7 +661,7 @@ struct OCTOPUS_EXPORT octree_client
          face f ///< Direction, relative to us
          ) const;
 
-    hpx::future<vector4d<multipole_t> >
+    hpx::future<multipole_array_t >
      send_interpolated_ghost_multipole_async(
          face f ///< Direction, relative to us
          ) const;
@@ -705,11 +705,11 @@ struct OCTOPUS_EXPORT octree_client
         ) const;
     // }}}
 
-    vector4d<multipole_t> send_ghost_multipole(
+    multipole_array_t send_ghost_multipole(
         face f
         ) const;
 
-    hpx::future<vector4d<multipole_t> > send_ghost_multipole_async(
+    hpx::future<multipole_array_t > send_ghost_multipole_async(
         face f
         ) const;
     // }}}
@@ -745,7 +745,7 @@ struct OCTOPUS_EXPORT octree_client
           boost::uint64_t step ///< For debugging purposes.
         , boost::uint64_t phase
         , face f ///< Relative to caller.
-        , BOOST_RV_REF(vector4d<multipole_t>) zone
+        , BOOST_RV_REF(multipole_array_t) zone
           ) const
       {
           receive_ghost_multipole_async(step, phase, f, boost::move(zone)).get();
@@ -755,14 +755,14 @@ struct OCTOPUS_EXPORT octree_client
           boost::uint64_t step ///< For debugging purposes.
         , boost::uint64_t phase
         , face f ///< Relative to caller.
-        , BOOST_RV_REF(vector4d<multipole_t>) zone
+        , BOOST_RV_REF(multipole_array_t) zone
           ) const;
 
       void receive_ghost_multipole_push(
           boost::uint64_t step ///< For debugging purposes.
         , boost::uint64_t phase
         , face f ///< Relative to caller.
-        , BOOST_RV_REF(vector4d<multipole_t>) zone
+        , BOOST_RV_REF(multipole_array_t) zone
           ) const;
       // }}}
 
