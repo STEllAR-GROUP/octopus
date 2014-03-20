@@ -3,7 +3,7 @@
 ===============================================
 
 Octopus is a parallel, distributed 3D framework for crafting scientific
-simulations that use adaptive mesh refinment (AMR) methods. The primary
+simulations that use adaptive mesh refinement (AMR) methods. The primary
 application focus is Eulerian astrophysics codes. Octopus uses the `HPX C++11
 runtime system <github.com/STEllAR-GROUP/hpx>`_ and an octree-based AMR
 algorithm. The code is based off of work originally done by Dominic Marcello.
